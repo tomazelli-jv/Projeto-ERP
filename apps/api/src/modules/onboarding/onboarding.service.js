@@ -9,6 +9,7 @@ import {
 import { mapOnboardingDatabaseError, onboardingError } from './onboarding.errors.js';
 
 const MINIMUM_ONBOARDING_LIMIT = 1;
+const MAX_TRANSACTION_ATTEMPTS = 3;
 
 export class OnboardingService {
   constructor({ database, repository, passwordSetupTokenService, logger, clock = () => new Date() }) {
@@ -21,6 +22,21 @@ export class OnboardingService {
 
   async onboard(rawInput, context = {}) {
     const input = onboardingInputSchema.parse(rawInput);
+    for (let attempt = 1; attempt <= MAX_TRANSACTION_ATTEMPTS; attempt += 1) {
+      try {
+        return await this.#executeTransaction(input, context);
+      } catch (error) {
+        if (error?.code !== 'ER_LOCK_DEADLOCK' || attempt === MAX_TRANSACTION_ATTEMPTS) throw error;
+        this.logger.warn(
+          { requestId: context.requestId, event: 'tenant_onboarding', attempt },
+          'Retrying onboarding after database deadlock'
+        );
+      }
+    }
+    throw new Error('Onboarding transaction attempts exhausted');
+  }
+
+  async #executeTransaction(input, context) {
     const connection = await this.database.getConnection();
     const logContext = { requestId: context.requestId, event: 'tenant_onboarding' };
     this.logger.info(logContext, 'Onboarding started');

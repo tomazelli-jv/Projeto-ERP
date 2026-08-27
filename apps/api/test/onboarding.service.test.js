@@ -168,6 +168,19 @@ describe('OnboardingService', () => {
     );
   });
 
+  it('retries the complete transaction after a transient MariaDB deadlock', async () => {
+    const deadlock = Object.assign(new Error('deadlock'), { code: 'ER_LOCK_DEADLOCK' });
+    const { service, connection, repository } = createDependencies({
+      repository: { createUser: vi.fn().mockRejectedValueOnce(deadlock).mockResolvedValueOnce() }
+    });
+    await expect(service.onboard(payload)).resolves.toMatchObject({ owner: { email: 'owner@example.com' } });
+    expect(connection.beginTransaction).toHaveBeenCalledTimes(2);
+    expect(connection.rollback).toHaveBeenCalledOnce();
+    expect(connection.commit).toHaveBeenCalledOnce();
+    expect(connection.release).toHaveBeenCalledTimes(2);
+    expect(repository.createTenant).toHaveBeenCalledTimes(2);
+  });
+
   it('rolls back and maps known database uniqueness errors', async () => {
     const duplicate = Object.assign(new Error('duplicate'), {
       code: 'ER_DUP_ENTRY',
