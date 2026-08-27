@@ -33,6 +33,7 @@ jobs:
       DB_NAME: tomazelli_erp_test
       DB_USER: tomazelli
       DB_PASSWORD: test_password
+      DB_INTEGRATION_TESTS: true
       LOG_LEVEL: silent
     steps:
       - uses: actions/checkout@v4

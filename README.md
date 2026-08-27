@@ -1,6 +1,6 @@
 # Tomazelli ERP
 
-Fundação técnica do ERP SaaS comercial da Tomazelli.dev. Esta etapa contém apenas infraestrutura executável; módulos de negócio e autenticação ainda não fazem parte do código.
+ERP SaaS comercial multi-tenant da Tomazelli.dev. A base atual contém a fundação executável e o modelo central de tenants, organizações, planos, assinaturas e identidades globais. Autenticação e módulos operacionais ainda não fazem parte do código.
 
 ## Requisitos
 
@@ -61,3 +61,5 @@ Serviços locais:
 - `docs`: arquitetura, decisões e operação.
 
 Consulte [a arquitetura](docs/architecture/foundation.md), [as decisões](docs/decisions/0001-foundation.md) e [o procedimento de banco](docs/operations/database.md).
+
+O modelo multi-tenant está documentado em [Multi-tenancy SaaS](docs/architecture/multi-tenancy.md).

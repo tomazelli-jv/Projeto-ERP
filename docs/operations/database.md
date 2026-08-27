@@ -14,7 +14,7 @@ O volume `mariadb_data` preserva os dados quando o container é interrompido. `n
 
 ## Seeds
 
-Seeds atuais registram somente metadados técnicos de desenvolvimento. O executor exige explicitamente `NODE_ENV=development` e falha em staging ou production.
+Os seeds registram metadados técnicos e os planos globais STARTER, PRO e BUSINESS com limites fictícios de desenvolvimento. Esses nomes e limites não representam a política comercial final. O executor exige explicitamente `NODE_ENV=development` e falha em staging ou production.
 
 ## Produção
 
