@@ -1,14 +1,17 @@
 import { z } from 'zod';
 import { isValidCnpj, normalizeCnpj, normalizeDigits } from './cnpj.js';
 import {
+  DEFAULT_COUNTRY_CODE,
   DEFAULT_LOCALE,
   DEFAULT_TIMEZONE,
   MEMBERSHIP_STATUSES,
+  ONBOARDING_DEFAULT_BRANCH_CODE,
   ORGANIZATION_STATUSES,
   PLAN_LIMIT_KEY_VALUES,
   SUBSCRIPTION_STATUSES,
   TENANT_STATUSES
 } from './constants.js';
+import { normalizeTenantSlug } from './slug.js';
 
 export const uuidSchema = z.string().uuid();
 export const tenantStatusSchema = z.enum(TENANT_STATUSES);
@@ -74,3 +77,68 @@ export const userInputSchema = z.object({
     .nullish()
     .transform((value) => (value ? normalizeDigits(value) : null))
 });
+
+const onboardingAddressSchema = z
+  .object({
+    postalCode: z
+      .string()
+      .transform(normalizeDigits)
+      .refine((value) => /^\d{8}$/.test(value), 'CEP deve possuir 8 dígitos.'),
+    street: z.string().trim().min(1).max(180),
+    number: z.string().trim().min(1).max(30),
+    complement: z.string().trim().max(120).nullish(),
+    district: z.string().trim().min(1).max(120),
+    city: z.string().trim().min(1).max(120),
+    state: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{2}$/),
+    countryCode: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{2}$/)
+      .default(DEFAULT_COUNTRY_CODE)
+  })
+  .strict();
+
+export const onboardingInputSchema = z
+  .object({
+    tenant: z
+      .object({
+        name: z.string().trim().min(1).max(160),
+        slug: z
+          .string()
+          .min(1)
+          .max(160)
+          .transform(normalizeTenantSlug)
+          .refine((value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value), 'Slug inválido.')
+          .refine((value) => value.length <= 100, 'Slug deve possuir no máximo 100 caracteres.')
+      })
+      .strict(),
+    company: z
+      .object({
+        legalName: z.string().trim().min(1).max(180),
+        tradeName: z.string().trim().max(180).nullish(),
+        taxId: cnpjSchema
+      })
+      .strict(),
+    branch: z
+      .object({
+        code: z.string().trim().min(1).max(50).default(ONBOARDING_DEFAULT_BRANCH_CODE),
+        legalName: z.string().trim().min(1).max(180),
+        tradeName: z.string().trim().max(180).nullish(),
+        email: z.string().trim().toLowerCase().email().max(254).nullish(),
+        phone: z
+          .string()
+          .nullish()
+          .transform((value) => (value ? normalizeDigits(value) : null))
+          .refine((value) => value === null || /^\d{10,13}$/.test(value), 'Telefone inválido.'),
+        address: onboardingAddressSchema.optional()
+      })
+      .strict(),
+    owner: userInputSchema.strict(),
+    planCode: z.string().trim().toUpperCase().min(1).max(50)
+  })
+  .strict();

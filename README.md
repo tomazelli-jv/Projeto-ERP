@@ -63,3 +63,5 @@ Serviços locais:
 Consulte [a arquitetura](docs/architecture/foundation.md), [as decisões](docs/decisions/0001-foundation.md) e [o procedimento de banco](docs/operations/database.md).
 
 O modelo multi-tenant está documentado em [Multi-tenancy SaaS](docs/architecture/multi-tenancy.md).
+
+O fluxo atômico de cadastro inicial está documentado em [Onboarding transacional](docs/architecture/onboarding.md).

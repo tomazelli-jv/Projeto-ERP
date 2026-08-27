@@ -18,3 +18,6 @@ export const PLAN_LIMIT_KEYS = Object.freeze({
 export const PLAN_LIMIT_KEY_VALUES = Object.freeze(Object.values(PLAN_LIMIT_KEYS));
 export const DEFAULT_TIMEZONE = 'America/Sao_Paulo';
 export const DEFAULT_LOCALE = 'pt-BR';
+export const DEFAULT_COUNTRY_CODE = 'BR';
+export const ONBOARDING_DEFAULT_BRANCH_CODE = '001';
+export const ONBOARDING_TRIAL_DAYS = 14;

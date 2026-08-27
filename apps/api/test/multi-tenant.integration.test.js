@@ -1,15 +1,16 @@
 import { createUuid, PLAN_LIMIT_KEYS } from '@tomazelli/shared';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { closeDatabase, database } from '../src/infrastructure/database.js';
+import { createDatabasePool } from '../src/infrastructure/database.js';
 import { PlanLimitRepository } from '../src/modules/plans/plan-limit.repository.js';
 
 const integrationEnabled = process.env.DB_INTEGRATION_TESTS === 'true';
 
 describe.runIf(integrationEnabled)('multi-tenant database constraints', () => {
+  const integrationDatabase = createDatabasePool();
   let connection;
 
   beforeEach(async () => {
-    connection = await database.getConnection();
+    connection = await integrationDatabase.getConnection();
     await connection.beginTransaction();
   });
 
@@ -19,7 +20,7 @@ describe.runIf(integrationEnabled)('multi-tenant database constraints', () => {
   });
 
   afterAll(async () => {
-    await closeDatabase();
+    await integrationDatabase.end();
   });
 
   it('allows Tenant → Company → Branch only inside the same tenant', async () => {

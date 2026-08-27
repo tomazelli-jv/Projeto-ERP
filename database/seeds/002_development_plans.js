@@ -37,7 +37,7 @@ export async function seed(knex) {
           name: plan.name,
           description: plan.description,
           is_active: true,
-          is_public: false
+          is_public: true
         });
       } else {
         await transaction('plans')
@@ -45,6 +45,7 @@ export async function seed(knex) {
           .update({
             name: plan.name,
             description: plan.description,
+            is_public: true,
             updated_at: transaction.fn.now(6)
           });
       }
