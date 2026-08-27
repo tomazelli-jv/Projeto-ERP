@@ -252,7 +252,7 @@ describe.runIf(integrationEnabled)('POST /api/v1/onboarding with MariaDB', () =>
     const slug = `${slugPrefix}-credentialed-user`;
     await request(app)
       .post('/api/v1/onboarding')
-      .send(payload({ slug, taxId: '61182788000102', ownerEmail: email }))
+      .send(payload({ slug, taxId: '19131243000197', ownerEmail: email }))
       .expect(201);
 
     const [users] = await integrationDatabase.execute('SELECT name, phone FROM users WHERE id = ?', [userId]);

@@ -74,7 +74,9 @@ describe('OnboardingService', () => {
     expect(connection.commit).toHaveBeenCalledOnce();
     expect(connection.rollback).not.toHaveBeenCalled();
     expect(connection.release).toHaveBeenCalledOnce();
-    expect(passwordSetupTokenService.issueForUser).toHaveBeenCalledWith(connection, expect.any(String));
+    expect(passwordSetupTokenService.issueForUser).toHaveBeenCalledWith(connection, expect.any(String), {
+      lockedUser: expect.objectContaining({ email: 'owner@example.com' })
+    });
     expect(passwordSetupTokenService.deliver).toHaveBeenCalledWith({ token: 'raw-token' });
     expect(repository.createCompany).toHaveBeenCalledWith(
       connection,
@@ -126,7 +128,7 @@ describe('OnboardingService', () => {
       email: 'owner@example.com',
       phone: '11111111111'
     };
-    const { service, repository } = createDependencies({
+    const { service, repository, passwordSetupTokenService } = createDependencies({
       repository: { findUserByEmail: vi.fn().mockResolvedValue(existingUser) }
     });
     const result = await service.onboard(payload);
@@ -136,6 +138,11 @@ describe('OnboardingService', () => {
       expect.objectContaining({ userId: existingUser.id, isOwner: true })
     );
     expect(result.owner).toMatchObject({ id: existingUser.id, name: 'Nome Preservado' });
+    expect(passwordSetupTokenService.issueForUser).toHaveBeenCalledWith(
+      expect.anything(),
+      existingUser.id,
+      undefined
+    );
   });
 
   it('recovers from a concurrent creation of the same global email', async () => {

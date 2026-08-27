@@ -76,8 +76,12 @@ export class OnboardingService {
         });
       }
 
-      const owner = await this.#findOrCreateOwner(connection, input.owner);
-      const passwordSetupIssuance = await this.passwordSetupTokenService.issueForUser(connection, owner.id);
+      const { user: owner, isLocked: ownerIsLocked } = await this.#findOrCreateOwner(connection, input.owner);
+      const passwordSetupIssuance = await this.passwordSetupTokenService.issueForUser(
+        connection,
+        owner.id,
+        ownerIsLocked ? { lockedUser: owner } : undefined
+      );
       await this.repository.createMembership(connection, {
         id: createUuid(),
         tenantId,
@@ -149,17 +153,17 @@ export class OnboardingService {
 
   async #findOrCreateOwner(connection, ownerInput) {
     const existing = await this.repository.findUserByEmail(connection, ownerInput.email);
-    if (existing) return existing;
+    if (existing) return { user: existing, isLocked: false };
 
     const user = { id: createUuid(), ...ownerInput, phone: ownerInput.phone ?? null };
     try {
       await this.repository.createUser(connection, user);
-      return user;
+      return { user, isLocked: true };
     } catch (error) {
       if (error?.code !== 'ER_DUP_ENTRY') throw error;
       const concurrentUser = await this.repository.findUserByEmailForUpdate(connection, ownerInput.email);
       if (!concurrentUser) throw error;
-      return concurrentUser;
+      return { user: concurrentUser, isLocked: true };
     }
   }
 }

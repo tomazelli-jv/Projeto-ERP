@@ -68,4 +68,21 @@ describe('password setup token security', () => {
     await expect(service.issueForUser({}, 'user')).resolves.toBeNull();
     expect(repository.createToken).not.toHaveBeenCalled();
   });
+
+  it('reuses a user lock already held by the onboarding transaction', async () => {
+    const lockedUser = { id: 'locked-user', email: 'locked@example.com' };
+    const repository = {
+      findUserByIdForUpdate: vi.fn(),
+      findCredentialByUserId: vi.fn().mockResolvedValue({ id: 'credential' }),
+      revokeActiveTokens: vi.fn(),
+      createToken: vi.fn()
+    };
+    const service = new PasswordSetupTokenService({
+      repository,
+      notifier: { deliver: vi.fn() },
+      logger: { info: vi.fn() }
+    });
+    await service.issueForUser({}, lockedUser.id, { lockedUser });
+    expect(repository.findUserByIdForUpdate).not.toHaveBeenCalled();
+  });
 });

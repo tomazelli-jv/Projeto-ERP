@@ -14,8 +14,8 @@ export class PasswordSetupTokenService {
     this.config = config;
   }
 
-  async issueForUser(connection, userId) {
-    const user = await this.repository.findUserByIdForUpdate(connection, userId);
+  async issueForUser(connection, userId, { lockedUser } = {}) {
+    const user = lockedUser ?? (await this.repository.findUserByIdForUpdate(connection, userId));
     if (!user) throw new Error('Password setup user was not found');
 
     const credential = await this.repository.findCredentialByUserId(connection, userId);
