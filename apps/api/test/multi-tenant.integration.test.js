@@ -55,6 +55,37 @@ describe.runIf(integrationEnabled)('multi-tenant database constraints', () => {
     ).resolves.toBeDefined();
   });
 
+  it('rejects a branch address that uses another tenant context', async () => {
+    const tenantA = createUuid();
+    const tenantB = createUuid();
+    const companyA = createUuid();
+    const branchA = createUuid();
+    await connection.execute('INSERT INTO tenants (id, name, slug) VALUES (?, ?, ?), (?, ?, ?)', [
+      tenantA,
+      'Address Tenant A',
+      `address-a-${tenantA}`,
+      tenantB,
+      'Address Tenant B',
+      `address-b-${tenantB}`
+    ]);
+    await connection.execute('INSERT INTO companies (id, tenant_id, legal_name) VALUES (?, ?, ?)', [
+      companyA,
+      tenantA,
+      'Address Company A'
+    ]);
+    await connection.execute(
+      'INSERT INTO branches (id, tenant_id, company_id, code, legal_name) VALUES (?, ?, ?, ?, ?)',
+      [branchA, tenantA, companyA, 'BRANCH-A', 'Branch A']
+    );
+
+    await expect(
+      connection.execute(
+        'INSERT INTO branch_addresses (id, tenant_id, branch_id, street, number, district, city, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [createUuid(), tenantB, branchA, 'Rua Inválida', '1', 'Centro', 'São Paulo', 'SP']
+      )
+    ).rejects.toMatchObject({ code: 'ER_NO_REFERENCED_ROW_2' });
+  });
+
   it('enforces one membership per tenant and user', async () => {
     const tenantId = createUuid();
     const userId = createUuid();
@@ -158,6 +189,12 @@ describe.runIf(integrationEnabled)('multi-tenant database constraints', () => {
       'INSERT INTO subscriptions (id, tenant_id, plan_id, status, starts_at, ends_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))',
       [createUuid(), tenantId, firstPlan, 'expired']
     );
+    await expect(
+      connection.execute(
+        'INSERT INTO subscriptions (id, tenant_id, plan_id, status, starts_at, ends_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))',
+        [createUuid(), tenantId, secondPlan, 'cancelled']
+      )
+    ).resolves.toBeDefined();
     await connection.execute(
       'INSERT INTO subscriptions (id, tenant_id, plan_id, status, starts_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(6))',
       [createUuid(), tenantId, secondPlan, 'active']
