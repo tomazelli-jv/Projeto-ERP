@@ -34,19 +34,25 @@ function createDependencies(overrides = {}) {
   };
   const database = { getConnection: vi.fn().mockResolvedValue(connection) };
   const logger = { info: vi.fn(), warn: vi.fn() };
+  const passwordSetupTokenService = {
+    issueForUser: vi.fn().mockResolvedValue({ token: 'raw-token' }),
+    deliver: vi.fn(),
+    ...overrides.passwordSetupTokenService
+  };
   const service = new OnboardingService({
     database,
     repository,
+    passwordSetupTokenService,
     logger,
     clock: () => new Date('2026-08-27T12:00:00.000Z'),
     ...overrides.service
   });
-  return { service, connection, repository };
+  return { service, connection, repository, passwordSetupTokenService };
 }
 
 describe('OnboardingService', () => {
   it('creates the complete structure in one transaction and extracts the CNPJ root', async () => {
-    const { service, connection, repository } = createDependencies();
+    const { service, connection, repository, passwordSetupTokenService } = createDependencies();
     const result = await service.onboard(
       {
         ...payload,
@@ -68,6 +74,8 @@ describe('OnboardingService', () => {
     expect(connection.commit).toHaveBeenCalledOnce();
     expect(connection.rollback).not.toHaveBeenCalled();
     expect(connection.release).toHaveBeenCalledOnce();
+    expect(passwordSetupTokenService.issueForUser).toHaveBeenCalledWith(connection, expect.any(String));
+    expect(passwordSetupTokenService.deliver).toHaveBeenCalledWith({ token: 'raw-token' });
     expect(repository.createCompany).toHaveBeenCalledWith(
       connection,
       expect.objectContaining({ taxIdRoot: '11222333' })
@@ -167,6 +175,15 @@ describe('OnboardingService', () => {
     });
     expect(connection.rollback).toHaveBeenCalledOnce();
     expect(connection.release).toHaveBeenCalledOnce();
+  });
+
+  it('rolls back the complete onboarding when password setup token issuance fails', async () => {
+    const { service, connection } = createDependencies({
+      passwordSetupTokenService: { issueForUser: vi.fn().mockRejectedValue(new Error('issuance failed')) }
+    });
+    await expect(service.onboard(payload)).rejects.toThrow('issuance failed');
+    expect(connection.rollback).toHaveBeenCalledOnce();
+    expect(connection.commit).not.toHaveBeenCalled();
   });
 
   it('maps CNPJ and membership constraints without exposing database details', () => {

@@ -21,3 +21,7 @@ export const DEFAULT_LOCALE = 'pt-BR';
 export const DEFAULT_COUNTRY_CODE = 'BR';
 export const ONBOARDING_DEFAULT_BRANCH_CODE = '001';
 export const ONBOARDING_TRIAL_DAYS = 14;
+
+export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MAX_LENGTH = 128;
+export const PASSWORD_SETUP_PURPOSE = 'initial_password';

@@ -11,9 +11,10 @@ import { mapOnboardingDatabaseError, onboardingError } from './onboarding.errors
 const MINIMUM_ONBOARDING_LIMIT = 1;
 
 export class OnboardingService {
-  constructor({ database, repository, logger, clock = () => new Date() }) {
+  constructor({ database, repository, passwordSetupTokenService, logger, clock = () => new Date() }) {
     this.database = database;
     this.repository = repository;
+    this.passwordSetupTokenService = passwordSetupTokenService;
     this.logger = logger;
     this.clock = clock;
   }
@@ -76,6 +77,7 @@ export class OnboardingService {
       }
 
       const owner = await this.#findOrCreateOwner(connection, input.owner);
+      const passwordSetupIssuance = await this.passwordSetupTokenService.issueForUser(connection, owner.id);
       await this.repository.createMembership(connection, {
         id: createUuid(),
         tenantId,
@@ -98,6 +100,14 @@ export class OnboardingService {
 
       await connection.commit();
       this.logger.info(logContext, 'Onboarding completed');
+      try {
+        await this.passwordSetupTokenService.deliver(passwordSetupIssuance);
+      } catch {
+        this.logger.warn(
+          { ...logContext, code: 'PASSWORD_SETUP_DELIVERY_FAILED' },
+          'Password setup delivery failed'
+        );
+      }
       return {
         tenant: { id: tenantId, name: input.tenant.name, slug: input.tenant.slug },
         company: { id: companyId, legalName: input.company.legalName },

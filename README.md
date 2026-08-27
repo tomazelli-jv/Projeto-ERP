@@ -1,6 +1,6 @@
 # Tomazelli ERP
 
-ERP SaaS comercial multi-tenant da Tomazelli.dev. A base atual contém a fundação executável e o modelo central de tenants, organizações, planos, assinaturas e identidades globais. Autenticação e módulos operacionais ainda não fazem parte do código.
+ERP SaaS comercial multi-tenant da Tomazelli.dev. A base atual contém a fundação executável, o modelo central SaaS e a definição segura da senha inicial da identidade global. Login, sessão e módulos operacionais ainda não fazem parte do código.
 
 ## Requisitos
 
@@ -65,3 +65,5 @@ Consulte [a arquitetura](docs/architecture/foundation.md), [as decisões](docs/d
 O modelo multi-tenant está documentado em [Multi-tenancy SaaS](docs/architecture/multi-tenancy.md).
 
 O fluxo atômico de cadastro inicial está documentado em [Onboarding transacional](docs/architecture/onboarding.md).
+
+A credencial global e o consumo único do token estão documentados em [Definição inicial de senha](docs/architecture/password-setup.md).

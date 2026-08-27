@@ -14,8 +14,10 @@ O endpoint público `POST /api/v1/onboarding` cria, nesta ordem:
 8. cria o endereço fiscal, quando informado;
 9. localiza ou cria a identidade global do owner;
 10. cria o Tenant Membership ativo e owner;
-11. cria a Subscription em trial;
-12. confirma a transação.
+11. caso o User ainda não possua credencial, revoga tokens anteriores e cria um novo token de definição inicial;
+12. cria a Subscription em trial;
+13. confirma a transação;
+14. entrega o token pela fronteira de notificação substituível, sem incluí-lo na resposta HTTP.
 
 Qualquer erro executa rollback antes da conexão ser liberada. Os repositories recebem a conexão existente e não iniciam, confirmam ou revertem transações.
 
@@ -35,8 +37,14 @@ O cliente informa apenas `planCode`; IDs e limites não são aceitos. O plano pr
 
 O trial atual dura 14 dias. Esse período é um placeholder comercial centralizado e será configurável futuramente. Não existe cobrança nesta etapa.
 
+## Credencial existente
+
+O User global é bloqueado antes da verificação da credencial. Um User novo ou existente sem credencial recebe um novo token; tokens ativos anteriores da mesma finalidade são revogados. Um User com credencial mantém a senha, o nome e o telefone intactos e não recebe outro token. Falha durante a emissão ou persistência do token desfaz todo o onboarding.
+
+A entrega ocorre somente após o commit, evitando notificação de dados revertidos. Falha do adaptador é registrada sem segredo e não transforma uma transação já confirmada em aparente rollback. Um mecanismo operacional de reenvio será ligado quando houver provedor real.
+
 ## Repetição e autenticação
 
 Não há idempotency key formal. Uma submissão repetida falha previsivelmente por slug ou CNPJ duplicado e sofre rollback integral.
 
-O onboarding não cria senha, JWT, cookie ou sessão. O owner termina cadastrado, mas não autenticado. Autenticação será implementada em uma etapa posterior.
+O onboarding não recebe nem cria senha, JWT, cookie ou sessão. Ele cria somente o token de uso único para definição posterior da senha. Login será implementado em uma etapa posterior.

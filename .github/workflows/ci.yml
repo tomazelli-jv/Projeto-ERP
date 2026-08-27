@@ -46,7 +46,10 @@ jobs:
       - run: npm run lint
       - run: npm run db:migrate
       - run: npm run db:status
+      - name: Validate migration rollback and reapply
+        run: npm run db:rollback && npm run db:migrate
       - run: npm run test:coverage
       - run: npm run build
+      - run: npm audit --audit-level=high
       - name: Ensure development seeds are blocked
         run: npm run db:seed && exit 1 || exit 0

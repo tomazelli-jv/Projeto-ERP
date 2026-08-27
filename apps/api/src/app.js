@@ -8,10 +8,16 @@ import { errorHandler, notFoundHandler } from './http/errors.js';
 import { generateRequestId } from './http/request-id.js';
 import { logger } from './infrastructure/logger.js';
 import { onboardingService as defaultOnboardingService } from './modules/onboarding/index.js';
+import { passwordSetupService as defaultPasswordSetupService } from './modules/password-setup/index.js';
 import { healthRouter } from './routes/health.js';
 import { createOnboardingRouter } from './routes/onboarding.js';
+import { createPasswordSetupRouter } from './routes/password-setup.js';
 
-export function createApp({ onboardingService = defaultOnboardingService } = {}) {
+export function createApp({
+  onboardingService = defaultOnboardingService,
+  passwordSetupService = defaultPasswordSetupService,
+  passwordSetupRateLimit
+} = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', env.API_TRUST_PROXY ? 1 : false);
@@ -44,6 +50,10 @@ export function createApp({ onboardingService = defaultOnboardingService } = {})
   );
   app.use('/api/v1/health', healthRouter);
   app.use('/api/v1/onboarding', createOnboardingRouter(onboardingService));
+  app.use(
+    '/api/v1/auth/password/setup',
+    createPasswordSetupRouter(passwordSetupService, { limit: passwordSetupRateLimit })
+  );
   app.use(notFoundHandler);
   app.use(errorHandler);
   return app;

@@ -6,6 +6,8 @@ import { createDatabasePool } from '../src/infrastructure/database.js';
 import { logger } from '../src/infrastructure/logger.js';
 import { OnboardingRepository } from '../src/modules/onboarding/onboarding.repository.js';
 import { OnboardingService } from '../src/modules/onboarding/onboarding.service.js';
+import { PasswordSetupRepository } from '../src/modules/password-setup/password-setup.repository.js';
+import { PasswordSetupTokenService } from '../src/modules/password-setup/password-setup-token.service.js';
 
 const integrationEnabled = process.env.DB_INTEGRATION_TESTS === 'true';
 
@@ -14,9 +16,16 @@ describe.runIf(integrationEnabled)('POST /api/v1/onboarding with MariaDB', () =>
   const planId = createUuid();
   const planCode = `ONBOARD-${planId}`.slice(0, 50).toUpperCase();
   const slugPrefix = `onboarding-${planId.slice(0, 8)}`;
+  const deliveredTokens = [];
+  const passwordSetupTokenService = new PasswordSetupTokenService({
+    repository: new PasswordSetupRepository(),
+    notifier: { deliver: async (message) => deliveredTokens.push(message) },
+    logger
+  });
   const onboardingService = new OnboardingService({
     database: integrationDatabase,
     repository: new OnboardingRepository(),
+    passwordSetupTokenService,
     logger
   });
   const app = createApp({ onboardingService });
@@ -91,6 +100,12 @@ describe.runIf(integrationEnabled)('POST /api/v1/onboarding with MariaDB', () =>
       );
       await integrationDatabase.execute(`DELETE FROM tenants WHERE id IN (${placeholders})`, tenantIds);
     }
+    await integrationDatabase.execute(
+      "DELETE pst FROM password_setup_tokens pst JOIN users u ON u.id = pst.user_id WHERE u.email LIKE '%@onboarding.test'"
+    );
+    await integrationDatabase.execute(
+      "DELETE uc FROM user_credentials uc JOIN users u ON u.id = uc.user_id WHERE u.email LIKE '%@onboarding.test'"
+    );
     await integrationDatabase.execute("DELETE FROM users WHERE email LIKE '%@onboarding.test'");
     await integrationDatabase.execute('DELETE FROM plan_limits WHERE plan_id = ?', [planId]);
     await integrationDatabase.execute('DELETE FROM plans WHERE id = ?', [planId]);
@@ -136,6 +151,18 @@ describe.runIf(integrationEnabled)('POST /api/v1/onboarding with MariaDB', () =>
       isOwner: 1,
       subscriptionStatus: 'trialing'
     });
+    const delivery = deliveredTokens.find(({ recipient }) => recipient === 'complete@onboarding.test');
+    expect(delivery).toBeDefined();
+    const [tokens] = await integrationDatabase.execute(
+      `SELECT pst.token_hash AS tokenHash
+         FROM password_setup_tokens pst
+         JOIN users u ON u.id = pst.user_id
+        WHERE u.email = ?`,
+      ['complete@onboarding.test']
+    );
+    expect(tokens).toHaveLength(1);
+    expect(tokens[0].tokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(tokens[0].tokenHash).not.toBe(delivery.token);
   });
 
   it('rolls back every partial record when the CNPJ already exists', async () => {
@@ -206,6 +233,36 @@ describe.runIf(integrationEnabled)('POST /api/v1/onboarding with MariaDB', () =>
     );
     expect(users).toEqual([{ id: userId, name: 'Existing Name', phone: '11111111111' }]);
     expect(memberships).toEqual([{ userId, isOwner: 1 }]);
+    expect(deliveredTokens.some(({ recipient }) => recipient === email)).toBe(true);
+  });
+
+  it('does not issue a token or overwrite identity for an existing user with a credential', async () => {
+    const userId = createUuid();
+    const email = 'credentialed@onboarding.test';
+    await integrationDatabase.execute('INSERT INTO users (id, name, email, phone) VALUES (?, ?, ?, ?)', [
+      userId,
+      'Credentialed Name',
+      email,
+      '11222222222'
+    ]);
+    await integrationDatabase.execute(
+      'INSERT INTO user_credentials (id, user_id, password_hash) VALUES (?, ?, ?)',
+      [createUuid(), userId, '$argon2id$v=19$m=19456,t=2,p=1$test$test']
+    );
+    const slug = `${slugPrefix}-credentialed-user`;
+    await request(app)
+      .post('/api/v1/onboarding')
+      .send(payload({ slug, taxId: '61182788000102', ownerEmail: email }))
+      .expect(201);
+
+    const [users] = await integrationDatabase.execute('SELECT name, phone FROM users WHERE id = ?', [userId]);
+    const [tokens] = await integrationDatabase.execute(
+      'SELECT id FROM password_setup_tokens WHERE user_id = ?',
+      [userId]
+    );
+    expect(users).toEqual([{ name: 'Credentialed Name', phone: '11222222222' }]);
+    expect(tokens).toHaveLength(0);
+    expect(deliveredTokens.some(({ recipient }) => recipient === email)).toBe(false);
   });
 
   it('converges concurrent onboardings with the same email to one global user', async () => {

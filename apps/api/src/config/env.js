@@ -18,7 +18,11 @@ const schema = z.object({
   DB_NAME: z.string().min(1).default('tomazelli_erp'),
   DB_USER: z.string().min(1).default('tomazelli'),
   DB_PASSWORD: z.string().default('tomazelli_local'),
-  DB_CONNECTION_LIMIT: z.coerce.number().int().positive().max(100).default(10)
+  DB_CONNECTION_LIMIT: z.coerce.number().int().positive().max(100).default(10),
+  PASSWORD_SETUP_TOKEN_TTL_HOURS: z.coerce.number().int().positive().max(168).default(24),
+  ARGON2_MEMORY_COST_KIB: z.coerce.number().int().min(8192).max(262144).default(19456),
+  ARGON2_TIME_COST: z.coerce.number().int().min(1).max(10).default(2),
+  ARGON2_PARALLELISM: z.coerce.number().int().min(1).max(8).default(1)
 });
 
 const result = schema.safeParse(process.env);

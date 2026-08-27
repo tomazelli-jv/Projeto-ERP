@@ -8,6 +8,8 @@ import {
   ONBOARDING_DEFAULT_BRANCH_CODE,
   ORGANIZATION_STATUSES,
   PLAN_LIMIT_KEY_VALUES,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
   SUBSCRIPTION_STATUSES,
   TENANT_STATUSES
 } from './constants.js';
@@ -19,6 +21,19 @@ export const organizationStatusSchema = z.enum(ORGANIZATION_STATUSES);
 export const membershipStatusSchema = z.enum(MEMBERSHIP_STATUSES);
 export const subscriptionStatusSchema = z.enum(SUBSCRIPTION_STATUSES);
 export const planLimitKeySchema = z.enum(PLAN_LIMIT_KEY_VALUES);
+
+export const passwordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, `A senha deve possuir no mínimo ${PASSWORD_MIN_LENGTH} caracteres.`)
+  .max(PASSWORD_MAX_LENGTH, `A senha deve possuir no máximo ${PASSWORD_MAX_LENGTH} caracteres.`)
+  .refine((password) => /\S/u.test(password), 'A senha não pode conter somente espaços.');
+
+export const passwordSetupConfirmInputSchema = z
+  .object({
+    token: z.string().min(1).max(512),
+    password: passwordSchema
+  })
+  .strict();
 
 export const cnpjSchema = z.string().transform(normalizeCnpj).refine(isValidCnpj, 'CNPJ inválido.');
 export const optionalCnpjSchema = z
