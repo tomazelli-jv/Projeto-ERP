@@ -34,30 +34,31 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
 
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
         var login = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login") { Content = JsonContent.Create(new { email = email.ToUpperInvariant(), password }) };
-        var loginResponse = await client.SendAsync(login); Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
-        var loginBody = await loginResponse.Content.ReadAsStringAsync(); Assert.DoesNotContain("refresh", loginBody, StringComparison.OrdinalIgnoreCase); Assert.DoesNotContain(passwordHash, loginBody);
+        var loginResponse = await client.SendAsync(login); Stage(loginResponse.StatusCode == HttpStatusCode.OK, "AUTH_STAGE_LOGIN");
+        var loginBody = await loginResponse.Content.ReadAsStringAsync(); Stage(!loginBody.Contains("refresh", StringComparison.OrdinalIgnoreCase) && !loginBody.Contains(passwordHash, StringComparison.Ordinal), "AUTH_STAGE_LOGIN_RESPONSE");
         using var loginJson = JsonDocument.Parse(loginBody); var access = loginJson.RootElement.GetProperty("data").GetProperty("accessToken").GetString()!;
         var cookie = CookieValue(loginResponse);
 
         var me = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/me"); me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(me)).StatusCode);
+        Stage((await client.SendAsync(me)).StatusCode == HttpStatusCode.OK, "AUTH_STAGE_ME");
         var sessions = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/sessions"); sessions.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        var sessionsBody = await (await client.SendAsync(sessions)).Content.ReadAsStringAsync(); Assert.Contains("\"current\":true", sessionsBody);
+        var sessionsBody = await (await client.SendAsync(sessions)).Content.ReadAsStringAsync(); Stage(sessionsBody.Contains("\"current\":true", StringComparison.Ordinal), "AUTH_STAGE_SESSIONS");
 
         var concurrent = await Task.WhenAll(
             client.SendAsync(CookieRequest(HttpMethod.Post, "/api/v1/auth/refresh", cookie)),
             client.SendAsync(CookieRequest(HttpMethod.Post, "/api/v1/auth/refresh", cookie)));
-        var refreshResponse = Assert.Single(concurrent, response => response.StatusCode == HttpStatusCode.OK);
-        var reuseResponse = Assert.Single(concurrent, response => response.StatusCode == HttpStatusCode.Unauthorized);
-        var rotatedCookie = CookieValue(refreshResponse); Assert.NotEqual(cookie, rotatedCookie);
-        Assert.Contains("REFRESH_TOKEN_REUSED", await reuseResponse.Content.ReadAsStringAsync());
+        Stage(concurrent.Count(response => response.StatusCode == HttpStatusCode.OK) == 1 && concurrent.Count(response => response.StatusCode == HttpStatusCode.Unauthorized) == 1, "AUTH_STAGE_CONCURRENCY_STATUS");
+        var refreshResponse = concurrent.Single(response => response.StatusCode == HttpStatusCode.OK);
+        var reuseResponse = concurrent.Single(response => response.StatusCode == HttpStatusCode.Unauthorized);
+        var rotatedCookie = CookieValue(refreshResponse); Stage(cookie != rotatedCookie, "AUTH_STAGE_ROTATION_COOKIE");
+        Stage((await reuseResponse.Content.ReadAsStringAsync()).Contains("REFRESH_TOKEN_REUSED", StringComparison.Ordinal), "AUTH_STAGE_REUSE_RESPONSE");
         var revokedMe = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/me"); revokedMe.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(revokedMe)).StatusCode);
+        Stage((await client.SendAsync(revokedMe)).StatusCode == HttpStatusCode.Unauthorized, "AUTH_STAGE_REVOKED_ACCESS");
 
         await using var verify = await source.OpenConnectionAsync();
-        Assert.Equal(1, await verify.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM auth_sessions WHERE user_id=@UserId AND revoked_at IS NOT NULL", new { UserId = userId }));
-        Assert.Equal(0, await verify.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM refresh_tokens WHERE token_hash=@Raw", new { Raw = cookie }));
-        Assert.True(await verify.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM security_events WHERE user_id=@UserId", new { UserId = userId }) >= 4);
+        Stage(await verify.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM auth_sessions WHERE user_id=@UserId AND revoked_at IS NOT NULL", new { UserId = userId }) == 1, "AUTH_STAGE_SESSION_REVOKED");
+        Stage(await verify.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM refresh_tokens WHERE token_hash=@Raw", new { Raw = cookie }) == 0, "AUTH_STAGE_RAW_TOKEN_ABSENT");
+        Stage(await verify.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM security_events WHERE user_id=@UserId", new { UserId = userId }) >= 4, "AUTH_STAGE_EVENTS");
     }
 
     [Fact]
@@ -85,4 +86,5 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
     private static HttpRequestMessage CookieRequest(HttpMethod method, string path, string cookie)
     { var request = new HttpRequestMessage(method, path); request.Headers.Add("Origin", "http://localhost:5173"); request.Headers.Add("Cookie", $"erp_refresh={cookie}"); return request; }
     private static string CookieValue(HttpResponseMessage response) => response.Headers.GetValues("Set-Cookie").Single(x => x.StartsWith("erp_refresh=", StringComparison.Ordinal)).Split(';')[0].Split('=', 2)[1];
+    private static void Stage(bool condition, string code) { if (!condition) throw new InvalidOperationException(code); }
 }
