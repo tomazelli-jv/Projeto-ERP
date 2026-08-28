@@ -3,7 +3,6 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { createDatabasePool } from '../src/infrastructure/database.js';
-import { logger } from '../src/infrastructure/logger.js';
 import { OnboardingRepository } from '../src/modules/onboarding/onboarding.repository.js';
 import { OnboardingService } from '../src/modules/onboarding/onboarding.service.js';
 import { PasswordSetupRepository } from '../src/modules/password-setup/password-setup.repository.js';
@@ -17,16 +16,21 @@ describe.runIf(integrationEnabled)('POST /api/v1/onboarding with MariaDB', () =>
   const planCode = `ONBOARD-${planId}`.slice(0, 50).toUpperCase();
   const slugPrefix = `onboarding-${planId.slice(0, 8)}`;
   const deliveredTokens = [];
+  const onboardingWarnings = [];
+  const integrationLogger = {
+    info: () => {},
+    warn: (details, message) => onboardingWarnings.push({ code: details?.code, message })
+  };
   const passwordSetupTokenService = new PasswordSetupTokenService({
     repository: new PasswordSetupRepository(),
     notifier: { deliver: async (message) => deliveredTokens.push(message) },
-    logger
+    logger: integrationLogger
   });
   const onboardingService = new OnboardingService({
     database: integrationDatabase,
     repository: new OnboardingRepository(),
     passwordSetupTokenService,
-    logger
+    logger: integrationLogger
   });
   const app = createApp({ onboardingService });
 
@@ -266,6 +270,7 @@ describe.runIf(integrationEnabled)('POST /api/v1/onboarding with MariaDB', () =>
   });
 
   it('converges concurrent onboardings with the same email to one global user', async () => {
+    onboardingWarnings.length = 0;
     const email = 'concurrent@onboarding.test';
     const firstSlug = `${slugPrefix}-concurrent-a`;
     const secondSlug = `${slugPrefix}-concurrent-b`;
@@ -277,7 +282,10 @@ describe.runIf(integrationEnabled)('POST /api/v1/onboarding with MariaDB', () =>
         .post('/api/v1/onboarding')
         .send(payload({ slug: secondSlug, taxId: '04712500000107', ownerEmail: email }))
     ]);
-    expect(responses.map(({ status }) => status)).toEqual([201, 201]);
+    expect(
+      responses.map(({ status }) => status),
+      JSON.stringify(onboardingWarnings)
+    ).toEqual([201, 201]);
 
     const [users] = await integrationDatabase.execute('SELECT id FROM users WHERE email = ?', [email]);
     expect(users).toHaveLength(1);
