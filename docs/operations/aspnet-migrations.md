@@ -2,7 +2,9 @@
 
 The .NET runner deliberately shares the existing Knex ledger. It uses
 `knex_migrations` and `knex_migrations_lock`, and records the exact JavaScript
-filenames for migrations 001–007. Entity Framework migrations are not used.
+filenames for migrations 001–008. Entity Framework migrations are not used. A
+migration `008` adiciona autenticação global, sessões, refresh tokens, tentativas
+de login e eventos de segurança sem alterar as migrations aplicadas anteriores.
 
 Set `ConnectionStrings__MariaDb` and execute:
 

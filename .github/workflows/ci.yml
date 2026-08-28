@@ -56,6 +56,13 @@ jobs:
         run: dotnet format backend/ERP.sln --verify-no-changes --no-restore
       - name: Audit NuGet dependencies
         run: dotnet list backend/ERP.sln package --vulnerable --include-transitive
+      - name: Scan tracked files for common secret formats
+        shell: bash
+        run: |
+          if git grep -n -I -E 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AKIA[0-9A-Z]{16}|github_pat_|ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}' -- ':!package-lock.json'; then
+            echo 'Potential secret detected'
+            exit 1
+          fi
       - name: Validate .NET migrations on an empty database
         run: |
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up

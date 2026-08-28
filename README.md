@@ -2,7 +2,7 @@
 
 ERP SaaS comercial multi-tenant da Tomazelli.dev. O backend oficial é ASP.NET Core em .NET 10, com MariaDB 11.8 e SQL explícito via MySqlConnector/Dapper. O cliente web permanece React/Vite.
 
-O escopo atual contém fundação técnica, modelo SaaS, onboarding transacional e definição segura da senha inicial. Login, JWT, sessões, RBAC e módulos operacionais ainda não fazem parte do produto.
+O escopo atual contém fundação técnica, modelo SaaS, onboarding transacional, definição segura da senha inicial e autenticação global com JWT curto, refresh rotativo e sessões persistidas. RBAC, contexto ativo de tenant e módulos operacionais ainda não fazem parte do produto.
 
 ## Requisitos
 
@@ -63,4 +63,6 @@ Serviços locais:
 
 A API nunca executa migrations no startup. Configure MariaDB por `ConnectionStrings__MariaDb` e mantenha credenciais reais exclusivamente em variáveis de ambiente.
 
-Consulte [migrações ASP.NET](docs/operations/aspnet-migrations.md), [onboarding](docs/architecture/onboarding.md), [definição inicial de senha](docs/architecture/password-setup.md) e o [ADR da stack .NET](docs/decisions/0004-dotnet-backend-stack.md).
+Autenticação exige também `Authentication__Issuer`, `Authentication__Audience` e `Authentication__SigningKey`; a chave deve ser aleatória, possuir no mínimo 32 bytes e existir somente no ambiente. O refresh token nunca é devolvido em JSON.
+
+Consulte [migrações ASP.NET](docs/operations/aspnet-migrations.md), [onboarding](docs/architecture/onboarding.md), [definição inicial de senha](docs/architecture/password-setup.md), [autenticação e sessões](docs/architecture/authentication-sessions.md) e o [ADR de tokens e sessões](docs/decisions/0005-access-refresh-sessions.md).
