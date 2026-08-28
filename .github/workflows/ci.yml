@@ -45,7 +45,7 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      - run: npm ci
+      - run: npm ci --workspaces --include-workspace-root
       - run: npm run format:check
       - run: npm run lint
       - name: Restore .NET backend
