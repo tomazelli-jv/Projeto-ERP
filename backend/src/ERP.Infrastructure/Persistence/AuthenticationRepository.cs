@@ -44,15 +44,24 @@ public sealed class AuthenticationRepository
             "INSERT INTO refresh_tokens (id,session_id,token_hash,family_id,previous_token_id,created_at,expires_at,updated_at) VALUES (@Id,@SessionId,@Hash,@FamilyId,@PreviousId,@Now,@Expires,@Now)",
             new { Id = id, SessionId = sessionId, Hash = hash, FamilyId = familyId, PreviousId = previousId, Now = now, Expires = expires }, transaction, cancellationToken: token));
 
-    public async Task<RefreshTokenRecord?> FindRefreshForUpdateAsync(MySqlConnection connection, MySqlTransaction transaction, string hash, CancellationToken token) =>
-        ToRefresh(await connection.QuerySingleOrDefaultAsync<RefreshTokenRow>(new CommandDefinition(
-            "SELECT id Id,session_id SessionId,token_hash TokenHash,family_id FamilyId,expires_at ExpiresAtUtc,used_at UsedAtUtc,revoked_at RevokedAtUtc FROM refresh_tokens WHERE token_hash=@Hash LIMIT 1 FOR UPDATE",
-            new { Hash = hash }, transaction, cancellationToken: token)));
+    public async Task<RefreshTokenRecord?> FindRefreshForUpdateAsync(MySqlConnection connection, MySqlTransaction transaction, string hash, CancellationToken token)
+    {
+        await using var command = connection.CreateCommand(); command.Transaction = transaction;
+        command.CommandText = "SELECT id,session_id,token_hash,family_id,expires_at,used_at,revoked_at FROM refresh_tokens WHERE token_hash=@Hash LIMIT 1 FOR UPDATE";
+        command.Parameters.AddWithValue("@Hash", hash);
+        await using var reader = await command.ExecuteReaderAsync(token);
+        if (!await reader.ReadAsync(token)) return null;
+        return new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetDateTime(4), reader.IsDBNull(5) ? null : reader.GetDateTime(5), reader.IsDBNull(6) ? null : reader.GetDateTime(6));
+    }
 
-    public async Task<AuthenticationSession?> FindSessionForUpdateAsync(MySqlConnection connection, MySqlTransaction transaction, string sessionId, CancellationToken token) =>
-        ToSession(await connection.QuerySingleOrDefaultAsync<SessionRow>(new CommandDefinition(
-            "SELECT id Id,user_id UserId,created_at CreatedAtUtc,last_used_at LastUsedAtUtc,absolute_expires_at AbsoluteExpiresAtUtc,revoked_at RevokedAtUtc,user_agent UserAgent FROM auth_sessions WHERE id=@SessionId LIMIT 1 FOR UPDATE",
-            new { SessionId = sessionId }, transaction, cancellationToken: token)));
+    public async Task<AuthenticationSession?> FindSessionForUpdateAsync(MySqlConnection connection, MySqlTransaction transaction, string sessionId, CancellationToken token)
+    {
+        await using var command = connection.CreateCommand(); command.Transaction = transaction;
+        command.CommandText = "SELECT id,user_id,created_at,last_used_at,absolute_expires_at,revoked_at,user_agent FROM auth_sessions WHERE id=@SessionId LIMIT 1 FOR UPDATE";
+        command.Parameters.AddWithValue("@SessionId", sessionId);
+        await using var reader = await command.ExecuteReaderAsync(token);
+        return await reader.ReadAsync(token) ? ReadSession(reader) : null;
+    }
 
     public async Task<bool> IsSessionActiveAsync(MySqlConnection connection, string sessionId, string userId, DateTime now, CancellationToken token) =>
         await connection.ExecuteScalarAsync<int>(new CommandDefinition(
@@ -85,30 +94,17 @@ public sealed class AuthenticationRepository
     public Task InsertSecurityEventAsync(MySqlConnection connection, MySqlTransaction transaction, string? userId, string? sessionId, string type, string result, string? ip, DateTime now, CancellationToken token) =>
         connection.ExecuteAsync(new CommandDefinition("INSERT INTO security_events (id,user_id,session_id,event_type,result,ip_address,created_at) VALUES (@Id,@UserId,@SessionId,@Type,@Result,@Ip,@Now)", new { Id = Guid.NewGuid().ToString(), UserId = userId, SessionId = sessionId, Type = type, Result = result, Ip = ip, Now = now }, transaction, cancellationToken: token));
 
-    public async Task<IReadOnlyList<AuthenticationSession>> ListSessionsAsync(MySqlConnection connection, string userId, CancellationToken token) =>
-        (await connection.QueryAsync<SessionRow>(new CommandDefinition("SELECT id Id,user_id UserId,created_at CreatedAtUtc,last_used_at LastUsedAtUtc,absolute_expires_at AbsoluteExpiresAtUtc,revoked_at RevokedAtUtc,user_agent UserAgent FROM auth_sessions WHERE user_id=@UserId ORDER BY created_at DESC", new { UserId = userId }, cancellationToken: token))).Select(row => ToSession(row)!).ToArray();
+    public async Task<IReadOnlyList<AuthenticationSession>> ListSessionsAsync(MySqlConnection connection, string userId, CancellationToken token)
+    {
+        await using var command = connection.CreateCommand(); command.CommandText = "SELECT id,user_id,created_at,last_used_at,absolute_expires_at,revoked_at,user_agent FROM auth_sessions WHERE user_id=@UserId ORDER BY created_at DESC";
+        command.Parameters.AddWithValue("@UserId", userId);
+        await using var reader = await command.ExecuteReaderAsync(token); var result = new List<AuthenticationSession>();
+        while (await reader.ReadAsync(token)) result.Add(ReadSession(reader));
+        return result;
+    }
 
     public async Task<IReadOnlyList<ERP.Application.Contracts.MembershipSummary>> ListMembershipsAsync(MySqlConnection connection, string userId, CancellationToken token) =>
         (await connection.QueryAsync<ERP.Application.Contracts.MembershipSummary>(new CommandDefinition("SELECT t.id TenantId,t.name TenantName,t.slug TenantSlug,m.status Status FROM tenant_memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.user_id=@UserId ORDER BY t.name", new { UserId = userId }, cancellationToken: token))).AsList();
 
-    private static AuthenticationSession? ToSession(SessionRow? row) => row is null ? null : new(row.Id, row.UserId, row.CreatedAtUtc, row.LastUsedAtUtc, row.AbsoluteExpiresAtUtc, row.RevokedAtUtc, row.UserAgent);
-    private static RefreshTokenRecord? ToRefresh(RefreshTokenRow? row) => row is null ? null : new(row.Id, row.SessionId, row.TokenHash, row.FamilyId, row.ExpiresAtUtc, row.UsedAtUtc, row.RevokedAtUtc);
-
-    public sealed class SessionRow
-    {
-        public string Id { get; set; } = ""; public string UserId { get; set; } = "";
-        public DateTime CreatedAtUtc { get; set; }
-        public DateTime LastUsedAtUtc { get; set; }
-        public DateTime AbsoluteExpiresAtUtc { get; set; }
-        public DateTime? RevokedAtUtc { get; set; }
-        public string? UserAgent { get; set; }
-    }
-
-    public sealed class RefreshTokenRow
-    {
-        public string Id { get; set; } = ""; public string SessionId { get; set; } = ""; public string TokenHash { get; set; } = ""; public string FamilyId { get; set; } = "";
-        public DateTime ExpiresAtUtc { get; set; }
-        public DateTime? UsedAtUtc { get; set; }
-        public DateTime? RevokedAtUtc { get; set; }
-    }
+    private static AuthenticationSession ReadSession(MySqlDataReader reader) => new(reader.GetString(0), reader.GetString(1), reader.GetDateTime(2), reader.GetDateTime(3), reader.GetDateTime(4), reader.IsDBNull(5) ? null : reader.GetDateTime(5), reader.IsDBNull(6) ? null : reader.GetString(6));
 }
