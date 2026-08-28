@@ -42,7 +42,10 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
         var me = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/me"); me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         Stage((await client.SendAsync(me)).StatusCode == HttpStatusCode.OK, "AUTH_STAGE_ME");
         var sessions = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/sessions"); sessions.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        var sessionsResponse = await client.SendAsync(sessions); Stage(sessionsResponse.StatusCode == HttpStatusCode.OK, "AUTH_STAGE_SESSIONS_STATUS");
+        var sessionsResponse = await client.SendAsync(sessions);
+        Stage(sessionsResponse.StatusCode != HttpStatusCode.Unauthorized, "AUTH_STAGE_SESSIONS_UNAUTHORIZED");
+        Stage(sessionsResponse.StatusCode != HttpStatusCode.InternalServerError, "AUTH_STAGE_SESSIONS_SERVER_ERROR");
+        Stage(sessionsResponse.StatusCode == HttpStatusCode.OK, "AUTH_STAGE_SESSIONS_OTHER_STATUS");
         using var sessionsJson = JsonDocument.Parse(await sessionsResponse.Content.ReadAsStringAsync());
         Stage(sessionsJson.RootElement.GetProperty("data").EnumerateArray().Any(item => item.GetProperty("current").GetBoolean()), "AUTH_STAGE_SESSIONS");
 
