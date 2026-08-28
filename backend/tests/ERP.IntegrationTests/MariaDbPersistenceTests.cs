@@ -21,9 +21,9 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
         Assert.Equal(MigrationCatalog.All.Select(item => item.Name), initial.Select(item => item.Name));
         Assert.All(initial, item => Assert.True(item.Applied));
 
-        Assert.Equal(1, await runner.DownAsync());
-        Assert.False((await runner.StatusAsync()).Single(item => item.Name.EndsWith("007_create_user_credentials_password_setup_tokens.js")).Applied);
-        Assert.Equal(1, await runner.UpAsync());
+        Assert.Equal(MigrationCatalog.All.Count, await runner.DownAsync());
+        Assert.All(await runner.StatusAsync(), item => Assert.False(item.Applied));
+        Assert.Equal(MigrationCatalog.All.Count, await runner.UpAsync());
 
         var concurrent = await Task.WhenAll(runner.UpAsync(), runner.UpAsync());
         Assert.Equal(0, concurrent.Sum());
