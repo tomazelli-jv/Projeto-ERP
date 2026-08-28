@@ -1,5 +1,24 @@
 # Tomazelli ERP
 
+> Migração incremental: o frontend React/Vite e o backend Node/Express continuam ativos. A nova
+> API ASP.NET Core está sendo construída em paralelo e ainda não atende onboarding nem autenticação.
+
+## Backend ASP.NET Core
+
+Requer o SDK .NET 10 LTS. A API .NET usa a porta `http://localhost:5001`, distinta da API Node na
+porta 3000. Seus health checks são `GET /health/live` e `GET /health/ready`.
+
+```bash
+dotnet restore backend/ERP.sln --configfile NuGet.Config
+dotnet build backend/ERP.sln --no-restore
+dotnet test backend/ERP.sln --no-build
+dotnet run --project backend/src/ERP.Api
+```
+
+Configure MariaDB por `ConnectionStrings__MariaDb`; credenciais reais não devem ser armazenadas no
+Git. Veja [a arquitetura da migração](docs/architecture/dotnet-backend-migration.md) e o
+[ADR da stack .NET](docs/decisions/0004-dotnet-backend-stack.md).
+
 ERP SaaS comercial multi-tenant da Tomazelli.dev. A base atual contém a fundação executável, o modelo central SaaS e a definição segura da senha inicial da identidade global. Login, sessão e módulos operacionais ainda não fazem parte do código.
 
 ## Requisitos

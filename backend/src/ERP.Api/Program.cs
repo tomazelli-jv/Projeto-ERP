@@ -1,0 +1,67 @@
+using System.Text.Json;
+using System.Threading.RateLimiting;
+using ERP.Api.Http;
+using ERP.Infrastructure;
+using ERP.Infrastructure.Database;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+});
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
+    .AddCheck<MariaDbHealthCheck>("mariadb", tags: ["ready"]);
+
+var origins = builder.Configuration.GetSection("Web:Origins").Get<string[]>() ?? [];
+builder.Services.AddCors(options => options.AddPolicy("web", policy =>
+{
+    if (origins.Length > 0)
+    {
+        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+    }
+}));
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = builder.Configuration.GetValue("RateLimit:PermitLimit", 100),
+                Window = TimeSpan.FromSeconds(builder.Configuration.GetValue("RateLimit:WindowSeconds", 60)),
+                QueueLimit = 0
+            }));
+    options.OnRejected = RateLimitResponse.WriteAsync;
+});
+
+var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseMiddleware<RequestIdMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseCors("web");
+app.UseRateLimiter();
+app.MapControllers();
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live"),
+    ResponseWriter = HealthResponseWriter.WriteAsync
+});
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = HealthResponseWriter.WriteAsync
+});
+
+app.Run();
+
+public partial class Program;
