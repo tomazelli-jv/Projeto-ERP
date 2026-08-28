@@ -71,7 +71,11 @@ jobs:
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- down
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up
       - name: Test ASP.NET backend with MariaDB
-        run: dotnet test backend/ERP.sln --configuration Release --no-build --collect:"XPlat Code Coverage"
+        run: dotnet test backend/ERP.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --filter "FullyQualifiedName!~AuthenticationFlowTests"
+      - name: Test authentication HTTP validation with MariaDB
+        run: dotnet test backend/tests/ERP.IntegrationTests/ERP.IntegrationTests.csproj --configuration Release --no-build --filter "FullyQualifiedName~AuthenticationFlowTests.InvalidLogin|FullyQualifiedName~AuthenticationFlowTests.CookieEndpoints"
+      - name: Test authentication sessions and refresh concurrency with MariaDB
+        run: dotnet test backend/tests/ERP.IntegrationTests/ERP.IntegrationTests.csproj --configuration Release --no-build --filter "FullyQualifiedName~AuthenticationFlowTests.LoginRefreshMeSessionsLogoutAndReuse"
       - name: Build React frontend
         run: npm run build --workspace=@tomazelli/web
       - run: npm audit --audit-level=high
