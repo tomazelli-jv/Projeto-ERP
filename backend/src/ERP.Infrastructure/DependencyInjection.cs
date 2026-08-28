@@ -1,6 +1,8 @@
 using ERP.Infrastructure.Database;
 using ERP.Application.Abstractions;
 using ERP.Infrastructure.Security;
+using ERP.Infrastructure.Migrations;
+using ERP.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
@@ -30,6 +32,9 @@ public static class DependencyInjection
         services.AddSingleton<IDatabaseSessionFactory, MariaDbConnectionFactory>();
         services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();
         services.AddSingleton<MariaDbHealthCheck>();
+        services.AddSingleton<MariaDbMigrationRunner>();
+        services.AddSingleton<OnboardingRepository>();
+        services.AddSingleton<PasswordSetupRepository>();
         return services;
     }
 }

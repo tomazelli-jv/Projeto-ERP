@@ -48,17 +48,26 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
+      - name: Restore .NET backend
+        run: dotnet restore backend/ERP.sln --configfile NuGet.Config
+      - name: Build .NET backend
+        run: dotnet build backend/ERP.sln --configuration Release --no-restore
+      - name: Validate .NET migrations on an empty database
+        run: |
+          dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up
+          dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- status
+          dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- down
       - run: npm run db:migrate
       - run: npm run db:status
+      - name: Validate .NET recognizes the Node migration ledger
+        run: |
+          dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up
+          dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- status
       - name: Validate migration rollback and reapply
         run: npm run db:rollback && npm run db:migrate
       - run: npm run test:coverage
       - run: npm run build
       - run: npm audit --audit-level=high
-      - name: Restore .NET backend
-        run: dotnet restore backend/ERP.sln --configfile NuGet.Config
-      - name: Build .NET backend
-        run: dotnet build backend/ERP.sln --configuration Release --no-restore
       - name: Test .NET backend and MariaDB readiness
         run: dotnet test backend/ERP.sln --configuration Release --no-build
       - name: Ensure development seeds are blocked
