@@ -13,6 +13,19 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
 });
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var details = context.ModelState.SelectMany(entry => entry.Value?.Errors.Select(error => new
+        {
+            field = entry.Key,
+            message = string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor inválido." : error.ErrorMessage
+        }) ?? []);
+        return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(new ApiErrorResponse(new ApiError(
+            "VALIDATION_ERROR", "Os dados informados são inválidos.", context.HttpContext.TraceIdentifier, details)));
+    };
+});
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -41,6 +54,14 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
     options.OnRejected = RateLimitResponse.WriteAsync;
+    options.AddPolicy("password-setup", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(15),
+            QueueLimit = 0
+        }));
 });
 
 var app = builder.Build();

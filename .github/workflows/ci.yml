@@ -52,6 +52,10 @@ jobs:
         run: dotnet restore backend/ERP.sln --configfile NuGet.Config
       - name: Build .NET backend
         run: dotnet build backend/ERP.sln --configuration Release --no-restore
+      - name: Verify .NET formatting
+        run: dotnet format backend/ERP.sln --verify-no-changes --no-restore
+      - name: Audit NuGet dependencies
+        run: dotnet list backend/ERP.sln package --vulnerable --include-transitive
       - name: Validate .NET migrations on an empty database
         run: |
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up

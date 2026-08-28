@@ -3,6 +3,8 @@ using ERP.Application.Abstractions;
 using ERP.Infrastructure.Security;
 using ERP.Infrastructure.Migrations;
 using ERP.Infrastructure.Persistence;
+using ERP.Infrastructure.Application;
+using ERP.Infrastructure.Notifications;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
@@ -35,6 +37,10 @@ public static class DependencyInjection
         services.AddSingleton<MariaDbMigrationRunner>();
         services.AddSingleton<OnboardingRepository>();
         services.AddSingleton<PasswordSetupRepository>();
+        services.AddSingleton<IPasswordSetupNotifier, NullPasswordSetupNotifier>();
+        services.AddSingleton<PasswordSetupWorkflow>();
+        services.AddSingleton<OnboardingService>();
+        services.AddSingleton<PasswordSetupService>();
         return services;
     }
 }
