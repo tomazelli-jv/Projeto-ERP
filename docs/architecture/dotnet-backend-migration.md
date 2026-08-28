@@ -2,17 +2,16 @@
 
 ## Motivo
 
-O backend do ERP será migrado de Node.js/Express para C# e ASP.NET Core para consolidar uma API client-agnostic, mantendo regras de negócio independentes da camada HTTP. A substituição é gradual: o Express permanece como implementação funcional de referência até haver paridade comprovada.
+O backend do ERP foi migrado de Node.js/Express para C# e ASP.NET Core. A equivalência foi comprovada na branch de migração contra MariaDB 11.8 antes da remoção do Express.
 
 ## O que permanece
 
 - React, Vite, Material UI, React Router e TanStack Query;
 - MariaDB 11.8 e o schema atual;
-- migrations e seeds Knex;
-- contratos HTTP existentes durante a migração;
-- backend Node e seus testes enquanto a migração estiver em curso.
+- ledger histórico `knex_migrations` e identificadores 001–007;
+- contratos HTTP validados durante a migração.
 
-O frontend não foi migrado e ainda não consome a nova API.
+O frontend React/Vite foi preservado e usa a API ASP.NET Core pelo proxy `/api`.
 
 ## Arquitetura
 
@@ -55,8 +54,8 @@ Não será introduzido um Unit of Work genérico sem necessidade.
 
 ## Migrations
 
-Knex continua como histórico oficial e única ferramenta que aplica migrations. A transição futura deve registrar um baseline equivalente à última migration Knex em cada ambiente e iniciar apenas novas migrations em uma ferramenta .NET madura (por exemplo, DbUp ou FluentMigrator). O runner .NET deverá verificar o baseline antes de executar e nunca converter/reaplicar scripts históricos. A troca só ocorrerá após ensaio em cópia de banco, documentação de rollback e validação em CI/MariaDB real.
+O runner .NET é a única ferramenta executável de migrations. Ele reutiliza `knex_migrations` e `knex_migrations_lock`, reconhece os nomes exatos 001–007 aplicados anteriormente pelo Knex e não mantém uma segunda tabela de histórico. As fontes JavaScript históricas permanecem somente para auditoria; Knex não é uma dependência do projeto.
 
 ## Critério para remover o backend Node
 
-Node/Express só será removido depois que todas as funcionalidades relevantes forem portadas, tiverem testes equivalentes, forem validadas contra MariaDB real e permanecerem verdes no CI. Esta fundação não porta onboarding, autenticação nem módulos operacionais.
+Node/Express foi removido após onboarding, definição inicial de senha, migrations e persistência permanecerem verdes no CI com MariaDB 11.8. Login e demais módulos continuam fora do escopo.

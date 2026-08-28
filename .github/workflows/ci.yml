@@ -45,21 +45,27 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
-      - run: npm ci
+      - run: npm ci --workspaces --include-workspace-root
       - run: npm run format:check
       - run: npm run lint
-      - run: npm run db:migrate
-      - run: npm run db:status
-      - name: Validate migration rollback and reapply
-        run: npm run db:rollback && npm run db:migrate
-      - run: npm run test:coverage
-      - run: npm run build
-      - run: npm audit --audit-level=high
       - name: Restore .NET backend
         run: dotnet restore backend/ERP.sln --configfile NuGet.Config
       - name: Build .NET backend
         run: dotnet build backend/ERP.sln --configuration Release --no-restore
-      - name: Test .NET backend and MariaDB readiness
-        run: dotnet test backend/ERP.sln --configuration Release --no-build
+      - name: Verify .NET formatting
+        run: dotnet format backend/ERP.sln --verify-no-changes --no-restore
+      - name: Audit NuGet dependencies
+        run: dotnet list backend/ERP.sln package --vulnerable --include-transitive
+      - name: Validate .NET migrations on an empty database
+        run: |
+          dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up
+          dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- status
+          dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- down
+          dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up
+      - name: Test ASP.NET backend with MariaDB
+        run: dotnet test backend/ERP.sln --configuration Release --no-build --collect:"XPlat Code Coverage"
+      - name: Build React frontend
+        run: npm run build --workspace=@tomazelli/web
+      - run: npm audit --audit-level=high
       - name: Ensure development seeds are blocked
         run: npm run db:seed && exit 1 || exit 0

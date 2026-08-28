@@ -11,7 +11,7 @@ Status: aceito.
 - CNPJ é persistido apenas com dígitos e validado na aplicação; CHECK constraints protegem o formato armazenado.
 - Valores de plan limits são inteiros não negativos, pois os limites atuais são contagens estruturais.
 - Colunas geradas implementam unicidade condicional compatível com MariaDB para matriz, owner ativo e assinatura corrente.
-- SQL de runtime permanece explícito e parametrizado em repositories com `mysql2/promise`.
+- SQL de runtime permanece explícito e parametrizado em repositories com MySqlConnector/Dapper.
 
 ## Consequências
 

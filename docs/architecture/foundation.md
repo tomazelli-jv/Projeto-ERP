@@ -2,17 +2,17 @@
 
 ## Escopo
 
-A Etapa 1.1 estabelece um monorepo JavaScript executável, API HTTP segura, frontend integrado, conexão MariaDB, migrations, observabilidade básica, testes e integração contínua. Não contém autenticação nem entidades de negócio.
+A fundação estabelece uma API ASP.NET Core, frontend React integrado, conexão MariaDB, migrations, observabilidade básica, testes e integração contínua. Login e módulos operacionais ainda não fazem parte do escopo.
 
 ## Componentes
 
 ```text
-Browser → Vite/React → /api proxy → Express → mysql2/promise → MariaDB
-                                      └──── logs JSON/Pino
-Deploy/CI → Knex CLI → migrations ─────────────────────────┘
+Browser → Vite/React → /api proxy → ASP.NET Core → MySqlConnector/Dapper → MariaDB
+                                      └──── logs estruturados
+Deploy/CI → runner .NET → migrations ───────────────────────┘
 ```
 
-Knex é utilizado exclusivamente pelo executor de migrations e seeds. A API utiliza diretamente o pool `mysql2/promise`; futuros repositories usarão SQL explícito e parametrizado.
+O runner .NET controla migrations no ledger histórico `knex_migrations`. A API e os repositories usam SQL explícito e parametrizado; Entity Framework não é utilizado.
 
 ## Respostas HTTP
 
@@ -36,7 +36,7 @@ Erro:
 
 ## Health checks
 
-- `/api/v1/health/live` indica que o processo HTTP está ativo;
-- `/api/v1/health/ready` valida a conexão com o MariaDB e retorna `503` quando indisponível.
+- `/health/live` indica que o processo HTTP está ativo;
+- `/health/ready` valida a conexão com o MariaDB e retorna `503` quando indisponível.
 
 O readiness não expõe host, credenciais ou detalhes internos do erro.

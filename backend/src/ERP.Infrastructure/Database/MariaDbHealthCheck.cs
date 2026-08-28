@@ -5,14 +5,18 @@ namespace ERP.Infrastructure.Database;
 
 public sealed class MariaDbHealthCheck(IMariaDbConnectionFactory connectionFactory) : IHealthCheck
 {
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
+
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
-            var command = new CommandDefinition("SELECT 1", cancellationToken: cancellationToken);
+            using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutSource.CancelAfter(Timeout);
+            await using var connection = await connectionFactory.OpenConnectionAsync(timeoutSource.Token);
+            var command = new CommandDefinition("SELECT 1", commandTimeout: (int)Timeout.TotalSeconds, cancellationToken: timeoutSource.Token);
             var result = await connection.ExecuteScalarAsync<int>(command);
             return result == 1
                 ? HealthCheckResult.Healthy()
