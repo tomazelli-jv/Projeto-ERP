@@ -10,6 +10,7 @@ import { mapOnboardingDatabaseError, onboardingError } from './onboarding.errors
 
 const MINIMUM_ONBOARDING_LIMIT = 1;
 const MAX_TRANSACTION_ATTEMPTS = 3;
+const RETRYABLE_TRANSACTION_ERROR_CODES = new Set(['ER_CHECKREAD', 'ER_LOCK_DEADLOCK']);
 
 export class OnboardingService {
   constructor({ database, repository, passwordSetupTokenService, logger, clock = () => new Date() }) {
@@ -26,7 +27,8 @@ export class OnboardingService {
       try {
         return await this.#executeTransaction(input, context);
       } catch (error) {
-        if (error?.code !== 'ER_LOCK_DEADLOCK' || attempt === MAX_TRANSACTION_ATTEMPTS) throw error;
+        if (!RETRYABLE_TRANSACTION_ERROR_CODES.has(error?.code) || attempt === MAX_TRANSACTION_ATTEMPTS)
+          throw error;
         this.logger.warn(
           { requestId: context.requestId, event: 'tenant_onboarding', attempt },
           'Retrying onboarding after database deadlock'

@@ -183,6 +183,20 @@ describe('OnboardingService', () => {
     expect(repository.createTenant).toHaveBeenCalledTimes(2);
   });
 
+  it('retries after MariaDB detects that a concurrent record changed', async () => {
+    const changedRecord = Object.assign(new Error('record changed'), { code: 'ER_CHECKREAD' });
+    const { service, connection, repository } = createDependencies({
+      repository: {
+        createUserIfMissing: vi.fn().mockRejectedValueOnce(changedRecord).mockResolvedValueOnce()
+      }
+    });
+    await expect(service.onboard(payload)).resolves.toMatchObject({ owner: { email: 'owner@example.com' } });
+    expect(connection.beginTransaction).toHaveBeenCalledTimes(2);
+    expect(connection.rollback).toHaveBeenCalledOnce();
+    expect(connection.commit).toHaveBeenCalledOnce();
+    expect(repository.createUserIfMissing).toHaveBeenCalledTimes(2);
+  });
+
   it('rolls back and maps known database uniqueness errors', async () => {
     const duplicate = Object.assign(new Error('duplicate'), {
       code: 'ER_DUP_ENTRY',
