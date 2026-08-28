@@ -6,7 +6,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
 
 export default [
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**'] },
+  { ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', 'database/**', 'backend/**'] },
   eslint.configs.recommended,
   {
     files: ['**/*.{js,jsx}'],
@@ -28,10 +28,6 @@ export default [
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       'no-undef': 'error'
     }
-  },
-  {
-    files: ['**/*.test.js'],
-    languageOptions: { globals: globals.node }
   },
   { rules: { 'no-unused-vars': ['error', { argsIgnorePattern: '^_' }] } },
   prettier

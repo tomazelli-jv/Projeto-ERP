@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest run"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@emotion/react": "^11.0.0",
@@ -15,7 +14,6 @@
     "@mui/icons-material": "^7.0.0",
     "@mui/material": "^7.0.0",
     "@tanstack/react-query": "^5.0.0",
-    "@tomazelli/shared": "*",
     "prop-types": "^15.8.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -61,18 +61,11 @@ jobs:
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- status
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- down
-      - run: npm run db:migrate
-      - run: npm run db:status
-      - name: Validate .NET recognizes the Node migration ledger
-        run: |
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up
-          dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- status
-      - name: Validate migration rollback and reapply
-        run: npm run db:rollback && npm run db:migrate
-      - run: npm run test:coverage
-      - run: npm run build
+      - name: Test ASP.NET backend with MariaDB
+        run: dotnet test backend/ERP.sln --configuration Release --no-build --collect:"XPlat Code Coverage"
+      - name: Build React frontend
+        run: npm run build --workspace=@tomazelli/web
       - run: npm audit --audit-level=high
-      - name: Test .NET backend and MariaDB readiness
-        run: dotnet test backend/ERP.sln --configuration Release --no-build
       - name: Ensure development seeds are blocked
         run: npm run db:seed && exit 1 || exit 0

@@ -13,6 +13,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 await using var dataSource = new MySqlDataSourceBuilder(connectionString).Build();
 var runner = new MariaDbMigrationRunner(new MariaDbConnectionFactory(dataSource));
+var seeder = new DevelopmentSeeder(new MariaDbConnectionFactory(dataSource));
 var command = args.FirstOrDefault()?.ToLowerInvariant() ?? "status";
 
 try
@@ -29,8 +30,12 @@ try
             foreach (var migration in await runner.StatusAsync())
                 Console.WriteLine($"{(migration.Applied ? "up" : "down")}\t{migration.Name}");
             break;
+        case "seed":
+            await seeder.RunAsync(configuration["DOTNET_ENVIRONMENT"] ?? configuration["ASPNETCORE_ENVIRONMENT"] ?? string.Empty);
+            Console.WriteLine("Development seeds completed.");
+            break;
         default:
-            Console.Error.WriteLine("Usage: ERP.Migrations [up|down|status]");
+            Console.Error.WriteLine("Usage: ERP.Migrations [up|down|status|seed]");
             return 2;
     }
     return 0;
