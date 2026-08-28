@@ -74,14 +74,6 @@ export class OnboardingRepository {
     );
   }
 
-  async findUserByEmail(connection, email) {
-    const [rows] = await connection.execute(
-      'SELECT id, name, email, phone FROM users WHERE email = ? LIMIT 1',
-      [email]
-    );
-    return rows[0] ?? null;
-  }
-
   async findUserByEmailForUpdate(connection, email) {
     const [rows] = await connection.execute(
       'SELECT id, name, email, phone FROM users WHERE email = ? LIMIT 1 FOR UPDATE',
@@ -90,13 +82,13 @@ export class OnboardingRepository {
     return rows[0] ?? null;
   }
 
-  async createUser(connection, data) {
-    await connection.execute('INSERT INTO users (id, name, email, phone) VALUES (?, ?, ?, ?)', [
-      data.id,
-      data.name,
-      data.email,
-      data.phone
-    ]);
+  async createUserIfMissing(connection, data) {
+    await connection.execute(
+      `INSERT INTO users (id, name, email, phone)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE id = id`,
+      [data.id, data.name, data.email, data.phone]
+    );
   }
 
   async createMembership(connection, data) {

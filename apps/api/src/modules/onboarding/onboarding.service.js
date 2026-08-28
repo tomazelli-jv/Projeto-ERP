@@ -168,18 +168,10 @@ export class OnboardingService {
   }
 
   async #findOrCreateOwner(connection, ownerInput) {
-    const existing = await this.repository.findUserByEmail(connection, ownerInput.email);
-    if (existing) return { user: existing, isLocked: false };
-
     const user = { id: createUuid(), ...ownerInput, phone: ownerInput.phone ?? null };
-    try {
-      await this.repository.createUser(connection, user);
-      return { user, isLocked: true };
-    } catch (error) {
-      if (error?.code !== 'ER_DUP_ENTRY') throw error;
-      const concurrentUser = await this.repository.findUserByEmailForUpdate(connection, ownerInput.email);
-      if (!concurrentUser) throw error;
-      return { user: concurrentUser, isLocked: true };
-    }
+    await this.repository.createUserIfMissing(connection, user);
+    const canonicalUser = await this.repository.findUserByEmailForUpdate(connection, ownerInput.email);
+    if (!canonicalUser) throw new Error('Onboarding owner was not found after idempotent creation');
+    return { user: canonicalUser, isLocked: true };
   }
 }

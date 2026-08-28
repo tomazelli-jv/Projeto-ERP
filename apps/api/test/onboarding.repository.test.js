@@ -62,15 +62,12 @@ describe('OnboardingRepository', () => {
       state: 'SP',
       countryCode: 'BR'
     });
-    await expect(repository.findUserByEmail(connection, 'owner@example.com')).resolves.toMatchObject({
-      id: 'user-id'
-    });
     await expect(repository.findUserByEmailForUpdate(connection, 'owner@example.com')).resolves.toMatchObject(
       {
         id: 'user-id'
       }
     );
-    await repository.createUser(connection, {
+    await repository.createUserIfMissing(connection, {
       id: createUuid(),
       name: 'Owner',
       email: 'owner@example.com',
@@ -94,7 +91,7 @@ describe('OnboardingRepository', () => {
       endsAt: null
     });
 
-    expect(connection.execute).toHaveBeenCalledTimes(11);
+    expect(connection.execute).toHaveBeenCalledTimes(10);
     for (const call of connection.execute.mock.calls) {
       expect(call[1]).toBeInstanceOf(Array);
     }
@@ -104,7 +101,6 @@ describe('OnboardingRepository', () => {
     const connection = { execute: vi.fn().mockResolvedValue([[]]) };
     const repository = new OnboardingRepository();
     await expect(repository.findPlanByCode(connection, 'MISSING')).resolves.toBeNull();
-    await expect(repository.findUserByEmail(connection, 'missing@example.com')).resolves.toBeNull();
     await expect(repository.findUserByEmailForUpdate(connection, 'missing@example.com')).resolves.toBeNull();
   });
 });

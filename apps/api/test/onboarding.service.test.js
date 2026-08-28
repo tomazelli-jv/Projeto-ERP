@@ -25,9 +25,13 @@ function createDependencies(overrides = {}) {
     createCompany: vi.fn(),
     createBranch: vi.fn(),
     createBranchAddress: vi.fn(),
-    findUserByEmail: vi.fn().mockResolvedValue(null),
-    findUserByEmailForUpdate: vi.fn().mockResolvedValue(null),
-    createUser: vi.fn(),
+    findUserByEmailForUpdate: vi.fn().mockResolvedValue({
+      id: createUuid(),
+      name: payload.owner.name,
+      email: payload.owner.email,
+      phone: payload.owner.phone
+    }),
+    createUserIfMissing: vi.fn(),
     createMembership: vi.fn(),
     createSubscription: vi.fn(),
     ...overrides.repository
@@ -129,35 +133,31 @@ describe('OnboardingService', () => {
       phone: '11111111111'
     };
     const { service, repository, passwordSetupTokenService } = createDependencies({
-      repository: { findUserByEmail: vi.fn().mockResolvedValue(existingUser) }
+      repository: { findUserByEmailForUpdate: vi.fn().mockResolvedValue(existingUser) }
     });
     const result = await service.onboard(payload);
-    expect(repository.createUser).not.toHaveBeenCalled();
+    expect(repository.createUserIfMissing).toHaveBeenCalledOnce();
     expect(repository.createMembership).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ userId: existingUser.id, isOwner: true })
     );
     expect(result.owner).toMatchObject({ id: existingUser.id, name: 'Nome Preservado' });
-    expect(passwordSetupTokenService.issueForUser).toHaveBeenCalledWith(
-      expect.anything(),
-      existingUser.id,
-      undefined
-    );
+    expect(passwordSetupTokenService.issueForUser).toHaveBeenCalledWith(expect.anything(), existingUser.id, {
+      lockedUser: existingUser
+    });
   });
 
-  it('recovers from a concurrent creation of the same global email', async () => {
+  it('converges on the locked canonical user after idempotent creation', async () => {
     const concurrentUser = {
       id: createUuid(),
       name: 'Concurrent Owner',
       email: 'owner@example.com',
       phone: null
     };
-    const duplicate = Object.assign(new Error('duplicate'), { code: 'ER_DUP_ENTRY' });
     const { service, repository } = createDependencies({
       repository: {
-        findUserByEmail: vi.fn().mockResolvedValue(null),
         findUserByEmailForUpdate: vi.fn().mockResolvedValue(concurrentUser),
-        createUser: vi.fn().mockRejectedValue(duplicate)
+        createUserIfMissing: vi.fn().mockResolvedValue()
       }
     });
     const result = await service.onboard(payload);
@@ -171,7 +171,9 @@ describe('OnboardingService', () => {
   it('retries the complete transaction after a transient MariaDB deadlock', async () => {
     const deadlock = Object.assign(new Error('deadlock'), { code: 'ER_LOCK_DEADLOCK' });
     const { service, connection, repository } = createDependencies({
-      repository: { createUser: vi.fn().mockRejectedValueOnce(deadlock).mockResolvedValueOnce() }
+      repository: {
+        createUserIfMissing: vi.fn().mockRejectedValueOnce(deadlock).mockResolvedValueOnce()
+      }
     });
     await expect(service.onboard(payload)).resolves.toMatchObject({ owner: { email: 'owner@example.com' } });
     expect(connection.beginTransaction).toHaveBeenCalledTimes(2);
