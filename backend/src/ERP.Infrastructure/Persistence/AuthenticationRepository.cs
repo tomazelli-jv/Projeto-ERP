@@ -94,7 +94,7 @@ public sealed class AuthenticationRepository
     private static AuthenticationSession? ToSession(SessionRow? row) => row is null ? null : new(row.Id, row.UserId, row.CreatedAtUtc, row.LastUsedAtUtc, row.AbsoluteExpiresAtUtc, row.RevokedAtUtc, row.UserAgent);
     private static RefreshTokenRecord? ToRefresh(RefreshTokenRow? row) => row is null ? null : new(row.Id, row.SessionId, row.TokenHash, row.FamilyId, row.ExpiresAtUtc, row.UsedAtUtc, row.RevokedAtUtc);
 
-    private sealed class SessionRow
+    public sealed class SessionRow
     {
         public string Id { get; set; } = ""; public string UserId { get; set; } = "";
         public DateTime CreatedAtUtc { get; set; }
@@ -104,7 +104,7 @@ public sealed class AuthenticationRepository
         public string? UserAgent { get; set; }
     }
 
-    private sealed class RefreshTokenRow
+    public sealed class RefreshTokenRow
     {
         public string Id { get; set; } = ""; public string SessionId { get; set; } = ""; public string TokenHash { get; set; } = ""; public string FamilyId { get; set; } = "";
         public DateTime ExpiresAtUtc { get; set; }
