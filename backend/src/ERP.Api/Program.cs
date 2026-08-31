@@ -5,6 +5,7 @@ using ERP.Infrastructure;
 using ERP.Infrastructure.Database;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,8 @@ builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddAuthentication("Bearer").AddScheme<AuthenticationSchemeOptions, BearerAuthenticationHandler>("Bearer", _ => { });
+builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
     .AddCheck<MariaDbHealthCheck>("mariadb", tags: ["ready"]);
@@ -38,7 +41,7 @@ builder.Services.AddCors(options => options.AddPolicy("web", policy =>
 {
     if (origins.Length > 0)
     {
-        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+        policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     }
 }));
 builder.Services.AddRateLimiter(options =>
@@ -62,6 +65,12 @@ builder.Services.AddRateLimiter(options =>
             Window = TimeSpan.FromMinutes(15),
             QueueLimit = 0
         }));
+    options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
+    options.AddPolicy("refresh", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
 });
 
 var app = builder.Build();
@@ -71,6 +80,9 @@ app.UseMiddleware<RequestIdMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseCors("web");
 app.UseRateLimiter();
+app.UseMiddleware<AuthRequestSecurityMiddleware>();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {

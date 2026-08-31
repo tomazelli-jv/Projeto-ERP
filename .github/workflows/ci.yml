@@ -56,6 +56,14 @@ jobs:
         run: dotnet format backend/ERP.sln --verify-no-changes --no-restore
       - name: Audit NuGet dependencies
         run: dotnet list backend/ERP.sln package --vulnerable --include-transitive
+      - name: Scan tracked files for common secret formats
+        shell: bash
+        run: |
+          pattern='BE''GIN (RSA |EC |OPENSSH )?PRIVATE KEY|AK''IA[0-9A-Z]{16}|github_''pat_|gh''p_[A-Za-z0-9]{20,}|s''k-[A-Za-z0-9]{20,}'
+          if git grep -n -I -E "$pattern" -- ':!package-lock.json'; then
+            echo 'Potential secret detected'
+            exit 1
+          fi
       - name: Validate .NET migrations on an empty database
         run: |
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up
@@ -63,7 +71,11 @@ jobs:
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- down
           dotnet run --project backend/src/ERP.Migrations --configuration Release --no-build -- up
       - name: Test ASP.NET backend with MariaDB
-        run: dotnet test backend/ERP.sln --configuration Release --no-build --collect:"XPlat Code Coverage"
+        run: dotnet test backend/ERP.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --filter "FullyQualifiedName!~AuthenticationFlowTests"
+      - name: Test authentication HTTP validation with MariaDB
+        run: dotnet test backend/tests/ERP.IntegrationTests/ERP.IntegrationTests.csproj --configuration Release --no-build --filter "FullyQualifiedName~AuthenticationFlowTests.InvalidLogin|FullyQualifiedName~AuthenticationFlowTests.CookieEndpoints"
+      - name: Test authentication sessions and refresh concurrency with MariaDB
+        run: dotnet test backend/tests/ERP.IntegrationTests/ERP.IntegrationTests.csproj --configuration Release --no-build --filter "FullyQualifiedName~AuthenticationFlowTests.LoginRefreshMeSessionsLogoutAndReuse"
       - name: Build React frontend
         run: npm run build --workspace=@tomazelli/web
       - run: npm audit --audit-level=high
