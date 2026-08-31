@@ -51,7 +51,7 @@ public sealed class AuthenticationRepository
         command.Parameters.AddWithValue("@Hash", hash);
         await using var reader = await command.ExecuteReaderAsync(token);
         if (!await reader.ReadAsync(token)) return null;
-        return new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetDateTime(4), reader.IsDBNull(5) ? null : reader.GetDateTime(5), reader.IsDBNull(6) ? null : reader.GetDateTime(6));
+        return new(ReadIdentifier(reader, 0), ReadIdentifier(reader, 1), reader.GetString(2), ReadIdentifier(reader, 3), reader.GetDateTime(4), reader.IsDBNull(5) ? null : reader.GetDateTime(5), reader.IsDBNull(6) ? null : reader.GetDateTime(6));
     }
 
     public async Task<AuthenticationSession?> FindSessionForUpdateAsync(MySqlConnection connection, MySqlTransaction transaction, string sessionId, CancellationToken token)
@@ -106,5 +106,13 @@ public sealed class AuthenticationRepository
     public async Task<IReadOnlyList<ERP.Application.Contracts.MembershipSummary>> ListMembershipsAsync(MySqlConnection connection, string userId, CancellationToken token) =>
         (await connection.QueryAsync<ERP.Application.Contracts.MembershipSummary>(new CommandDefinition("SELECT t.id TenantId,t.name TenantName,t.slug TenantSlug,m.status Status FROM tenant_memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.user_id=@UserId ORDER BY t.name", new { UserId = userId }, cancellationToken: token))).AsList();
 
-    private static AuthenticationSession ReadSession(MySqlDataReader reader) => new(reader.GetString(0), reader.GetString(1), reader.GetDateTime(2), reader.GetDateTime(3), reader.GetDateTime(4), reader.IsDBNull(5) ? null : reader.GetDateTime(5), reader.IsDBNull(6) ? null : reader.GetString(6));
+    private static AuthenticationSession ReadSession(MySqlDataReader reader) => new(ReadIdentifier(reader, 0), ReadIdentifier(reader, 1), reader.GetDateTime(2), reader.GetDateTime(3), reader.GetDateTime(4), reader.IsDBNull(5) ? null : reader.GetDateTime(5), reader.IsDBNull(6) ? null : reader.GetString(6));
+
+    private static string ReadIdentifier(MySqlDataReader reader, int ordinal) => reader.GetValue(ordinal) switch
+    {
+        Guid value => value.ToString(),
+        string value => value,
+        var value => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture)
+            ?? throw new InvalidOperationException("Database identifier cannot be null.")
+    };
 }
