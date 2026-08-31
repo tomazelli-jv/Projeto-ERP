@@ -53,7 +53,23 @@ function Navigation({ onNavigate }) {
                     borderRadius: 2,
                     mb: 0.5,
                     minHeight: 42,
-                    '&.Mui-selected': { color: 'primary.dark', backgroundColor: 'primary.light' }
+                    position: 'relative',
+                    '&:hover': { backgroundColor: 'action.hover' },
+                    '&.Mui-selected': {
+                      color: 'primary.dark',
+                      backgroundColor: 'primary.light',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        left: 0,
+                        top: 9,
+                        bottom: 9,
+                        width: 3,
+                        borderRadius: 3,
+                        bgcolor: 'primary.main'
+                      },
+                      '&:hover': { backgroundColor: 'primary.light' }
+                    }
                   }}
                 >
                   <ListItemIcon sx={{ color: active ? 'primary.main' : 'text.secondary', minWidth: 38 }}>
@@ -118,7 +134,7 @@ export function Sidebar({ drawerWidth, mobileOpen, onClose }) {
         variant="permanent"
         sx={{
           display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
+          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', bgcolor: '#fbfcfd' }
         }}
       >
         {content}

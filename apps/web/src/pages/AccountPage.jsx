@@ -6,10 +6,8 @@ import {
   Button,
   Card,
   CardContent,
-  Chip,
   Divider,
   Grid,
-  Skeleton,
   Snackbar,
   Stack,
   Typography
@@ -22,21 +20,13 @@ import { useAuth } from '../app/auth/auth-context.js';
 import { ConfirmDialog } from '../components/common/ConfirmDialog.jsx';
 import { PageHeader } from '../components/common/PageHeader.jsx';
 import { SectionCard } from '../components/common/SectionCard.jsx';
+import { StatusChip } from '../components/common/StatusChip.jsx';
+import { ErrorState } from '../components/feedback/ErrorState.jsx';
+import { LoadingState } from '../components/feedback/LoadingState.jsx';
 
 const sessionQueryKey = ['auth', 'sessions'];
 const accountStatuses = { active: 'Ativo', pending: 'Pendente', blocked: 'Bloqueado', inactive: 'Inativo' };
 const sessionStatuses = { active: 'Ativa', revoked: 'Encerrada', expired: 'Expirada' };
-
-function translatedStatus(status, translations) {
-  return translations[status] ?? status ?? 'Não informado';
-}
-
-function statusColor(status) {
-  if (status === 'active') return 'success';
-  if (status === 'pending') return 'warning';
-  if (status === 'blocked' || status === 'revoked' || status === 'expired') return 'error';
-  return 'default';
-}
 
 function formatDate(value) {
   const date = new Date(value);
@@ -108,12 +98,7 @@ export function AccountPage() {
               <Typography color="text.secondary" display="block" variant="caption">
                 Status da conta
               </Typography>
-              <Chip
-                color={statusColor(user.status)}
-                label={translatedStatus(user.status, accountStatuses)}
-                size="small"
-                sx={{ mt: 0.5 }}
-              />
+              <StatusChip labels={accountStatuses} status={user.status} sx={{ mt: 0.5 }} />
             </Grid>
           </Grid>
         </SectionCard>
@@ -129,12 +114,7 @@ export function AccountPage() {
                       <Typography color="text.secondary" variant="body2">
                         {membership.tenantSlug}
                       </Typography>
-                      <Chip
-                        color={statusColor(membership.status)}
-                        label={translatedStatus(membership.status, accountStatuses)}
-                        size="small"
-                        sx={{ mt: 1.5 }}
-                      />
+                      <StatusChip labels={accountStatuses} status={membership.status} sx={{ mt: 1.5 }} />
                     </CardContent>
                   </Card>
                 </Grid>
@@ -174,30 +154,14 @@ export function AccountPage() {
             </Stack>
             <Divider />
 
-            {sessionsQuery.isPending && (
-              <Stack aria-label="Carregando sessões" role="status" spacing={2}>
-                {[1, 2].map((item) => (
-                  <Skeleton height={150} key={item} variant="rounded" />
-                ))}
-              </Stack>
-            )}
+            {sessionsQuery.isPending && <LoadingState message="Carregando sessões..." />}
 
             {sessionsQuery.isError && (
-              <Alert
-                action={
-                  <Button color="inherit" onClick={() => sessionsQuery.refetch()} size="small">
-                    Tentar novamente
-                  </Button>
-                }
-                severity="error"
-              >
-                Não foi possível carregar suas sessões.
-                {sessionsQuery.error.requestId && (
-                  <Typography display="block" variant="caption">
-                    Referência: {sessionsQuery.error.requestId}
-                  </Typography>
-                )}
-              </Alert>
+              <ErrorState
+                onRetry={() => sessionsQuery.refetch()}
+                requestId={sessionsQuery.error.requestId}
+                title="Não foi possível carregar suas sessões."
+              />
             )}
 
             {sessionsQuery.isSuccess && sessionsQuery.data.length === 0 && (
@@ -229,7 +193,7 @@ export function AccountPage() {
                                 {session.device || 'Dispositivo não identificado'}
                               </Typography>
                             </Stack>
-                            {session.current && <Chip color="primary" label="Sessão atual" size="small" />}
+                            {session.current && <StatusChip label="Sessão atual" status="active" />}
                           </Stack>
                           <Grid container spacing={1.5}>
                             <Grid size={{ xs: 12, sm: 6 }}>
@@ -254,11 +218,7 @@ export function AccountPage() {
                               <Typography color="text.secondary" display="block" variant="caption">
                                 Status
                               </Typography>
-                              <Chip
-                                color={statusColor(session.status)}
-                                label={translatedStatus(session.status, sessionStatuses)}
-                                size="small"
-                              />
+                              <StatusChip labels={sessionStatuses} status={session.status} />
                             </Grid>
                           </Grid>
                           {!session.current && session.status === 'active' && (

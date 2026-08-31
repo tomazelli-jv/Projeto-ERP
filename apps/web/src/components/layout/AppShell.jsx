@@ -7,6 +7,7 @@ import {
   Box,
   Button,
   Chip,
+  Divider,
   IconButton,
   Menu,
   MenuItem,
@@ -85,7 +86,7 @@ export function AppShell() {
               <Typography variant="subtitle1" fontWeight={750} noWrap>
                 Tomazelli ERP
               </Typography>
-              {!compact && (
+              {import.meta.env.DEV && !compact && (
                 <Typography variant="caption" color="text.secondary">
                   Gestão clara para o seu negócio
                 </Typography>
@@ -106,7 +107,7 @@ export function AppShell() {
                     {user?.name?.charAt(0).toUpperCase()}
                   </Avatar>
                 }
-                sx={{ minWidth: 0 }}
+                sx={{ minWidth: 0, px: { xs: 0.75, md: 1.25 }, borderRadius: 2 }}
               >
                 {!compact && (
                   <Typography noWrap sx={{ maxWidth: 180 }} variant="body2">
@@ -128,11 +129,13 @@ export function AppShell() {
                     {user?.email}
                   </Typography>
                 </Box>
-                <MenuItem onClick={handleAccount}>
+                <Divider />
+                <MenuItem onClick={handleAccount} sx={{ mx: 1, borderRadius: 1.5 }}>
                   <ManageAccountsOutlinedIcon fontSize="small" sx={{ mr: 1.5 }} />
                   Minha Conta
                 </MenuItem>
-                <MenuItem disabled={loggingOut} onClick={handleLogout}>
+                <Divider />
+                <MenuItem disabled={loggingOut} onClick={handleLogout} sx={{ mx: 1, borderRadius: 1.5 }}>
                   <LogoutOutlinedIcon fontSize="small" sx={{ mr: 1.5 }} />
                   {loggingOut ? 'Saindo...' : 'Sair'}
                 </MenuItem>

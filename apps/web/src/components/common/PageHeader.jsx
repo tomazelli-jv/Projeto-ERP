@@ -1,5 +1,6 @@
 import { Box, Stack, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
+import { AppBreadcrumbs } from './AppBreadcrumbs.jsx';
 
 export function PageHeader({ title, description, action }) {
   return (
@@ -10,15 +11,16 @@ export function PageHeader({ title, description, action }) {
       gap={2}
       sx={{ mb: 3 }}
     >
-      <Box>
-        <Typography component="h1" variant="h1">
+      <Box sx={{ minWidth: 0 }}>
+        <AppBreadcrumbs />
+        <Typography component="h1" sx={{ overflowWrap: 'anywhere' }} variant="h1">
           {title}
         </Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.75 }}>
+        <Typography color="text.secondary" sx={{ mt: 0.75, maxWidth: 760 }}>
           {description}
         </Typography>
       </Box>
-      {action}
+      {action && <Box sx={{ flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>{action}</Box>}
     </Stack>
   );
 }

@@ -51,7 +51,9 @@ export function LoginPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', py: 4 }}>
+    <Box
+      sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', py: 4, bgcolor: 'background.default' }}
+    >
       <Container maxWidth="xs">
         <Stack alignItems="center" spacing={1} sx={{ mb: 3 }}>
           <Box
@@ -72,7 +74,7 @@ export function LoginPage() {
           </Typography>
           <Typography color="text.secondary">Entre para acessar seu ambiente</Typography>
         </Stack>
-        <Card>
+        <Card sx={{ borderColor: 'divider' }}>
           <CardContent sx={{ p: { xs: 3, sm: 4 }, '&:last-child': { pb: { xs: 3, sm: 4 } } }}>
             <Stack component="form" onSubmit={handleSubmit} spacing={2.5}>
               {error && (
