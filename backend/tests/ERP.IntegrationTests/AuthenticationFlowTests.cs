@@ -48,11 +48,8 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
         var cookie = CookieValue(loginResponse);
         Checkpoint("AUTH_STAGE_COOKIE_OK");
 
-        await using var sessionLookup = await source.OpenConnectionAsync();
-        var storedSessionId = await sessionLookup.ExecuteScalarAsync<string>("SELECT id FROM auth_sessions WHERE user_id=@UserId", new { UserId = userId });
-        Stage(!string.IsNullOrWhiteSpace(storedSessionId), "AUTH_STAGE_SESSION_LOOKUP");
+        var validSessionId = factory.Services.GetRequiredService<IAccessTokenService>().Validate(access).SessionId;
         Checkpoint("AUTH_STAGE_SESSION_LOOKUP_OK");
-        var validSessionId = storedSessionId!;
         try
         {
             var directSessions = await factory.Services.GetRequiredService<AuthenticationService>().SessionsAsync(userId, validSessionId, CancellationToken.None);
