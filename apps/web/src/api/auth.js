@@ -40,3 +40,16 @@ export async function getCurrentUser() {
   const response = await apiRequest('/auth/me');
   return response.data;
 }
+
+export async function getSessions() {
+  const response = await apiRequest('/auth/sessions');
+  return response.data;
+}
+
+export async function revokeSession(sessionId) {
+  await apiRequest(`/auth/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+}
+
+export async function logoutAll() {
+  await apiRequest('/auth/logout-all', { method: 'POST' });
+}

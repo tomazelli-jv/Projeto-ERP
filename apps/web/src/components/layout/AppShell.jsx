@@ -1,5 +1,6 @@
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
+import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import {
   AppBar,
   Avatar,
@@ -45,6 +46,11 @@ export function AppShell() {
     } finally {
       navigate('/login', { replace: true, state: logoutError ? { logoutError } : null });
     }
+  }
+
+  function handleAccount() {
+    setUserMenuAnchor(null);
+    navigate('/account');
   }
 
   return (
@@ -122,6 +128,10 @@ export function AppShell() {
                     {user?.email}
                   </Typography>
                 </Box>
+                <MenuItem onClick={handleAccount}>
+                  <ManageAccountsOutlinedIcon fontSize="small" sx={{ mr: 1.5 }} />
+                  Minha Conta
+                </MenuItem>
                 <MenuItem disabled={loggingOut} onClick={handleLogout}>
                   <LogoutOutlinedIcon fontSize="small" sx={{ mr: 1.5 }} />
                   {loggingOut ? 'Saindo...' : 'Sair'}
