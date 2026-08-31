@@ -27,7 +27,6 @@ public sealed class AuthenticationController(AuthenticationService authenticatio
 
     [HttpPost("refresh")]
     [EnableRateLimiting("refresh")]
-    [Consumes("application/json")]
     public async Task<IActionResult> Refresh(CancellationToken token)
     {
         try
@@ -40,7 +39,6 @@ public sealed class AuthenticationController(AuthenticationService authenticatio
     }
 
     [HttpPost("logout")]
-    [Consumes("application/json")]
     public async Task<IActionResult> Logout(CancellationToken token)
     { await authentication.LogoutAsync(Request.Cookies[_options.RefreshCookieName], Ip(), token); DeleteCookie(); return NoContent(); }
 
