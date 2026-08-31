@@ -2,7 +2,13 @@ import { Box, CircularProgress, Stack, Typography } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getCurrentUser, login as requestLogin, logout as requestLogout, refresh } from '../../api/auth.js';
+import {
+  getCurrentUser,
+  login as requestLogin,
+  logout as requestLogout,
+  logoutAll as requestLogoutAll,
+  refresh
+} from '../../api/auth.js';
 import { configureApiAuthentication } from '../../api/client.js';
 import { AuthContext } from './auth-context.js';
 
@@ -86,9 +92,14 @@ export function AuthProvider({ children }) {
     }
   }, [clearAuthentication]);
 
+  const logoutAll = useCallback(async () => {
+    await requestLogoutAll();
+    clearAuthentication();
+  }, [clearAuthentication]);
+
   const value = useMemo(
-    () => ({ status, user, accessToken, login, logout, refreshSession }),
-    [accessToken, login, logout, refreshSession, status, user]
+    () => ({ status, user, accessToken, login, logout, logoutAll, refreshSession }),
+    [accessToken, login, logout, logoutAll, refreshSession, status, user]
   );
 
   if (status === 'loading') {
