@@ -81,7 +81,7 @@ jobs:
           dotnet test backend/tests/ERP.IntegrationTests/ERP.IntegrationTests.csproj --configuration Release --no-build --filter "FullyQualifiedName~AuthenticationFlowTests.LoginRefreshMeSessionsLogoutAndReuse" > auth-test.log 2>&1
           status=$?
           if [ "$status" -ne 0 ]; then
-            stage=$(grep -o 'AUTH_STAGE_[A-Z_]*' auth-test.log | head -n 1)
+            stage=$(cat "${RUNNER_TEMP}/erp-auth-stage.txt" 2>/dev/null || grep -o 'AUTH_STAGE_[A-Z_]*' auth-test.log | head -n 1)
             echo "::error title=Authentication integration stage failed::${stage:-AUTH_STAGE_UNEXPECTED}"
           fi
           exit "$status"

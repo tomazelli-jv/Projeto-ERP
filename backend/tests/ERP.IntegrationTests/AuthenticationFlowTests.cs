@@ -19,6 +19,7 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
     [Fact]
     public async Task LoginRefreshMeSessionsLogoutAndReuse_AreSafeAndTransactional()
     {
+        Checkpoint("AUTH_STAGE_STARTED");
         if (!database.Enabled) return;
         await using var source = new MySqlDataSourceBuilder(database.ConnectionString).Build();
         await new MariaDbMigrationRunner(new MariaDbConnectionFactory(source)).UpAsync();
@@ -42,14 +43,16 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
 
         await using var sessionLookup = await source.OpenConnectionAsync();
         var storedSessionId = await sessionLookup.ExecuteScalarAsync<string>("SELECT id FROM auth_sessions WHERE user_id=@UserId", new { UserId = userId });
+        Stage(!string.IsNullOrWhiteSpace(storedSessionId), "AUTH_STAGE_SESSION_LOOKUP");
         try
         {
             var directSessions = await factory.Services.GetRequiredService<AuthenticationService>().SessionsAsync(userId, storedSessionId, CancellationToken.None);
             Stage(directSessions.Count == 1 && directSessions[0].Current, "AUTH_STAGE_DIRECT_RESULT");
+            Checkpoint("AUTH_STAGE_DIRECT_OK");
         }
-        catch (MySqlException) { throw new InvalidOperationException("AUTH_STAGE_DIRECT_MYSQL"); }
-        catch (InvalidCastException) { throw new InvalidOperationException("AUTH_STAGE_DIRECT_CAST"); }
-        catch (Exception) { throw new InvalidOperationException("AUTH_STAGE_DIRECT_OTHER"); }
+        catch (MySqlException) { Checkpoint("AUTH_STAGE_DIRECT_MYSQL"); throw new InvalidOperationException("AUTH_STAGE_DIRECT_MYSQL"); }
+        catch (InvalidCastException) { Checkpoint("AUTH_STAGE_DIRECT_CAST"); throw new InvalidOperationException("AUTH_STAGE_DIRECT_CAST"); }
+        catch (Exception) { Checkpoint("AUTH_STAGE_DIRECT_OTHER"); throw new InvalidOperationException("AUTH_STAGE_DIRECT_OTHER"); }
 
         var me = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/me"); me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         Stage((await client.SendAsync(me)).StatusCode == HttpStatusCode.OK, "AUTH_STAGE_ME");
@@ -103,5 +106,6 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
     private static HttpRequestMessage CookieRequest(HttpMethod method, string path, string cookie)
     { var request = new HttpRequestMessage(method, path); request.Headers.Add("Origin", "http://localhost:5173"); request.Headers.Add("Cookie", $"erp_refresh={cookie}"); return request; }
     private static string CookieValue(HttpResponseMessage response) => response.Headers.GetValues("Set-Cookie").Single(x => x.StartsWith("erp_refresh=", StringComparison.Ordinal)).Split(';')[0].Split('=', 2)[1];
-    private static void Stage(bool condition, string code) { if (!condition) throw new InvalidOperationException(code); }
+    private static void Stage(bool condition, string code) { if (!condition) { Checkpoint(code); throw new InvalidOperationException(code); } }
+    private static void Checkpoint(string code) => File.WriteAllText(Path.Combine(Path.GetTempPath(), "erp-auth-stage.txt"), code);
 }
