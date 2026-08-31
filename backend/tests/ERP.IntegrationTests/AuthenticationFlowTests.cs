@@ -19,15 +19,12 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
     [Fact]
     public async Task LoginRefreshMeSessionsLogoutAndReuse_AreSafeAndTransactional()
     {
-        Checkpoint("AUTH_STAGE_STARTED");
         if (!database.Enabled) return;
         await using var source = new MySqlDataSourceBuilder(database.ConnectionString).Build();
         await new MariaDbMigrationRunner(new MariaDbConnectionFactory(source)).UpAsync();
-        Checkpoint("AUTH_STAGE_MIGRATED");
         await using var factory = new ApiFactory();
         var userId = Guid.NewGuid().ToString(); var tenantId = Guid.NewGuid().ToString(); var email = $"auth-{Guid.NewGuid():N}@example.test"; const string password = "  uma senha exata e segura  ";
         var hasher = factory.Services.GetRequiredService<IPasswordHasher>(); var passwordHash = await hasher.HashAsync(password);
-        Checkpoint("AUTH_STAGE_HASHED");
         await using (var setup = await source.OpenConnectionAsync())
         {
             await setup.ExecuteAsync("INSERT INTO users (id,name,email,status) VALUES (@Id,'Auth User',@Email,'active')", new { Id = userId, Email = email });
@@ -35,30 +32,17 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
             await setup.ExecuteAsync("INSERT INTO tenants (id,name,slug,status) VALUES (@Id,'Auth Tenant',@Slug,'active')", new { Id = tenantId, Slug = $"auth-{Guid.NewGuid():N}" });
             await setup.ExecuteAsync("INSERT INTO tenant_memberships (id,tenant_id,user_id,status,is_owner) VALUES (@Id,@TenantId,@UserId,'active',1)", new { Id = Guid.NewGuid().ToString(), TenantId = tenantId, UserId = userId });
         }
-        Checkpoint("AUTH_STAGE_FIXTURE_READY");
 
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
         var login = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login") { Content = JsonContent.Create(new { email = email.ToUpperInvariant(), password }) };
         var loginResponse = await client.SendAsync(login); Stage(loginResponse.StatusCode == HttpStatusCode.OK, "AUTH_STAGE_LOGIN");
-        Checkpoint("AUTH_STAGE_LOGIN_OK");
         var loginBody = await loginResponse.Content.ReadAsStringAsync(); Stage(!loginBody.Contains("refresh", StringComparison.OrdinalIgnoreCase) && !loginBody.Contains(passwordHash, StringComparison.Ordinal), "AUTH_STAGE_LOGIN_RESPONSE");
-        Checkpoint("AUTH_STAGE_LOGIN_RESPONSE_OK");
         using var loginJson = JsonDocument.Parse(loginBody); var access = loginJson.RootElement.GetProperty("data").GetProperty("accessToken").GetString()!;
-        Checkpoint("AUTH_STAGE_LOGIN_JSON_OK");
         var cookie = CookieValue(loginResponse);
-        Checkpoint("AUTH_STAGE_COOKIE_OK");
 
         var validSessionId = factory.Services.GetRequiredService<IAccessTokenService>().Validate(access, DateTime.UtcNow).SessionId;
-        Checkpoint("AUTH_STAGE_SESSION_LOOKUP_OK");
-        try
-        {
-            var directSessions = await factory.Services.GetRequiredService<AuthenticationService>().SessionsAsync(userId, validSessionId, CancellationToken.None);
-            Stage(directSessions.Count == 1 && directSessions[0].Current, "AUTH_STAGE_DIRECT_RESULT");
-            Checkpoint("AUTH_STAGE_DIRECT_OK");
-        }
-        catch (MySqlException) { Checkpoint("AUTH_STAGE_DIRECT_MYSQL"); throw new InvalidOperationException("AUTH_STAGE_DIRECT_MYSQL"); }
-        catch (InvalidCastException) { Checkpoint("AUTH_STAGE_DIRECT_CAST"); throw new InvalidOperationException("AUTH_STAGE_DIRECT_CAST"); }
-        catch (Exception) { Checkpoint("AUTH_STAGE_DIRECT_OTHER"); throw new InvalidOperationException("AUTH_STAGE_DIRECT_OTHER"); }
+        var directSessions = await factory.Services.GetRequiredService<AuthenticationService>().SessionsAsync(userId, validSessionId, CancellationToken.None);
+        Stage(directSessions.Count == 1 && directSessions[0].Current, "AUTH_STAGE_DIRECT_RESULT");
 
         var me = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/me"); me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         Stage((await client.SendAsync(me)).StatusCode == HttpStatusCode.OK, "AUTH_STAGE_ME");
@@ -113,6 +97,5 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
     private static HttpRequestMessage CookieRequest(HttpMethod method, string path, string cookie)
     { var request = new HttpRequestMessage(method, path); request.Headers.Add("Origin", "http://localhost:5173"); request.Headers.Add("Cookie", $"erp_refresh={cookie}"); return request; }
     private static string CookieValue(HttpResponseMessage response) => response.Headers.GetValues("Set-Cookie").Single(x => x.StartsWith("erp_refresh=", StringComparison.Ordinal)).Split(';')[0].Split('=', 2)[1];
-    private static void Stage(bool condition, string code) { if (!condition) { Checkpoint(code); throw new InvalidOperationException(code); } }
-    private static void Checkpoint(string code) => File.WriteAllText(Path.Combine(Path.GetTempPath(), "erp-auth-stage.txt"), code);
+    private static void Stage(bool condition, string code) => Assert.True(condition, code);
 }
