@@ -6,6 +6,7 @@ using Dapper;
 using ERP.Application.Abstractions;
 using ERP.Infrastructure.Database;
 using ERP.Infrastructure.Migrations;
+using ERP.Infrastructure.Application;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
@@ -38,6 +39,17 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
         var loginBody = await loginResponse.Content.ReadAsStringAsync(); Stage(!loginBody.Contains("refresh", StringComparison.OrdinalIgnoreCase) && !loginBody.Contains(passwordHash, StringComparison.Ordinal), "AUTH_STAGE_LOGIN_RESPONSE");
         using var loginJson = JsonDocument.Parse(loginBody); var access = loginJson.RootElement.GetProperty("data").GetProperty("accessToken").GetString()!;
         var cookie = CookieValue(loginResponse);
+
+        await using var sessionLookup = await source.OpenConnectionAsync();
+        var storedSessionId = await sessionLookup.ExecuteScalarAsync<string>("SELECT id FROM auth_sessions WHERE user_id=@UserId", new { UserId = userId });
+        try
+        {
+            var directSessions = await factory.Services.GetRequiredService<AuthenticationService>().SessionsAsync(userId, storedSessionId, CancellationToken.None);
+            Stage(directSessions.Count == 1 && directSessions[0].Current, "AUTH_STAGE_DIRECT_RESULT");
+        }
+        catch (MySqlException) { throw new InvalidOperationException("AUTH_STAGE_DIRECT_MYSQL"); }
+        catch (InvalidCastException) { throw new InvalidOperationException("AUTH_STAGE_DIRECT_CAST"); }
+        catch (Exception) { throw new InvalidOperationException("AUTH_STAGE_DIRECT_OTHER"); }
 
         var me = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/me"); me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
         Stage((await client.SendAsync(me)).StatusCode == HttpStatusCode.OK, "AUTH_STAGE_ME");
