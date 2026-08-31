@@ -48,7 +48,7 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
         var cookie = CookieValue(loginResponse);
         Checkpoint("AUTH_STAGE_COOKIE_OK");
 
-        var validSessionId = factory.Services.GetRequiredService<IAccessTokenService>().Validate(access).SessionId;
+        var validSessionId = factory.Services.GetRequiredService<IAccessTokenService>().Validate(access, DateTime.UtcNow).SessionId;
         Checkpoint("AUTH_STAGE_SESSION_LOOKUP_OK");
         try
         {
