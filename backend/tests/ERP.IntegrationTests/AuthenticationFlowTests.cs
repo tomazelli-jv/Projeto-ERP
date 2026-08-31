@@ -73,7 +73,8 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
         var concurrent = await Task.WhenAll(
             client.SendAsync(CookieRequest(HttpMethod.Post, "/api/v1/auth/refresh", cookie)),
             client.SendAsync(CookieRequest(HttpMethod.Post, "/api/v1/auth/refresh", cookie)));
-        Stage(concurrent.Count(response => response.StatusCode == HttpStatusCode.OK) == 1 && concurrent.Count(response => response.StatusCode == HttpStatusCode.Unauthorized) == 1, "AUTH_STAGE_CONCURRENCY_STATUS");
+        var concurrencyStatus = string.Join('_', concurrent.Select(response => (int)response.StatusCode).Order());
+        Stage(concurrent.Count(response => response.StatusCode == HttpStatusCode.OK) == 1 && concurrent.Count(response => response.StatusCode == HttpStatusCode.Unauthorized) == 1, $"AUTH_STAGE_CONCURRENCY_{concurrencyStatus}");
         var refreshResponse = concurrent.Single(response => response.StatusCode == HttpStatusCode.OK);
         var reuseResponse = concurrent.Single(response => response.StatusCode == HttpStatusCode.Unauthorized);
         var rotatedCookie = CookieValue(refreshResponse); Stage(cookie != rotatedCookie, "AUTH_STAGE_ROTATION_COOKIE");
