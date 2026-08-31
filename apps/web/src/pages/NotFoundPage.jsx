@@ -9,12 +9,12 @@ export function NotFoundPage() {
         spacing={3}
         sx={{ minHeight: '100vh', justifyContent: 'center', textAlign: 'center' }}
       >
-        <Typography component="h1" variant="h3">
+        <Typography component="h1" variant="h1">
           Página não encontrada
         </Typography>
-        <Typography color="text.secondary">O endereço informado não existe.</Typography>
-        <Button component={Link} to="/" variant="contained">
-          Voltar ao início
+        <Typography color="text.secondary">O endereço informado não existe ou foi removido.</Typography>
+        <Button component={Link} to="/dashboard" variant="contained">
+          Voltar ao dashboard
         </Button>
       </Stack>
     </Container>
