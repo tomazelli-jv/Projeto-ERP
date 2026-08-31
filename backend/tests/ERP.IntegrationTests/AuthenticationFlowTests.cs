@@ -42,12 +42,16 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
         var loginResponse = await client.SendAsync(login); Stage(loginResponse.StatusCode == HttpStatusCode.OK, "AUTH_STAGE_LOGIN");
         Checkpoint("AUTH_STAGE_LOGIN_OK");
         var loginBody = await loginResponse.Content.ReadAsStringAsync(); Stage(!loginBody.Contains("refresh", StringComparison.OrdinalIgnoreCase) && !loginBody.Contains(passwordHash, StringComparison.Ordinal), "AUTH_STAGE_LOGIN_RESPONSE");
+        Checkpoint("AUTH_STAGE_LOGIN_RESPONSE_OK");
         using var loginJson = JsonDocument.Parse(loginBody); var access = loginJson.RootElement.GetProperty("data").GetProperty("accessToken").GetString()!;
+        Checkpoint("AUTH_STAGE_LOGIN_JSON_OK");
         var cookie = CookieValue(loginResponse);
+        Checkpoint("AUTH_STAGE_COOKIE_OK");
 
         await using var sessionLookup = await source.OpenConnectionAsync();
         var storedSessionId = await sessionLookup.ExecuteScalarAsync<string>("SELECT id FROM auth_sessions WHERE user_id=@UserId", new { UserId = userId });
         Stage(!string.IsNullOrWhiteSpace(storedSessionId), "AUTH_STAGE_SESSION_LOOKUP");
+        Checkpoint("AUTH_STAGE_SESSION_LOOKUP_OK");
         var validSessionId = storedSessionId!;
         try
         {
