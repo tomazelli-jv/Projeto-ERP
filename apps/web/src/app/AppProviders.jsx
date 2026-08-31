@@ -2,6 +2,7 @@ import { CssBaseline, ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import PropTypes from 'prop-types';
 import { useState } from 'react';
+import { AuthProvider } from './auth/AuthProvider.jsx';
 import { theme } from './theme.js';
 
 export function AppProviders({ children }) {
@@ -18,7 +19,7 @@ export function AppProviders({ children }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
