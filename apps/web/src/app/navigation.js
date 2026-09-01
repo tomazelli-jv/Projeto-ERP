@@ -70,10 +70,11 @@ export const appRoutes = [
     module: true
   },
   {
+    // A URL histórica é preservada, mas toda nomenclatura apresentada ao usuário segue o modelo Empresa/Loja.
     path: '/admin/companies',
-    label: 'Empresas e filiais',
-    title: 'Empresas e filiais',
-    description: 'Administre a estrutura organizacional do ambiente.',
+    label: 'Empresas e lojas',
+    title: 'Empresas e lojas',
+    description: 'Gerencie sua empresa e os estabelecimentos vinculados.',
     group: 'Administração',
     icon: BusinessOutlinedIcon,
     module: true

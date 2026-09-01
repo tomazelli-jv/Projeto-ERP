@@ -22,6 +22,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ERP.Api\ERP.Api.csproj" />
     <ProjectReference Include="..\..\src\ERP.Infrastructure\ERP.Infrastructure.csproj" />
+    <!-- O projeto administrativo é referenciado para testar seu SQL real no mesmo MariaDB 11.8 da suíte. -->
+    <ProjectReference Include="..\..\tools\ERP.AdminCli\ERP.AdminCli.csproj" />
   </ItemGroup>
 
 </Project>
