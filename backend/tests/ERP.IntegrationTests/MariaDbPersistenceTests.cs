@@ -34,8 +34,11 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
         await using (var validation = await dataSource.OpenConnectionAsync())
         {
             var tables = (await validation.QueryAsync<string>(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name NOT IN ('knex_migrations','knex_migrations_lock') ORDER BY table_name")).ToArray();
-            Assert.Equal(["empresa", "evento_seguranca", "funcionario", "funcionario_loja", "loja", "perfil_permissao", "perfis", "permissao", "sessao_usuario", "tentativa_login", "token_refresh", "usuario_claims", "usuario_perfis", "usuarios"], tables);
+                "SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name NOT IN ('knex_migrations','knex_migrations_lock')")).ToArray();
+            string[] expectedTables = ["empresa", "evento_seguranca", "funcionario", "funcionario_loja", "loja", "perfil_permissao", "perfis", "permissao", "sessao_usuario", "tentativa_login", "token_refresh", "usuario_claims", "usuario_perfis", "usuarios"];
+            Assert.Equal(
+                expectedTables.OrderBy(name => name, StringComparer.Ordinal),
+                tables.OrderBy(name => name, StringComparer.Ordinal));
 
             var empresaId = Guid.NewGuid().ToString();
             await validation.ExecuteAsync("INSERT INTO empresa (id_empresa,nome) VALUES (@Id,'Empresa Teste')", new { Id = empresaId });
