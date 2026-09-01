@@ -46,6 +46,9 @@ public static class DependencyInjection
         services.AddSingleton<IRefreshTokenGenerator, RefreshTokenGenerator>();
         services.AddSingleton<IAccessTokenService, HmacAccessTokenService>();
         services.AddSingleton<AuthenticationService>();
+        // EmpresaService e EmpresaRepository formam a fronteira de leitura empresarial e aplicam o escopo do funcionário no SQL.
+        services.AddSingleton<EmpresaRepository>();
+        services.AddSingleton<EmpresaService>();
         return services;
     }
 }
