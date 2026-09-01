@@ -68,7 +68,8 @@ public sealed class AuthenticationRepository
             "SELECT COUNT(*) FROM sessao_usuario s JOIN usuarios u ON u.id_usuario=s.id_usuario WHERE s.id_sessao=@SessionId AND s.id_usuario=@UserId AND s.revogada_em IS NULL AND s.expira_em>@Now AND u.ativo=1",
             new { SessionId = sessionId, UserId = userId, Now = now }, cancellationToken: token)) == 1;
 
-    public Task MarkRefreshUsedAsync(MySqlConnection connection, MySqlTransaction transaction, string tokenId, string successorId, DateTime now, CancellationToken token) =>
+    // Rows affected é o claim atômico: somente quem obtém 1 pode inserir o sucessor; 0 indica que outra requisição venceu.
+    public Task<int> MarkRefreshUsedAsync(MySqlConnection connection, MySqlTransaction transaction, string tokenId, string successorId, DateTime now, CancellationToken token) =>
         connection.ExecuteAsync(new CommandDefinition("UPDATE token_refresh SET usado_em=@Now,id_token_substituto=@SuccessorId,atualizado_em=@Now WHERE id_token=@TokenId AND usado_em IS NULL", new { TokenId = tokenId, SuccessorId = successorId, Now = now }, transaction, cancellationToken: token));
 
     public Task TouchSessionAsync(MySqlConnection connection, MySqlTransaction transaction, string sessionId, DateTime now, CancellationToken token) =>

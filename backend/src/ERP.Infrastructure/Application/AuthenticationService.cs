@@ -5,6 +5,7 @@ using ERP.Infrastructure.Database;
 using ERP.Infrastructure.Persistence;
 using ERP.Infrastructure.Security;
 using Microsoft.Extensions.Options;
+using MySqlConnector;
 
 namespace ERP.Infrastructure.Application;
 
@@ -80,10 +81,7 @@ public sealed class AuthenticationService(
             var session = await repository.FindSessionForUpdateAsync(connection, transaction, current.SessionId, token) ?? throw AuthenticationErrors.SessionInvalid();
             if (current.UsedAtUtc is not null)
             {
-                await repository.RevokeFamilyAsync(connection, transaction, current.FamilyId, "refresh_reuse", now, token);
-                await repository.RevokeSessionAsync(connection, transaction, session.Id, "refresh_reuse", now, token);
-                await repository.InsertSecurityEventAsync(connection, transaction, session.UserId, session.Id, "refresh_token_reused", "denied", ip, now, token);
-                await transaction.CommitAsync(token);
+                await HandleRefreshReuseAsync(connection, transaction, current, session, ip, now, token);
                 completed = true;
                 throw AuthenticationErrors.RefreshReused();
             }
@@ -94,7 +92,16 @@ public sealed class AuthenticationService(
             var user = await repository.FindUserByIdAsync(connection, transaction, session.UserId, token);
             if (user is null || !user.Active) throw AuthenticationErrors.RefreshInvalid();
             var successorId = Guid.NewGuid().ToString(); var next = refreshTokens.Generate();
-            await repository.MarkRefreshUsedAsync(connection, transaction, current.Id, successorId, now, token);
+            // FOR UPDATE continua serializando o fluxo, enquanto o UPDATE condicional fecha defensivamente qualquer corrida residual.
+            var claimed = await repository.MarkRefreshUsedAsync(connection, transaction, current.Id, successorId, now, token);
+            if (claimed == 0)
+            {
+                // O perdedor nunca cria sucessor; a unique permanece apenas como última defesa de integridade do banco.
+                await HandleRefreshReuseAsync(connection, transaction, current, session, ip, now, token);
+                completed = true;
+                throw AuthenticationErrors.RefreshReused();
+            }
+            if (claimed != 1) throw new InvalidOperationException("Refresh token claim affected an unexpected number of rows.");
             await repository.CreateRefreshTokenAsync(connection, transaction, successorId, session.Id, next.Hash, current.FamilyId, current.Id, now, session.AbsoluteExpiresAtUtc, token);
             await repository.TouchSessionAsync(connection, transaction, session.Id, now, token);
             await repository.InsertSecurityEventAsync(connection, transaction, session.UserId, session.Id, "refresh_succeeded", "success", ip, now, token);
@@ -103,6 +110,15 @@ public sealed class AuthenticationService(
             return new RefreshResult(accessTokens.Create(session.UserId, session.Id, now), "Bearer", accessTokens.LifetimeSeconds, next.RawToken, session.AbsoluteExpiresAtUtc);
         }
         catch { if (!completed) await transaction.RollbackAsync(CancellationToken.None); throw; }
+    }
+
+    // Token já usado e claim perdido percorrem a mesma resposta segura: revogam família/sessão, auditam e confirmam antes do 401.
+    private async Task HandleRefreshReuseAsync(MySqlConnection connection, MySqlTransaction transaction, RefreshTokenRecord current, AuthenticationSession session, string? ip, DateTime now, CancellationToken token)
+    {
+        await repository.RevokeFamilyAsync(connection, transaction, current.FamilyId, "refresh_reuse", now, token);
+        await repository.RevokeSessionAsync(connection, transaction, session.Id, "refresh_reuse", now, token);
+        await repository.InsertSecurityEventAsync(connection, transaction, session.UserId, session.Id, "refresh_token_reused", "denied", ip, now, token);
+        await transaction.CommitAsync(token);
     }
 
     public async Task LogoutAsync(string? rawToken, string? ip, CancellationToken token)

@@ -49,6 +49,17 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
             await repository.CreateSessionAsync(connection, transaction, sessionId, userId, now, expires, null, "materialization-test", CancellationToken.None);
             await repository.CreateRefreshTokenAsync(connection, transaction, tokenId, sessionId, tokenHash, familyId, null, now, expires, CancellationToken.None);
 
+            // O primeiro claim vence e cria um sucessor; o segundo recebe 0 e não pode tentar outra inserção.
+            var successorId = Guid.NewGuid().ToString();
+            var firstClaim = await repository.MarkRefreshUsedAsync(connection, transaction, tokenId, successorId, now.AddSeconds(1), CancellationToken.None);
+            Assert.Equal(1, firstClaim);
+            if (firstClaim == 1)
+                await repository.CreateRefreshTokenAsync(connection, transaction, successorId, sessionId, new string('b', 64), familyId, tokenId, now.AddSeconds(1), expires, CancellationToken.None);
+            var secondClaim = await repository.MarkRefreshUsedAsync(connection, transaction, tokenId, Guid.NewGuid().ToString(), now.AddSeconds(2), CancellationToken.None);
+            Assert.Equal(0, secondClaim);
+            Assert.Equal(1, await connection.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM token_refresh WHERE id_token_anterior=@OriginalId", new { OriginalId = tokenId }, transaction));
+
             var session = await repository.FindSessionForUpdateAsync(connection, transaction, sessionId, CancellationToken.None);
             Assert.NotNull(session);
             Assert.IsType<string>(session.Id);
@@ -96,6 +107,12 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
         var loginBody = await loginResponse.Content.ReadAsStringAsync(); Stage(!loginBody.Contains("refresh", StringComparison.OrdinalIgnoreCase) && !loginBody.Contains(passwordHash, StringComparison.Ordinal), "AUTH_STAGE_LOGIN_RESPONSE");
         using var loginJson = JsonDocument.Parse(loginBody); var access = loginJson.RootElement.GetProperty("data").GetProperty("accessToken").GetString()!;
         var cookie = CookieValue(loginResponse);
+        // O token original é localizado somente por SHA-256 para verificar sucessores sem registrar ou consultar o valor bruto.
+        var originalHash = factory.Services.GetRequiredService<IRefreshTokenGenerator>().Hash(cookie);
+        string originalTokenId;
+        await using (var originalLookup = await source.OpenConnectionAsync())
+            originalTokenId = await originalLookup.ExecuteScalarAsync<string>("SELECT CAST(id_token AS CHAR(36)) FROM token_refresh WHERE token_hash=@Hash", new { Hash = originalHash })
+                ?? throw new InvalidOperationException("Original refresh token was not persisted.");
 
         var validSessionId = factory.Services.GetRequiredService<IAccessTokenService>().Validate(access, DateTime.UtcNow).SessionId;
         var directSessions = await factory.Services.GetRequiredService<AuthenticationService>().SessionsAsync(userId, validSessionId, CancellationToken.None);
@@ -137,6 +154,8 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
         await using var verify = await source.OpenConnectionAsync();
         Stage(await verify.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM sessao_usuario WHERE id_usuario=@UserId AND revogada_em IS NOT NULL", new { UserId = userId }) == 1, "AUTH_STAGE_SESSION_REVOKED");
         Stage(await verify.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM token_refresh WHERE token_hash=@Raw", new { Raw = cookie }) == 0, "AUTH_STAGE_RAW_TOKEN_ABSENT");
+        // Mesmo sob duas requisições concorrentes, o token anterior pode possuir no máximo o único sucessor vencedor.
+        Stage(await verify.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM token_refresh WHERE id_token_anterior=@OriginalTokenId", new { OriginalTokenId = originalTokenId }) == 1, "AUTH_STAGE_SINGLE_SUCCESSOR");
         Stage(await verify.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM evento_seguranca WHERE id_usuario=@UserId", new { UserId = userId }) >= 4, "AUTH_STAGE_EVENTS");
     }
 
