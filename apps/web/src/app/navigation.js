@@ -10,93 +10,118 @@ import PointOfSaleOutlinedIcon from '@mui/icons-material/PointOfSaleOutlined';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
-export const navigationGroups = [
-  { items: [{ label: 'Dashboard', path: '/dashboard', icon: DashboardOutlinedIcon }] },
+export const appRoutes = [
   {
-    label: 'Cadastros',
-    items: [
-      { label: 'Clientes', path: '/customers', icon: GroupsOutlinedIcon },
-      { label: 'Fornecedores', path: '/suppliers', icon: LocalShippingOutlinedIcon },
-      { label: 'Produtos', path: '/products', icon: Inventory2OutlinedIcon }
-    ]
+    path: '/dashboard',
+    label: 'Dashboard',
+    title: 'Dashboard',
+    description: 'Uma visão geral dos módulos e das rotinas disponíveis no seu ambiente.',
+    icon: DashboardOutlinedIcon
   },
-  {
-    items: [
-      { label: 'Estoque', path: '/inventory', icon: HandymanOutlinedIcon },
-      { label: 'Vendas', path: '/sales', icon: PointOfSaleOutlinedIcon },
-      { label: 'Financeiro', path: '/financial', icon: AccountBalanceWalletOutlinedIcon }
-    ]
-  },
-  {
-    label: 'Administração',
-    items: [
-      { label: 'Empresas e filiais', path: '/admin/companies', icon: BusinessOutlinedIcon },
-      { label: 'Usuários', path: '/admin/users', icon: ManageAccountsOutlinedIcon },
-      { label: 'Plano', path: '/admin/plan', icon: ReceiptLongOutlinedIcon }
-    ]
-  },
-  { items: [{ label: 'Configurações', path: '/settings', icon: SettingsOutlinedIcon }] }
-];
-
-export const modulePages = [
   {
     path: '/customers',
+    label: 'Clientes',
     title: 'Clientes',
     description: 'Gerencie os clientes cadastrados neste ambiente.',
-    emptyText: 'Nenhum cliente cadastrado.'
+    group: 'Cadastros',
+    icon: GroupsOutlinedIcon,
+    module: true
   },
   {
     path: '/suppliers',
+    label: 'Fornecedores',
     title: 'Fornecedores',
     description: 'Organize os fornecedores e parceiros comerciais.',
-    emptyText: 'Nenhum fornecedor cadastrado.'
+    group: 'Cadastros',
+    icon: LocalShippingOutlinedIcon,
+    module: true
   },
   {
     path: '/products',
+    label: 'Produtos',
     title: 'Produtos',
     description: 'Consulte o catálogo de produtos e serviços.',
-    emptyText: 'Nenhum produto cadastrado.'
+    group: 'Cadastros',
+    icon: Inventory2OutlinedIcon,
+    module: true
   },
   {
     path: '/inventory',
+    label: 'Estoque',
     title: 'Estoque',
     description: 'Acompanhe saldos, movimentações e necessidades de reposição.',
-    emptyText: 'Nenhuma movimentação disponível.'
+    icon: HandymanOutlinedIcon,
+    module: true
   },
   {
     path: '/sales',
+    label: 'Vendas',
     title: 'Vendas',
     description: 'Acompanhe pedidos e operações comerciais.',
-    emptyText: 'Nenhuma venda disponível.'
+    icon: PointOfSaleOutlinedIcon,
+    module: true
   },
   {
     path: '/financial',
+    label: 'Financeiro',
     title: 'Financeiro',
     description: 'Visualize contas a pagar, receber e o fluxo financeiro.',
-    emptyText: 'Nenhum lançamento financeiro disponível.'
+    icon: AccountBalanceWalletOutlinedIcon,
+    module: true
   },
   {
     path: '/admin/companies',
+    label: 'Empresas e filiais',
     title: 'Empresas e filiais',
     description: 'Administre a estrutura organizacional do ambiente.',
-    emptyText: 'Os dados organizacionais aparecerão aqui.'
+    group: 'Administração',
+    icon: BusinessOutlinedIcon,
+    module: true
   },
   {
     path: '/admin/users',
+    label: 'Usuários',
     title: 'Usuários',
     description: 'Gerencie quem poderá acessar este ambiente.',
-    emptyText: 'Nenhum usuário disponível para exibição.'
+    group: 'Administração',
+    icon: ManageAccountsOutlinedIcon,
+    module: true
   },
   {
     path: '/admin/plan',
+    label: 'Plano',
     title: 'Plano',
     description: 'Consulte o plano e os limites comerciais do ambiente.',
-    emptyText: 'As informações do plano aparecerão aqui.'
+    group: 'Administração',
+    icon: ReceiptLongOutlinedIcon,
+    module: true
   },
   {
     path: '/settings',
+    label: 'Configurações',
     title: 'Configurações',
     description: 'Centralize preferências institucionais e do sistema.',
-    emptyText: 'Nenhuma configuração disponível nesta etapa.'
-  }
+    icon: SettingsOutlinedIcon,
+    module: true
+  },
+  { path: '/account', label: 'Minha Conta', title: 'Minha Conta', hidden: true }
 ];
+
+const byPath = Object.fromEntries(appRoutes.map((route) => [route.path, route]));
+
+export const navigationGroups = [
+  { items: [byPath['/dashboard']] },
+  { label: 'Cadastros', items: [byPath['/customers'], byPath['/suppliers'], byPath['/products']] },
+  { items: [byPath['/inventory'], byPath['/sales'], byPath['/financial']] },
+  {
+    label: 'Administração',
+    items: [byPath['/admin/companies'], byPath['/admin/users'], byPath['/admin/plan']]
+  },
+  { items: [byPath['/settings']] }
+];
+
+export const modulePages = appRoutes.filter((route) => route.module);
+
+export function getRouteMetadata(pathname) {
+  return byPath[pathname];
+}

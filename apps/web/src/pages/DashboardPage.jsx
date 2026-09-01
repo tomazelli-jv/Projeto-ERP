@@ -12,23 +12,28 @@ import { EmptyState } from '../components/feedback/EmptyState.jsx';
 const indicators = [
   {
     label: 'Vendas do dia',
-    value: 'R$ 0,00',
-    detail: 'Nenhuma venda registrada',
+    value: '—',
+    detail: 'Aguardando integração do módulo',
     icon: PointOfSaleOutlinedIcon
   },
   {
     label: 'Contas a receber',
-    value: '--',
-    detail: 'Módulo ainda não conectado',
+    value: '—',
+    detail: 'Aguardando integração do módulo',
     icon: ReceiptLongOutlinedIcon
   },
   {
     label: 'Contas a pagar',
-    value: '--',
-    detail: 'Módulo ainda não conectado',
+    value: '—',
+    detail: 'Aguardando integração do módulo',
     icon: AccountBalanceWalletOutlinedIcon
   },
-  { label: 'Estoque baixo', value: '--', detail: 'Sem dados para análise', icon: Inventory2OutlinedIcon }
+  {
+    label: 'Estoque baixo',
+    value: '—',
+    detail: 'Aguardando integração do módulo',
+    icon: Inventory2OutlinedIcon
+  }
 ];
 
 const shortcuts = [
@@ -42,8 +47,8 @@ export function DashboardPage() {
     <>
       <PageHeader
         title="Dashboard"
-        description="Uma visão rápida do ambiente e das principais rotinas do negócio."
-        action={<Chip label="Dados ainda não conectados" variant="outlined" />}
+        description="Uma visão geral dos módulos e das rotinas disponíveis no seu ambiente."
+        action={<Chip label="Módulos aguardando integração" variant="outlined" />}
       />
       <Grid container spacing={2.5}>
         {indicators.map(({ label, value, detail, icon: Icon }) => (
@@ -55,7 +60,7 @@ export function DashboardPage() {
                     <Typography color="text.secondary" variant="body2">
                       {label}
                     </Typography>
-                    <Typography sx={{ mt: 1 }} variant="h2">
+                    <Typography aria-label="Dado ainda não disponível" sx={{ mt: 1 }} variant="h2">
                       {value}
                     </Typography>
                   </Box>
@@ -83,12 +88,12 @@ export function DashboardPage() {
         <Grid size={{ xs: 12, lg: 7 }}>
           <SectionCard
             title="Atividades recentes"
-            subtitle="Atualizações importantes do ambiente aparecerão aqui."
+            subtitle="Atualizações reais aparecerão aqui quando os módulos forem conectados."
             sx={{ height: '100%' }}
           >
             <EmptyState
-              title="Nenhuma atividade disponível"
-              description="As atividades serão apresentadas quando os módulos operacionais forem conectados."
+              title="Atividades ainda não disponíveis"
+              description="Nenhuma informação operacional será exibida sem uma fonte de dados real."
             />
           </SectionCard>
         </Grid>
