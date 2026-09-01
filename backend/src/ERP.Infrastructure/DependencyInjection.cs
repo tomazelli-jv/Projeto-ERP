@@ -4,7 +4,6 @@ using ERP.Infrastructure.Security;
 using ERP.Infrastructure.Migrations;
 using ERP.Infrastructure.Persistence;
 using ERP.Infrastructure.Application;
-using ERP.Infrastructure.Notifications;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
@@ -27,7 +26,7 @@ public static class DependencyInjection
         services.AddSingleton(new MySqlDataSourceBuilder(connectionString).Build());
         services.AddOptions<PasswordSecurityOptions>()
             .Bind(configuration.GetSection(PasswordSecurityOptions.SectionName))
-            .Validate(options => options.MemoryCostKiB >= 8192 && options.Iterations > 0 && options.Parallelism > 0 && options.HashLength >= 16 && options.SetupTokenTtlHours > 0,
+            .Validate(options => options.MemoryCostKiB >= 8192 && options.Iterations > 0 && options.Parallelism > 0 && options.HashLength >= 16,
                 "PasswordSecurity configuration is invalid.")
             .ValidateOnStart();
         services.AddOptions<AuthenticationOptions>()
@@ -43,13 +42,7 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();
         services.AddSingleton<MariaDbHealthCheck>();
         services.AddSingleton<MariaDbMigrationRunner>();
-        services.AddSingleton<OnboardingRepository>();
-        services.AddSingleton<PasswordSetupRepository>();
         services.AddSingleton<AuthenticationRepository>();
-        services.AddSingleton<IPasswordSetupNotifier, NullPasswordSetupNotifier>();
-        services.AddSingleton<PasswordSetupWorkflow>();
-        services.AddSingleton<OnboardingService>();
-        services.AddSingleton<PasswordSetupService>();
         services.AddSingleton<IRefreshTokenGenerator, RefreshTokenGenerator>();
         services.AddSingleton<IAccessTokenService, HmacAccessTokenService>();
         services.AddSingleton<AuthenticationService>();

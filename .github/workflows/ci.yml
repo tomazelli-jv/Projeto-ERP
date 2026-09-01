@@ -79,5 +79,3 @@ jobs:
       - name: Build React frontend
         run: npm run build --workspace=@tomazelli/web
       - run: npm audit --audit-level=high
-      - name: Ensure development seeds are blocked
-        run: npm run db:seed && exit 1 || exit 0

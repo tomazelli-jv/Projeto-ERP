@@ -17,7 +17,6 @@ npm install
 cp .env.example .env
 npm run db:up
 npm run db:migrate
-npm run db:seed
 npm run dev
 ```
 
@@ -47,7 +46,14 @@ Serviços locais:
 | `npm run db:migrate`    | Aplica migrations pelo runner .NET             |
 | `npm run db:rollback`   | Reverte o último lote pelo runner .NET         |
 | `npm run db:status`     | Exibe o ledger compartilhado `knex_migrations` |
-| `npm run db:seed`       | Seed com `DOTNET_ENVIRONMENT=Development`      |
+
+Para criar manualmente o primeiro usuário, disponibilize `ConnectionStrings__MariaDb` no ambiente e execute:
+
+```bash
+dotnet run --project backend/tools/ERP.AdminCli -- create-user
+```
+
+A senha é solicitada interativamente e não deve ser informada como argumento.
 
 ## Estrutura
 
@@ -55,10 +61,11 @@ Serviços locais:
 - `backend/src/ERP.Application`: contratos da aplicação;
 - `backend/src/ERP.Domain`: regras de domínio;
 - `backend/src/ERP.Infrastructure`: MariaDB, segurança e workflows;
-- `backend/src/ERP.Migrations`: runner e seed de desenvolvimento;
+- `backend/src/ERP.Migrations`: runner de migrations;
+- `backend/tools/ERP.AdminCli`: comandos administrativos manuais;
 - `backend/tests`: testes unitários e de integração;
 - `apps/web`: aplicação React/Vite;
-- `database/migrations`: fontes históricas 001–007 preservadas como referência;
+- `database/migrations`: migrations oficiais do rebaseline;
 - `docs`: arquitetura, decisões e operação.
 
 A API nunca executa migrations no startup. Configure MariaDB por `ConnectionStrings__MariaDb` e mantenha credenciais reais exclusivamente em variáveis de ambiente.

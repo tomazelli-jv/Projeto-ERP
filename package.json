@@ -25,7 +25,6 @@
     "db:migrate": "dotnet run --project backend/src/ERP.Migrations -- up",
     "db:rollback": "dotnet run --project backend/src/ERP.Migrations -- down",
     "db:status": "dotnet run --project backend/src/ERP.Migrations -- status",
-    "db:seed": "dotnet run --project backend/src/ERP.Migrations -- seed",
     "ci": "npm run format:check && npm run lint && npm run test:coverage && npm run build"
   },
   "devDependencies": {

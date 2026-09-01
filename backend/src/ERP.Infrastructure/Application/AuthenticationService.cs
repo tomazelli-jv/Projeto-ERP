@@ -41,8 +41,7 @@ public sealed class AuthenticationService(
             var user = await repository.FindUserByEmailAsync(connection, transaction, input.Email, token);
             var hash = user?.PasswordHash ?? await _dummyHash.Value;
             var passwordValid = await passwordHasher.VerifyAsync(hash, input.Password, token);
-            var structurallyEligible = user is not null && await repository.HasActiveMembershipAsync(connection, transaction, user.Id, token);
-            if (user is null || user.PasswordHash is null || !passwordValid || user.Status != "active" || !structurallyEligible)
+            if (user is null || !passwordValid || !user.Active)
             {
                 await repository.InsertLoginAttemptAsync(connection, transaction, input.EmailHash, user?.Id, false, "invalid_credentials", ip, now, token);
                 await repository.InsertSecurityEventAsync(connection, transaction, user?.Id, null, "login_refused", "failure", ip, now, token);
@@ -59,7 +58,6 @@ public sealed class AuthenticationService(
             await repository.CreateSessionAsync(connection, transaction, sessionId, user.Id, now, expires, Limit(ip, 45), Limit(userAgent, 255), token);
             await repository.CreateRefreshTokenAsync(connection, transaction, tokenId, sessionId, refresh.Hash, familyId, null, now, expires, token);
             await repository.InsertLoginAttemptAsync(connection, transaction, input.EmailHash, user.Id, true, "success", ip, now, token);
-            await repository.UpdateLastLoginAsync(connection, transaction, user.Id, now, token);
             await repository.InsertSecurityEventAsync(connection, transaction, user.Id, sessionId, "login_succeeded", "success", ip, now, token);
             await repository.InsertSecurityEventAsync(connection, transaction, user.Id, sessionId, "session_created", "success", ip, now, token);
             await transaction.CommitAsync(token);
@@ -94,7 +92,7 @@ public sealed class AuthenticationService(
             if (session.RevokedAtUtc is not null) throw AuthenticationErrors.SessionRevoked();
             if (session.AbsoluteExpiresAtUtc <= now) throw AuthenticationErrors.SessionExpired();
             var user = await repository.FindUserByIdAsync(connection, transaction, session.UserId, token);
-            if (user?.Status != "active" || !await repository.HasActiveMembershipAsync(connection, transaction, session.UserId, token)) throw AuthenticationErrors.RefreshInvalid();
+            if (user is null || !user.Active) throw AuthenticationErrors.RefreshInvalid();
             var successorId = Guid.NewGuid().ToString(); var next = refreshTokens.Generate();
             await repository.MarkRefreshUsedAsync(connection, transaction, current.Id, successorId, now, token);
             await repository.CreateRefreshTokenAsync(connection, transaction, successorId, session.Id, next.Hash, current.FamilyId, current.Id, now, session.AbsoluteExpiresAtUtc, token);
@@ -140,7 +138,7 @@ public sealed class AuthenticationService(
     {
         await using var connection = await connections.OpenConnectionAsync(token);
         var user = await repository.FindUserByIdAsync(connection, null, userId, token) ?? throw AuthenticationErrors.SessionInvalid();
-        return new(user.Id, user.Name, user.Email, user.Status, await repository.ListMembershipsAsync(connection, userId, token));
+        return new(user.Id, user.Name, user.Email, user.Active ? "active" : "inactive");
     }
 
     public async Task<IReadOnlyList<SessionSummary>> SessionsAsync(string userId, string currentSessionId, CancellationToken token)
