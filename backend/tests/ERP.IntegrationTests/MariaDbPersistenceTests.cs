@@ -45,17 +45,25 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
             await validation.ExecuteAsync(
                 "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento,cep,uf) VALUES (@Id,@EmpresaId,'Loja Teste Ltda','Loja Teste','12345678000190','12345678','SP')",
                 new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId });
+            await validation.ExecuteAsync(
+                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento,uf) VALUES (@Id,@EmpresaId,'Loja Tocantins','Loja TO','12345678000191','TO')",
+                new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId });
+            await validation.ExecuteAsync(
+                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento,uf) VALUES (@Id,@EmpresaId,'Loja sem UF','Loja sem UF','12345678000192',NULL)",
+                new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId });
 
             Assert.Equal(1, await validation.ExecuteScalarAsync<int>("SELECT ativo FROM empresa WHERE id_empresa=@Id", new { Id = empresaId }));
             await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
                 "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento) VALUES (@Id,@EmpresaId,'Inválida','Inválida','123')",
                 new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId }));
             await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
-                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento,cep) VALUES (@Id,@EmpresaId,'Inválida','Inválida','12345678000191','12A45678')",
+                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento,cep) VALUES (@Id,@EmpresaId,'Inválida','Inválida','12345678000193','12A45678')",
                 new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId }));
-            await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
-                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento,uf) VALUES (@Id,@EmpresaId,'Inválida','Inválida','12345678000192','sp')",
-                new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId }));
+            var invalidStates = new[] { "sp", "Sp", "sP", "S1", "S" };
+            for (var index = 0; index < invalidStates.Length; index++)
+                await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
+                    "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento,uf) VALUES (@Id,@EmpresaId,'UF Inválida','UF Inválida',@Document,@Uf)",
+                    new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId, Document = $"2234567800019{index}", Uf = invalidStates[index] }));
             await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync("DELETE FROM empresa WHERE id_empresa=@Id", new { Id = empresaId }));
         }
 

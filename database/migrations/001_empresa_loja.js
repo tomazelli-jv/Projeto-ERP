@@ -24,7 +24,7 @@ export async function up(knex) {
       `UNIQUE KEY \`uq_loja_documento\` (\`documento\`), KEY \`idx_loja_id_empresa\` (\`id_empresa\`), ` +
       `CONSTRAINT \`chk_loja_documento\` CHECK (CHAR_LENGTH(\`documento\`) = 14 AND \`documento\` NOT REGEXP '[^0-9]'), ` +
       `CONSTRAINT \`chk_loja_cep\` CHECK (\`cep\` IS NULL OR CHAR_LENGTH(\`cep\`) = 8 AND \`cep\` NOT REGEXP '[^0-9]'), ` +
-      `CONSTRAINT \`chk_loja_uf\` CHECK (\`uf\` IS NULL OR CHAR_LENGTH(\`uf\`) = 2 AND \`uf\` NOT REGEXP '[^A-Z]')` +
+      `CONSTRAINT \`chk_loja_uf\` CHECK (\`uf\` IS NULL OR (CHAR_LENGTH(\`uf\`) = 2 AND BINARY \`uf\` REGEXP '^[A-Z]{2}$'))` +
       `) ${tableOptions}`
   );
 }
