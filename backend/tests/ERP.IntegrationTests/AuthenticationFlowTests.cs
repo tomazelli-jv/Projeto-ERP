@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Dapper;
 using ERP.Application.Abstractions;
 using ERP.Application.Contracts;
@@ -120,7 +121,12 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
             client.SendAsync(CookieRequest(HttpMethod.Post, "/api/v1/auth/refresh", cookie)),
             client.SendAsync(CookieRequest(HttpMethod.Post, "/api/v1/auth/refresh", cookie)));
         var concurrencyStatus = string.Join('_', concurrent.Select(response => (int)response.StatusCode).Order());
-        Stage(concurrent.Count(response => response.StatusCode == HttpStatusCode.OK) == 1 && concurrent.Count(response => response.StatusCode == HttpStatusCode.Unauthorized) == 1, $"AUTH_STAGE_CONCURRENCY_{concurrencyStatus}");
+        var concurrencyIsValid = concurrent.Count(response => response.StatusCode == HttpStatusCode.OK) == 1 && concurrent.Count(response => response.StatusCode == HttpStatusCode.Unauthorized) == 1;
+        if (!concurrencyIsValid)
+        {
+            var diagnostics = await Task.WhenAll(concurrent.Select(SanitizedResponseAsync));
+            Stage(false, $"AUTH_STAGE_CONCURRENCY_{concurrencyStatus}: {string.Join(" | ", diagnostics)}");
+        }
         var refreshResponse = concurrent.Single(response => response.StatusCode == HttpStatusCode.OK);
         var reuseResponse = concurrent.Single(response => response.StatusCode == HttpStatusCode.Unauthorized);
         var rotatedCookie = CookieValue(refreshResponse); Stage(cookie != rotatedCookie, "AUTH_STAGE_ROTATION_COOKIE");
@@ -252,4 +258,44 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
     { var request = new HttpRequestMessage(method, path); request.Headers.Add("Origin", "http://localhost:5173"); request.Headers.Add("Cookie", $"erp_refresh={cookie}"); return request; }
     private static string CookieValue(HttpResponseMessage response) => response.Headers.GetValues("Set-Cookie").Single(x => x.StartsWith("erp_refresh=", StringComparison.Ordinal)).Split(';')[0].Split('=', 2)[1];
     private static void Stage(bool condition, string code) => Assert.True(condition, code);
+
+    private static async Task<string> SanitizedResponseAsync(HttpResponseMessage response)
+    {
+        var body = await response.Content.ReadAsStringAsync();
+        try
+        {
+            var json = JsonNode.Parse(body);
+            RedactSecrets(json);
+            return $"HTTP {(int)response.StatusCode} {json?.ToJsonString() ?? "null"}";
+        }
+        catch (JsonException)
+        {
+            return $"HTTP {(int)response.StatusCode} <corpo não JSON omitido>";
+        }
+    }
+
+    private static void RedactSecrets(JsonNode? node)
+    {
+        if (node is JsonObject jsonObject)
+        {
+            foreach (var property in jsonObject.ToArray())
+            {
+                if (IsSensitiveName(property.Key))
+                    jsonObject[property.Key] = "[REDACTED]";
+                else
+                    RedactSecrets(property.Value);
+            }
+        }
+        else if (node is JsonArray jsonArray)
+        {
+            foreach (var item in jsonArray) RedactSecrets(item);
+        }
+    }
+
+    private static bool IsSensitiveName(string name) =>
+        name.Contains("token", StringComparison.OrdinalIgnoreCase) ||
+        name.Contains("password", StringComparison.OrdinalIgnoreCase) ||
+        name.Contains("secret", StringComparison.OrdinalIgnoreCase) ||
+        name.Contains("cookie", StringComparison.OrdinalIgnoreCase) ||
+        name.Contains("authorization", StringComparison.OrdinalIgnoreCase);
 }

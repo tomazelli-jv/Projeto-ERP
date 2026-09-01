@@ -10,7 +10,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Test");
-        builder.ConfigureLogging(logging => logging.ClearProviders());
+        builder.ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddConsole();
+            logging.SetMinimumLevel(LogLevel.Error);
+        });
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
             var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__MariaDb")
