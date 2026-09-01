@@ -1,4 +1,5 @@
 using Dapper;
+using ERP.Infrastructure.Application;
 using MySqlConnector;
 
 namespace ERP.Infrastructure.Persistence;
@@ -58,4 +59,30 @@ public sealed class EmpresaRepository
         connection.QuerySingleOrDefaultAsync<LojaRecord>(new CommandDefinition(
             $"SELECT {LojaColumns} FROM funcionario_loja fl INNER JOIN loja l ON l.id_loja=fl.id_loja AND l.id_empresa=fl.id_empresa WHERE fl.id_funcionario=@FuncionarioId AND fl.id_empresa=@ContextEmpresaId AND l.id_empresa=@ContextEmpresaId AND l.id_loja=@LojaId LIMIT 1",
             new { context.FuncionarioId, ContextEmpresaId = context.EmpresaId, LojaId = lojaId }, cancellationToken: token));
+
+    // O predicado inclui contexto e id da rota; rows affected permite ao service reavaliar ausência ou concorrência.
+    public Task<int> UpdateEmpresaAsync(MySqlConnection connection, string contextEmpresaId, string requestedEmpresaId, string nome, bool ativo, CancellationToken token) =>
+        connection.ExecuteAsync(new CommandDefinition(
+            "UPDATE empresa SET nome=@Nome,ativo=@Ativo WHERE id_empresa=@RequestedEmpresaId AND id_empresa=@ContextEmpresaId",
+            new { Nome = nome, Ativo = ativo, RequestedEmpresaId = requestedEmpresaId, ContextEmpresaId = contextEmpresaId }, cancellationToken: token));
+
+    // Insere a loja na transação fornecida pelo service; repository não decide commit nem rollback.
+    public Task<int> CreateLojaAsync(MySqlConnection connection, MySqlTransaction transaction, string lojaId, string empresaId, LojaWrite loja, CancellationToken token) =>
+        connection.ExecuteAsync(new CommandDefinition(
+            "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento,telefone,email,cep,rua,numero,complemento,bairro,cidade,uf,ativo) VALUES (@LojaId,@EmpresaId,@RazaoSocial,@NomeFantasia,@Documento,@Telefone,@Email,@Cep,@Rua,@Numero,@Complemento,@Bairro,@Cidade,@Uf,@Ativo)",
+            new { LojaId = lojaId, EmpresaId = empresaId, loja.RazaoSocial, loja.NomeFantasia, loja.Documento, loja.Telefone, loja.Email, loja.Cep, loja.Rua, loja.Numero, loja.Complemento, loja.Bairro, loja.Cidade, loja.Uf, loja.Ativo },
+            transaction, cancellationToken: token));
+
+    // Cria somente o vínculo do funcionário autor para tornar a nova loja imediatamente acessível após o commit.
+    public Task<int> CreateFuncionarioLojaAsync(MySqlConnection connection, MySqlTransaction transaction, string linkId, BusinessContextRecord context, string lojaId, CancellationToken token) =>
+        connection.ExecuteAsync(new CommandDefinition(
+            "INSERT INTO funcionario_loja (id_funcionario_loja,id_funcionario,id_loja,id_empresa) VALUES (@LinkId,@FuncionarioId,@LojaId,@EmpresaId)",
+            new { LinkId = linkId, context.FuncionarioId, LojaId = lojaId, EmpresaId = context.EmpresaId }, transaction, cancellationToken: token));
+
+    // O UPDATE JOIN exige vínculo explícito e mesma empresa, impedindo escrita por um id_loja obtido externamente.
+    public Task<int> UpdateLojaAsync(MySqlConnection connection, BusinessContextRecord context, string lojaId, LojaWrite loja, CancellationToken token) =>
+        connection.ExecuteAsync(new CommandDefinition(
+            "UPDATE loja l INNER JOIN funcionario_loja fl ON fl.id_loja=l.id_loja AND fl.id_empresa=l.id_empresa SET l.razao_social=@RazaoSocial,l.nome_fantasia=@NomeFantasia,l.documento=@Documento,l.telefone=@Telefone,l.email=@Email,l.cep=@Cep,l.rua=@Rua,l.numero=@Numero,l.complemento=@Complemento,l.bairro=@Bairro,l.cidade=@Cidade,l.uf=@Uf,l.ativo=@Ativo WHERE l.id_loja=@LojaId AND l.id_empresa=@EmpresaId AND fl.id_funcionario=@FuncionarioId AND fl.id_empresa=@EmpresaId",
+            new { LojaId = lojaId, EmpresaId = context.EmpresaId, context.FuncionarioId, loja.RazaoSocial, loja.NomeFantasia, loja.Documento, loja.Telefone, loja.Email, loja.Cep, loja.Rua, loja.Numero, loja.Complemento, loja.Bairro, loja.Cidade, loja.Uf, loja.Ativo },
+            cancellationToken: token));
 }

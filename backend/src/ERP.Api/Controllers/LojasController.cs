@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ERP.Application.Contracts;
 using ERP.Infrastructure.Application;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,4 +16,9 @@ public sealed class LojasController(EmpresaService empresas) : ControllerBase
     [HttpGet("{idLoja:guid}")]
     public async Task<IActionResult> Find(string idLoja, CancellationToken token) =>
         Ok(new { data = await empresas.FindLojaAsync(User.FindFirstValue("sub")!, idLoja, token) });
+
+    // PUT altera somente campos editáveis e mantém id, empresa e data de cadastro imutáveis.
+    [HttpPut("{idLoja:guid}")]
+    public async Task<IActionResult> Update(string idLoja, [FromBody] UpdateLojaRequest request, CancellationToken token) =>
+        Ok(new { data = await empresas.UpdateLojaAsync(User.FindFirstValue("sub")!, idLoja, request, token) });
 }
