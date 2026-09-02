@@ -1,21 +1,21 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
-using ERP.Application.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace ERP.IntegrationTests;
 
 public sealed class ApiFactory : WebApplicationFactory<Program>
 {
-    public CapturingNotifier Notifier { get; } = new();
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Test");
-        builder.ConfigureLogging(logging => logging.ClearProviders());
+        builder.ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddConsole();
+            logging.SetMinimumLevel(LogLevel.Error);
+        });
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
             var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__MariaDb")
@@ -29,21 +29,5 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 ["Web:Origins:0"] = "http://localhost:5173"
             });
         });
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<IPasswordSetupNotifier>();
-            services.AddSingleton<IPasswordSetupNotifier>(Notifier);
-        });
-    }
-}
-
-public sealed class CapturingNotifier : IPasswordSetupNotifier
-{
-    private readonly System.Collections.Concurrent.ConcurrentQueue<PasswordSetupNotification> _notifications = new();
-    public IReadOnlyCollection<PasswordSetupNotification> Notifications => _notifications.ToArray();
-    public Task DeliverAsync(PasswordSetupNotification notification, CancellationToken cancellationToken = default)
-    {
-        _notifications.Enqueue(notification);
-        return Task.CompletedTask;
     }
 }

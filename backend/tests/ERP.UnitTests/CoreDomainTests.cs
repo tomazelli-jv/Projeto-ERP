@@ -1,6 +1,5 @@
 using ERP.Domain.Brazil;
 using ERP.Domain.Security;
-using ERP.Domain.Tenancy;
 
 namespace ERP.UnitTests;
 
@@ -13,12 +12,6 @@ public sealed class CoreDomainTests
     {
         Assert.Equal(normalized, Cnpj.Normalize(input));
         Assert.Equal(valid, Cnpj.IsValid(input));
-    }
-
-    [Fact]
-    public void NormalizesUrlSafeTenantSlug()
-    {
-        Assert.Equal("cliente-sao-jose-matriz", TenantSlug.Normalize("  Cliente São José / Matriz  "));
     }
 
     [Fact]

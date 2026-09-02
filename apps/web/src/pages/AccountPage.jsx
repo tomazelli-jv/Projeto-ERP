@@ -103,26 +103,6 @@ export function AccountPage() {
           </Grid>
         </SectionCard>
 
-        {user.memberships?.length > 0 && (
-          <SectionCard title="Ambientes" subtitle="Ambientes aos quais você possui acesso.">
-            <Grid container spacing={2}>
-              {user.memberships.map((membership) => (
-                <Grid key={membership.tenantId} size={{ xs: 12, sm: 6, lg: 4 }}>
-                  <Card sx={{ height: '100%', bgcolor: 'background.default' }}>
-                    <CardContent>
-                      <Typography fontWeight={700}>{membership.tenantName}</Typography>
-                      <Typography color="text.secondary" variant="body2">
-                        {membership.tenantSlug}
-                      </Typography>
-                      <StatusChip labels={accountStatuses} status={membership.status} sx={{ mt: 1.5 }} />
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </SectionCard>
-        )}
-
         <SectionCard
           title="Segurança"
           subtitle="Revise onde sua conta está conectada e encerre acessos que não reconhece."

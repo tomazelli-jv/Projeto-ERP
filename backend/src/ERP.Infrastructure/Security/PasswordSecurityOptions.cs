@@ -8,5 +8,4 @@ public sealed class PasswordSecurityOptions
     public int Parallelism { get; init; } = 1;
     public int HashLength { get; init; } = 32;
     public int SaltLength { get; init; } = 16;
-    public int SetupTokenTtlHours { get; init; } = 24;
 }

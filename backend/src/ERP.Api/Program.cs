@@ -57,14 +57,6 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
     options.OnRejected = RateLimitResponse.WriteAsync;
-    options.AddPolicy("password-setup", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 5,
-            Window = TimeSpan.FromMinutes(15),
-            QueueLimit = 0
-        }));
     options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
