@@ -45,6 +45,15 @@ public sealed class CompanyBootstrapTests(DatabaseFixture database)
                 "SELECT COUNT(*) FROM funcionario_loja WHERE id_funcionario IN (SELECT id_funcionario FROM funcionario WHERE id_usuario=@UserId)",
                 new { UserId = userId }));
 
+            // O bootstrap novo deve entregar Administrador e exatamente todo o catálogo oficial na mesma transação.
+            Assert.Equal(6, await connection.ExecuteScalarAsync<int>(
+                "SELECT COUNT(DISTINCT pe.nome) FROM usuario_perfis up INNER JOIN perfis p ON p.id_perfil=up.id_perfil INNER JOIN perfil_permissao pp ON pp.id_perfil=p.id_perfil INNER JOIN permissao pe ON pe.id_permissao=pp.id_permissao WHERE up.id_usuario=@UserId AND p.nome_normalizado='ADMINISTRADOR'",
+                new { UserId = userId }));
+            await new EnsureRbacService(new MariaDbConnectionFactory(dataSource)).EnsureAsync(email);
+            Assert.Equal(1, await connection.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM usuario_perfis up INNER JOIN perfis p ON p.id_perfil=up.id_perfil WHERE up.id_usuario=@UserId AND p.nome_normalizado='ADMINISTRADOR'",
+                new { UserId = userId }));
+
             var repeated = await repository.BootstrapAsync(new(email, "Outra Empresa", "Outro Funcionário"));
             Assert.Equal(BootstrapCompanyOutcome.BusinessContextAlreadyConfigured, repeated);
             Assert.Equal(1, await connection.ExecuteScalarAsync<int>(
@@ -54,6 +63,7 @@ public sealed class CompanyBootstrapTests(DatabaseFixture database)
         {
             // Limpeza respeita as FKs e mantém o banco compartilhado isolado para os demais cenários.
             await using var cleanup = await dataSource.OpenConnectionAsync();
+            await cleanup.ExecuteAsync("DELETE FROM usuario_perfis WHERE id_usuario=@UserId", new { UserId = userId });
             await cleanup.ExecuteAsync("DELETE FROM funcionario WHERE id_usuario=@UserId", new { UserId = userId });
             await cleanup.ExecuteAsync("DELETE FROM empresa WHERE nome=@CompanyName", new { CompanyName = companyName });
             await cleanup.ExecuteAsync("DELETE FROM usuarios WHERE id_usuario=@UserId", new { UserId = userId });

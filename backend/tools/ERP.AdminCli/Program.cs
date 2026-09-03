@@ -36,7 +36,11 @@ internal static class AdminCliProgram
             var connections = new MariaDbConnectionFactory(dataSource);
             return string.Equals(args[0], "create-user", StringComparison.OrdinalIgnoreCase)
                 ? await RunCreateUserAsync(configuration, connections)
-                : await RunBootstrapCompanyAsync(connections);
+                : string.Equals(args[0], "reset-password", StringComparison.OrdinalIgnoreCase)
+                    ? await RunResetPasswordAsync(configuration, connections)
+                : string.Equals(args[0], "bootstrap-company", StringComparison.OrdinalIgnoreCase)
+                    ? await RunBootstrapCompanyAsync(connections)
+                    : await RunEnsureRbacAsync(connections);
         }
         catch (CreateUserValidationException exception)
         {
@@ -47,6 +51,16 @@ internal static class AdminCliProgram
         {
             Console.Error.WriteLine(exception.Message);
             return 2;
+        }
+        catch (ResetPasswordValidationException exception)
+        {
+            Console.Error.WriteLine(exception.Message);
+            return 2;
+        }
+        catch (ResetPasswordUserNotFoundException exception)
+        {
+            Console.Error.WriteLine(exception.Message);
+            return 3;
         }
         catch (Exception exception) when (exception is CreateUserConflictException or BootstrapCompanyConflictException)
         {
@@ -113,17 +127,47 @@ internal static class AdminCliProgram
         return 0;
     }
 
+    private static async Task<int> RunResetPasswordAsync(IConfiguration configuration, IMariaDbConnectionFactory connections)
+    {
+        var passwordOptions = configuration.GetSection(PasswordSecurityOptions.SectionName).Get<PasswordSecurityOptions>() ?? new();
+        var hasher = new Argon2idPasswordHasher(Options.Create(passwordOptions));
+        var service = new ResetPasswordService(new MariaDbUserPasswordRepository(connections), hasher);
+
+        Console.Write("E-mail do usuário: ");
+        var email = Console.ReadLine();
+        var password = ReadPassword("Nova senha: ");
+        var confirmation = ReadPassword("Confirme a nova senha: ");
+        var normalizedEmail = await service.ResetAsync(new(email, password, confirmation));
+        Console.WriteLine("Senha redefinida com sucesso.");
+        Console.WriteLine($"E-mail: {normalizedEmail}");
+        return 0;
+    }
+
+    // ensure-rbac corrige instalações anteriores sem contornar a proteção contra um segundo bootstrap empresarial.
+    private static async Task<int> RunEnsureRbacAsync(IMariaDbConnectionFactory connections)
+    {
+        Console.Write("E-mail do usuário: ");
+        var email = await new EnsureRbacService(connections).EnsureAsync(Console.ReadLine());
+        Console.WriteLine("RBAC administrativo garantido com sucesso.");
+        Console.WriteLine($"Usuário: {email}");
+        return 0;
+    }
+
     // A lista fechada evita executar acidentalmente operações não reconhecidas.
     private static bool IsSupportedCommand(string command) =>
         string.Equals(command, "create-user", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(command, "bootstrap-company", StringComparison.OrdinalIgnoreCase);
+        string.Equals(command, "reset-password", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(command, "bootstrap-company", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(command, "ensure-rbac", StringComparison.OrdinalIgnoreCase);
 
     // A ajuda documenta os dois comandos sem sugerir parâmetros sensíveis.
     private static void PrintUsage()
     {
         Console.Error.WriteLine("Uso:");
         Console.Error.WriteLine("  dotnet run --project backend/tools/ERP.AdminCli -- create-user");
+        Console.Error.WriteLine("  dotnet run --project backend/tools/ERP.AdminCli -- reset-password");
         Console.Error.WriteLine("  dotnet run --project backend/tools/ERP.AdminCli -- bootstrap-company");
+        Console.Error.WriteLine("  dotnet run --project backend/tools/ERP.AdminCli -- ensure-rbac");
     }
 
     // A leitura interativa oculta a senha em terminais; redirecionamento continua disponível para automação controlada.

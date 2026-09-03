@@ -51,6 +51,9 @@ public sealed class MariaDbCompanyBootstrapRepository(IMariaDbConnectionFactory 
                 new { EmployeeId = employeeId, UserId = userId, CompanyId = companyId, input.EmployeeName },
                 transaction, cancellationToken: cancellationToken));
 
+            // Autoridade administrativa nasce na mesma transação para impedir empresa criada com bootstrap incompleto.
+            await MariaDbRbacBootstrapper.EnsureAdministratorAsync(connection, transaction, userId, cancellationToken);
+
             await transaction.CommitAsync(cancellationToken);
             return BootstrapCompanyOutcome.Created;
         }

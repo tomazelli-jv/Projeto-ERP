@@ -3,6 +3,8 @@ using ERP.Application.Contracts;
 using ERP.Infrastructure.Application;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ERP.Api.Authorization;
+using ERP.Application.Authorization;
 
 namespace ERP.Api.Controllers;
 
@@ -12,13 +14,15 @@ namespace ERP.Api.Controllers;
 [Route("api/v1/lojas")]
 public sealed class LojasController(EmpresaService empresas) : ControllerBase
 {
-    // GET /api/v1/lojas/{idLoja} retorna 404 quando a loja não existe ou não está vinculada ao funcionário.
+    // Mesmo com permissão de leitura, a rota retorna 404 quando a loja não está vinculada ao funcionário.
     [HttpGet("{idLoja:guid}")]
+    [RequirePermission(Permissions.AdministracaoLojasVisualizar)]
     public async Task<IActionResult> Find(string idLoja, CancellationToken token) =>
         Ok(new { data = await empresas.FindLojaAsync(User.FindFirstValue("sub")!, idLoja, token) });
 
-    // PUT altera somente campos editáveis e mantém id, empresa e data de cadastro imutáveis.
+    // Gerenciamento é obrigatório, mas não amplia o escopo; somente campos editáveis da loja vinculada são alterados.
     [HttpPut("{idLoja:guid}")]
+    [RequirePermission(Permissions.AdministracaoLojasGerenciar)]
     public async Task<IActionResult> Update(string idLoja, [FromBody] UpdateLojaRequest request, CancellationToken token) =>
         Ok(new { data = await empresas.UpdateLojaAsync(User.FindFirstValue("sub")!, idLoja, request, token) });
 }

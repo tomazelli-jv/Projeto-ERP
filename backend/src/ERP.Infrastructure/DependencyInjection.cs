@@ -49,6 +49,8 @@ public static class DependencyInjection
         // EmpresaService e EmpresaRepository formam a fronteira de leitura empresarial e aplicam o escopo do funcionário no SQL.
         services.AddSingleton<EmpresaRepository>();
         services.AddSingleton<EmpresaService>();
+        // Resolução RBAC permanece server-side e consulta perfis/permissões atuais a cada decisão.
+        services.AddSingleton<IPermissionResolver, PermissionRepository>();
         return services;
     }
 }
