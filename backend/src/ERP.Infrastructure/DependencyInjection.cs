@@ -54,6 +54,9 @@ public static class DependencyInjection
         // Gestão de usuários compartilha a conexão oficial e mantém transações coordenadas no service.
         services.AddSingleton<UserManagementRepository>();
         services.AddSingleton<UserManagementService>();
+        // Contexto operacional permanece stateless e valida X-Loja-Id por uma fronteira reutilizável.
+        services.AddSingleton<OperationalContextRepository>();
+        services.AddSingleton<IOperationalContextResolver, OperationalContextService>();
         return services;
     }
 }

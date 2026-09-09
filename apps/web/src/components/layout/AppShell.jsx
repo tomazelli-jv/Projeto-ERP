@@ -7,10 +7,14 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
+  FormControl,
   IconButton,
+  InputLabel,
   Menu,
   MenuItem,
+  Select,
   Stack,
   Toolbar,
   Typography,
@@ -20,6 +24,7 @@ import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router';
 import { useAuth } from '../../app/auth/auth-context.js';
+import { useOperationalContext } from '../../app/operational-context/operational-context.js';
 import { Sidebar } from '../navigation/Sidebar.jsx';
 
 const drawerWidth = 264;
@@ -31,6 +36,15 @@ export function AppShell() {
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const { user, logout } = useAuth();
+  const {
+    company,
+    stores,
+    activeStore,
+    setActiveStore,
+    isLoading: contextLoading,
+    error: contextError,
+    retry
+  } = useOperationalContext();
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -82,9 +96,9 @@ export function AppShell() {
             justifyContent="space-between"
             sx={{ minWidth: 0, width: '100%' }}
           >
-            <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ minWidth: 0, display: { xs: 'none', sm: 'block' } }}>
               <Typography variant="subtitle1" fontWeight={750} noWrap>
-                Tomazelli ERP
+                {company?.nome ?? 'Tomazelli ERP'}
               </Typography>
               {import.meta.env.DEV && !compact && (
                 <Typography variant="caption" color="text.secondary">
@@ -93,6 +107,56 @@ export function AppShell() {
               )}
             </Box>
             <Stack direction="row" alignItems="center" spacing={1.5}>
+              {/* Seletor global mostra a empresa derivada do backend e nunca aceita lojas fora da lista atual. */}
+              {contextLoading ? (
+                <Stack alignItems="center" direction="row" spacing={1} role="status">
+                  <CircularProgress size={20} />
+                  {!compact && <Typography variant="caption">Carregando lojas...</Typography>}
+                </Stack>
+              ) : contextError ? (
+                <Button color="error" size="small" onClick={() => retry()}>
+                  {contextError.code === 'BUSINESS_CONTEXT_REQUIRED'
+                    ? 'Empresa não vinculada'
+                    : 'Recarregar contexto'}
+                </Button>
+              ) : (
+                <FormControl
+                  size="small"
+                  sx={{ minWidth: { xs: 150, sm: 210 }, maxWidth: { xs: 180, md: 280 } }}
+                >
+                  <InputLabel id="active-store-label">Loja</InputLabel>
+                  <Select
+                    labelId="active-store-label"
+                    label="Loja"
+                    value={activeStore?.id ?? ''}
+                    onChange={(event) => setActiveStore(event.target.value)}
+                    displayEmpty
+                    renderValue={(value) => {
+                      const selected = stores.find((store) => store.id === value);
+                      return (
+                        selected?.nomeFantasia ??
+                        (stores.some((store) => store.ativo) ? 'Selecionar loja' : 'Nenhuma loja disponível')
+                      );
+                    }}
+                  >
+                    {stores.map((store) => (
+                      <MenuItem key={store.id} value={store.id} disabled={!store.ativo}>
+                        <Stack>
+                          <Typography variant="body2">
+                            {store.nomeFantasia}
+                            {store.ativo ? '' : ' — Inativa'}
+                          </Typography>
+                          {(store.cidade || store.uf) && (
+                            <Typography color="text.secondary" variant="caption">
+                              {[store.cidade, store.uf].filter(Boolean).join(' / ')}
+                            </Typography>
+                          )}
+                        </Stack>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
               {!compact && (
                 <Chip label="Ambiente de desenvolvimento" color="warning" size="small" variant="outlined" />
               )}

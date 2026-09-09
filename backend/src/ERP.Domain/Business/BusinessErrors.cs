@@ -14,6 +14,18 @@ public static class BusinessErrors
         "O usuário não possui contexto empresarial.",
         403);
 
+    // Empresa inativa mantém autenticação disponível, mas impede a criação de contexto operacional.
+    public static DomainException BusinessInactive() => new("BUSINESS_INACTIVE", "A empresa vinculada está inativa.", 403);
+
+    // Header ausente ou malformado falha antes de qualquer consulta por loja informada pelo cliente.
+    public static DomainException StoreContextRequired() => new("STORE_CONTEXT_REQUIRED", "Selecione uma loja ativa para continuar.", 400);
+
+    // Loja inexistente, externa ou sem vínculo compartilha 404 para impedir enumeração entre empresas.
+    public static DomainException StoreContextNotFound() => new("STORE_NOT_FOUND", "Loja não encontrada ou não permitida.", 404);
+
+    // Loja vinculada porém inativa possui erro próprio porque sua existência já é conhecida no contexto do usuário.
+    public static DomainException StoreInactive() => new("STORE_INACTIVE", "A loja selecionada está inativa.", 403);
+
     // A mesma resposta cobre empresa inexistente e empresa fora do escopo, evitando enumeração de recursos.
     public static DomainException EmpresaNotFound() => new(
         "EMPRESA_NOT_FOUND",
