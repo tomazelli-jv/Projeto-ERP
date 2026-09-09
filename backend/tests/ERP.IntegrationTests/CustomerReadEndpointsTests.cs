@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Dapper;
 using ERP.Application.Abstractions;
 using ERP.Application.Contracts;
@@ -21,6 +22,9 @@ public sealed class CustomerReadEndpointsTests(DatabaseFixture database)
         using var client = factory.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/clientes")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync($"/api/v1/clientes/{Guid.NewGuid()}")).StatusCode);
+        // Rotas de escrita permanecem protegidas mesmo quando o corpo Ã© sintaticamente vÃ¡lido.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/v1/clientes", WritePayload())).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PutAsJsonAsync($"/api/v1/clientes/{Guid.NewGuid()}", WritePayload())).StatusCode);
     }
 
     [Fact]
@@ -51,6 +55,14 @@ public sealed class CustomerReadEndpointsTests(DatabaseFixture database)
 
     // Numeric fixture documents only satisfy store structural checks and remain unique across a shared test database.
     private static string Document() => Random.Shared.NextInt64(10000000000000, 99999999999999).ToString();
+
+    // O payload omite deliberadamente ids empresariais porque esses valores nunca pertencem ao cliente HTTP.
+    private static CustomerWriteRequest WritePayload() => new()
+    {
+        NomeFantasia = "Cliente protegido",
+        Tipo = "PF",
+        Ativo = true
+    };
 
     private sealed class FixedContext(string companyId, string storeId) : IOperationalContextResolver
     {
