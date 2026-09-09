@@ -11,6 +11,7 @@ using ERP.Infrastructure.Database;
 using ERP.Infrastructure.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
+using ERP.AdminCli;
 
 namespace ERP.IntegrationTests;
 
@@ -174,6 +175,8 @@ public sealed class BusinessWriteEndpointsTests(DatabaseFixture database)
         var hash = await factory.Services.GetRequiredService<IPasswordHasher>().HashAsync(password);
         await using var connection = await dataSource.OpenConnectionAsync();
         await connection.ExecuteAsync("INSERT INTO usuarios (id_usuario,user_name,password_hash,email,ativo) VALUES (@Id,@UserName,@Hash,@Email,1)", new { Id = userId, UserName = $"write.{Guid.NewGuid():N}", Hash = hash, Email = email });
+        // Todo cenário empresarial preexistente recebe autoridade explícita; autenticação isolada continua sem perfil em testes próprios.
+        await new EnsureRbacService(new MariaDbConnectionFactory(dataSource)).EnsureAsync(email);
         return new(userId, email, password);
     }
 

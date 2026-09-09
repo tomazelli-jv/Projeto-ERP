@@ -1,0 +1,1 @@
+@PowerShell.exe -NoProfile -ExecutionPolicy Bypass -Command "$script = Get-Content -Raw -Encoding UTF8 -LiteralPath '%~dp0scripts\start-erp-local.ps1'; & ([scriptblock]::Create($script)) -ProjectRoot '%~dp0'"

@@ -11,6 +11,7 @@ using ERP.Infrastructure.Migrations;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
+using ERP.AdminCli;
 
 namespace ERP.IntegrationTests;
 
@@ -38,6 +39,8 @@ public sealed class BusinessReadEndpointsTests(DatabaseFixture database)
         const string password = "uma frase senha empresarial";
         var email = $"no-context-{Guid.NewGuid():N}@example.test";
         await InsertUserAsync(dataSource, factory, Guid.NewGuid().ToString(), email, password);
+        // Permissão existe sem contexto para provar que o 403 seguinte pertence ao isolamento empresarial, não ao RBAC.
+        await new EnsureRbacService(new MariaDbConnectionFactory(dataSource)).EnsureAsync(email);
         var accessToken = await LoginAsync(factory, email, password);
 
         using var client = factory.CreateClient();
@@ -70,6 +73,8 @@ public sealed class BusinessReadEndpointsTests(DatabaseFixture database)
         var foreignDocument = $"{documentPrefix}00003";
         var email = $"business-{Guid.NewGuid():N}@example.test";
         await InsertUserAsync(dataSource, factory, userId, email, password);
+        // Administrador recebe as seis permissões antes de exercitar o escopo entre empresas e lojas.
+        await new EnsureRbacService(new MariaDbConnectionFactory(dataSource)).EnsureAsync(email);
 
         // Os dados são isolados por UUID e não dependem de seed ou estado preexistente do banco de teste.
         await using (var connection = await dataSource.OpenConnectionAsync())

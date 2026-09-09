@@ -1,0 +1,1 @@
+@PowerShell.exe -NoProfile -ExecutionPolicy Bypass -Command "$script = Get-Content -Raw -Encoding UTF8 -LiteralPath '%~dp0scripts\reset-erp-password.ps1'; & ([scriptblock]::Create($script)) -ProjectRoot '%~dp0'" & pause

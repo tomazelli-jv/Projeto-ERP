@@ -3,6 +3,8 @@ using ERP.Application.Contracts;
 using ERP.Infrastructure.Application;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ERP.Api.Authorization;
+using ERP.Application.Authorization;
 
 namespace ERP.Api.Controllers;
 
@@ -17,28 +19,33 @@ public sealed class EmpresasController(EmpresaService empresas) : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateEmpresaRequest request, CancellationToken token) =>
         Ok(new { data = await empresas.CreateEmpresaAsync(UserId(), request, token) });
 
-    // GET /api/v1/empresas retorna uma coleção limitada à empresa do funcionário autenticado.
+    // Leitura exige permissão empresarial e ainda limita a coleção à empresa do funcionário autenticado.
     [HttpGet]
+    [RequirePermission(Permissions.AdministracaoEmpresaVisualizar)]
     public async Task<IActionResult> List(CancellationToken token) =>
         Ok(new { data = await empresas.ListEmpresasAsync(UserId(), token) });
 
-    // GET /api/v1/empresas/{idEmpresa} não diferencia recurso inexistente de recurso fora do escopo.
+    // Permissão de leitura não revela recurso fora do escopo, que continua indistinguível de um ID inexistente.
     [HttpGet("{idEmpresa:guid}")]
+    [RequirePermission(Permissions.AdministracaoEmpresaVisualizar)]
     public async Task<IActionResult> Find(string idEmpresa, CancellationToken token) =>
         Ok(new { data = await empresas.FindEmpresaAsync(UserId(), idEmpresa, token) });
 
-    // PUT altera somente nome e ativo, mantendo id e data de cadastro fora do contrato de entrada.
+    // Edição exige concessão própria e altera somente nome/ativo, mantendo IDs fora do contrato de entrada.
     [HttpPut("{idEmpresa:guid}")]
+    [RequirePermission(Permissions.AdministracaoEmpresaEditar)]
     public async Task<IActionResult> Update(string idEmpresa, [FromBody] UpdateEmpresaRequest request, CancellationToken token) =>
         Ok(new { data = await empresas.UpdateEmpresaAsync(UserId(), idEmpresa, request, token) });
 
-    // GET /api/v1/empresas/{idEmpresa}/lojas usa funcionario_loja para limitar a coleção retornada.
+    // A permissão de visualizar lojas não substitui funcionario_loja, usado para limitar a coleção retornada.
     [HttpGet("{idEmpresa:guid}/lojas")]
+    [RequirePermission(Permissions.AdministracaoLojasVisualizar)]
     public async Task<IActionResult> ListLojas(string idEmpresa, CancellationToken token) =>
         Ok(new { data = await empresas.ListLojasAsync(UserId(), idEmpresa, token) });
 
-    // POST cria loja e vínculo do funcionário atomicamente e aponta Location para a consulta individual existente.
+    // Gerenciamento autoriza criar, enquanto service e SQL preservam empresa e vínculo do funcionário atomicamente.
     [HttpPost("{idEmpresa:guid}/lojas")]
+    [RequirePermission(Permissions.AdministracaoLojasGerenciar)]
     public async Task<IActionResult> CreateLoja(string idEmpresa, [FromBody] CreateLojaRequest request, CancellationToken token)
     {
         var loja = await empresas.CreateLojaAsync(UserId(), idEmpresa, request, token);
