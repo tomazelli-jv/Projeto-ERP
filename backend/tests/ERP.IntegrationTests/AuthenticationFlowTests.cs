@@ -142,7 +142,8 @@ public sealed class AuthenticationFlowTests(DatabaseFixture database)
         if (!concurrencyIsValid)
         {
             var diagnostics = await Task.WhenAll(concurrent.Select(SanitizedResponseAsync));
-            Stage(false, $"AUTH_STAGE_CONCURRENCY_{concurrencyStatus}: {string.Join(" | ", diagnostics)}");
+            var serverErrors = factory.ErrorLogs.Count == 0 ? "no server exception captured" : string.Join(" | ", factory.ErrorLogs);
+            Stage(false, $"AUTH_STAGE_CONCURRENCY_{concurrencyStatus}: {string.Join(" | ", diagnostics)} | {serverErrors}");
         }
         var refreshResponse = concurrent.Single(response => response.StatusCode == HttpStatusCode.OK);
         var reuseResponse = concurrent.Single(response => response.StatusCode == HttpStatusCode.Unauthorized);
