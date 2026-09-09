@@ -1,5 +1,6 @@
 using System.Net.Mail;
 using ERP.Application.Contracts;
+using ERP.Domain.Brazil;
 using ERP.Domain.Business;
 
 namespace ERP.Infrastructure.Application;
@@ -28,9 +29,9 @@ public static class BusinessInput
     {
         if (request is null || request.Extra is { Count: > 0 } || request.Ativo is null)
             throw BusinessErrors.Validation("Os dados informados são inválidos.");
-        var documento = Required(request.Documento, 14, "documento");
-        if (documento.Length != 14 || documento.Any(character => character is < '0' or > '9'))
-            throw BusinessErrors.Validation("O documento deve possuir exatamente 14 dígitos.");
+        // Normalizar antes do DV faz case e pontuação convergirem para uma única identidade persistida.
+        if (!Cnpj.TryNormalize(request.Documento, out var documento) || !Cnpj.IsValid(documento))
+            throw BusinessErrors.Validation("CNPJ inválido.");
         var email = Optional(request.Email, 254, "email");
         if (email is not null && (email.Length == 0 || !MailAddress.TryCreate(email, out var parsed) || !string.Equals(parsed.Address, email, StringComparison.OrdinalIgnoreCase)))
             throw BusinessErrors.Validation("Informe um e-mail válido.");

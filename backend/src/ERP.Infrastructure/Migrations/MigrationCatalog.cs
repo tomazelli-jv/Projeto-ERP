@@ -3,6 +3,12 @@ namespace ERP.Infrastructure.Migrations;
 public static class MigrationCatalog
 {
     private const string TableOptions = "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+    // ASCII ranges avoid collation-dependent acceptance of lowercase values in the persisted CNPJ.
+    private static readonly string CnpjAlphanumericCheck = "CHAR_LENGTH(`documento`) = 14 AND "
+        + string.Join(" AND ", Enumerable.Range(1, 12).Select(AlphanumericCnpjPosition))
+        + $" AND {NumericCnpjPosition(13)} AND {NumericCnpjPosition(14)}";
+    private static readonly string LegacyNumericCnpjCheck = "CHAR_LENGTH(`documento`) = 14 AND "
+        + string.Join(" AND ", Enumerable.Range(1, 14).Select(NumericCnpjPosition));
 
     public static IReadOnlyList<MigrationDefinition> All { get; } =
     [
@@ -64,6 +70,21 @@ public static class MigrationCatalog
             "DROP TABLE `tentativa_login`",
             "DROP TABLE `token_refresh`",
             "DROP TABLE `sessao_usuario`"
+        ]),
+
+        new("006_cnpj_alfanumerico.js",
+        [
+            "ALTER TABLE `loja` DROP CONSTRAINT `chk_loja_documento`",
+            $"ALTER TABLE `loja` ADD CONSTRAINT `chk_loja_documento_alfanumerico` CHECK ({CnpjAlphanumericCheck})"
+        ],
+        [
+            // Restoring the numeric CHECK before dropping the new one aborts safely if alphanumeric rows prevent rollback.
+            $"ALTER TABLE `loja` ADD CONSTRAINT `chk_loja_documento` CHECK ({LegacyNumericCnpjCheck})",
+            "ALTER TABLE `loja` DROP CONSTRAINT `chk_loja_documento_alfanumerico`"
         ])
     ];
+
+    private static string CharacterAt(int position) => $"ASCII(SUBSTRING(`documento`, {position}, 1))";
+    private static string AlphanumericCnpjPosition(int position) => $"(({CharacterAt(position)} BETWEEN 48 AND 57) OR ({CharacterAt(position)} BETWEEN 65 AND 90))";
+    private static string NumericCnpjPosition(int position) => $"({CharacterAt(position)} BETWEEN 48 AND 57)";
 }

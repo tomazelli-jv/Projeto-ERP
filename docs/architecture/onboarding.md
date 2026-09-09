@@ -23,7 +23,7 @@ Qualquer erro executa rollback antes da conexão ser liberada. Os repositories r
 
 ## CNPJ e concorrência
 
-O CNPJ é normalizado, validado e armazenado somente com dígitos. Company recebe os oito primeiros dígitos em `tax_id_root`; Branch recebe o CNPJ completo. Uma unique constraint global em `branches.tax_id` é a última linha de defesa contra dois onboardings simultâneos do mesmo estabelecimento.
+O CNPJ é normalizado e armazenado como texto uppercase de 14 posições, preservando letras nas 12 primeiras e mantendo os dois DVs numéricos. A aplicação executa o algoritmo oficial de DV; uma unique constraint global continua sendo a última linha de defesa contra cadastros simultâneos do mesmo estabelecimento normalizado.
 
 Slug e e-mail também dependem de constraints únicas. Erros conhecidos do MariaDB são convertidos em erros de domínio seguros, sem SQL ou nomes de constraints na resposta.
 

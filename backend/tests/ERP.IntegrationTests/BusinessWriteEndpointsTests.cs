@@ -94,8 +94,9 @@ public sealed class BusinessWriteEndpointsTests(DatabaseFixture database)
         Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(client, HttpMethod.Put, $"/api/v1/empresas/{setup.EmpresaId}", EmpresaPayload(new string('x', 161), true), setup.AccessToken)).StatusCode);
 
         // POST loja cria loja e funcionario_loja juntos; a representação criada já fica visível no GET.
-        var createdDocument = Document();
-        using var createLoja = await SendAsync(client, HttpMethod.Post, $"/api/v1/empresas/{setup.EmpresaId}/lojas", LojaPayload(createdDocument, "SP", true), setup.AccessToken);
+        const string createdInput = "12.ABC.345/01DE-35";
+        const string createdDocument = "12ABC34501DE35";
+        using var createLoja = await SendAsync(client, HttpMethod.Post, $"/api/v1/empresas/{setup.EmpresaId}/lojas", LojaPayload(createdInput, "SP", true), setup.AccessToken);
         Assert.Equal(HttpStatusCode.Created, createLoja.StatusCode);
         using var createdJson = JsonDocument.Parse(await createLoja.Content.ReadAsStringAsync());
         var createdId = createdJson.RootElement.GetProperty("data").GetProperty("id").GetString()!;
@@ -118,7 +119,7 @@ public sealed class BusinessWriteEndpointsTests(DatabaseFixture database)
         int linksBefore;
         await using (var verification = await dataSource.OpenConnectionAsync())
             linksBefore = await verification.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM funcionario_loja WHERE id_funcionario=@Id", new { Id = setup.FuncionarioId });
-        using var duplicateCreate = await SendAsync(client, HttpMethod.Post, $"/api/v1/empresas/{setup.EmpresaId}/lojas", LojaPayload(createdDocument, "TO", true), setup.AccessToken);
+        using var duplicateCreate = await SendAsync(client, HttpMethod.Post, $"/api/v1/empresas/{setup.EmpresaId}/lojas", LojaPayload("12abc34501de35", "TO", true), setup.AccessToken);
         Assert.Equal(HttpStatusCode.Conflict, duplicateCreate.StatusCode);
         Assert.Contains("LOJA_DOCUMENTO_ALREADY_EXISTS", await duplicateCreate.Content.ReadAsStringAsync());
         await using (var verification = await dataSource.OpenConnectionAsync())
@@ -128,8 +129,9 @@ public sealed class BusinessWriteEndpointsTests(DatabaseFixture database)
         }
 
         // PUT loja persiste campos permitidos, inclusive inativação, sem aceitar lojas não vinculadas ou externas.
-        var updatedDocument = Document();
-        using var updateLoja = await SendAsync(client, HttpMethod.Put, $"/api/v1/lojas/{createdId}", LojaPayload(updatedDocument, "TO", false, nomeFantasia: "Loja Atualizada"), setup.AccessToken);
+        const string updatedInput = "11.222.333/0001-81";
+        const string updatedDocument = "11222333000181";
+        using var updateLoja = await SendAsync(client, HttpMethod.Put, $"/api/v1/lojas/{createdId}", LojaPayload(updatedInput, "TO", false, nomeFantasia: "Loja Atualizada"), setup.AccessToken);
         Assert.Equal(HttpStatusCode.OK, updateLoja.StatusCode);
         await using (var verification = await dataSource.OpenConnectionAsync())
         {
@@ -192,8 +194,21 @@ public sealed class BusinessWriteEndpointsTests(DatabaseFixture database)
     // Empresa recebe somente campos mutáveis para testar também a proteção contra mass assignment.
     private static object EmpresaPayload(string nome, bool ativo) => new { nome, ativo };
 
-    // Gera documento numérico de 14 dígitos para evitar colisões entre execuções do banco de CI.
-    private static string Document() => $"{RandomNumberGenerator.GetInt32(100_000_000, 1_000_000_000)}{RandomNumberGenerator.GetInt32(10_000, 100_000)}";
+    // Gera uma base numérica aleatória e calcula os DVs oficiais para evitar colisões sem enfraquecer a validação HTTP.
+    private static string Document()
+    {
+        var root = $"{RandomNumberGenerator.GetInt32(10_000_000, 100_000_000)}{RandomNumberGenerator.GetInt32(1_000, 10_000)}";
+        var first = CheckDigit(root, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+        var second = CheckDigit($"{root}{first}", [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+        return $"{root}{first}{second}";
+    }
+
+    // ASCII menos 48 mantém o gerador de teste alinhado ao mesmo algoritmo numérico/alfanumérico do domínio.
+    private static int CheckDigit(string value, int[] weights)
+    {
+        var remainder = weights.Select((weight, index) => (value[index] - 48) * weight).Sum() % 11;
+        return remainder < 2 ? 0 : 11 - remainder;
+    }
 
     // Constrói cada mensagem HTTP com Bearer próprio e corpo opcional, sem compartilhar estado mutável.
     private static Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, string path, object? body, string accessToken)

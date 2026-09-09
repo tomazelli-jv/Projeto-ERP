@@ -20,7 +20,7 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
         var initial = await runner.StatusAsync();
         Assert.Equal(MigrationCatalog.All.Select(item => item.Name), initial.Select(item => item.Name));
         Assert.All(initial, item => Assert.True(item.Applied));
-        Assert.Equal(["001_empresa_loja.js", "002_usuarios_funcionarios.js", "003_perfis_permissoes.js", "004_perfil_permissao.js", "005_autenticacao.js"], initial.Select(item => item.Name));
+        Assert.Equal(["001_empresa_loja.js", "002_usuarios_funcionarios.js", "003_perfis_permissoes.js", "004_perfil_permissao.js", "005_autenticacao.js", "006_cnpj_alfanumerico.js"], initial.Select(item => item.Name));
 
         await using (var ledger = await dataSource.OpenConnectionAsync())
         {
@@ -29,8 +29,10 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
             await ledger.ExecuteAsync("UPDATE knex_migrations SET batch=3 WHERE name='003_perfis_permissoes.js'");
             await ledger.ExecuteAsync("UPDATE knex_migrations SET batch=4 WHERE name='004_perfil_permissao.js'");
             await ledger.ExecuteAsync("UPDATE knex_migrations SET batch=5 WHERE name='005_autenticacao.js'");
+            await ledger.ExecuteAsync("UPDATE knex_migrations SET batch=6 WHERE name='006_cnpj_alfanumerico.js'");
         }
 
+        var alphanumericStoreId = Guid.NewGuid().ToString();
         await using (var validation = await dataSource.OpenConnectionAsync())
         {
             var tables = (await validation.QueryAsync<string>(
@@ -51,6 +53,22 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
             await validation.ExecuteAsync(
                 "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento,uf) VALUES (@Id,@EmpresaId,'Loja sem UF','Loja sem UF','12345678000192',NULL)",
                 new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId });
+            // A migration protege estrutura e uppercase; o DV completo permanece responsabilidade da aplicação.
+            await validation.ExecuteAsync(
+                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento,uf) VALUES (@Id,@EmpresaId,'Loja Alfanumérica','Loja Alfa','12ABC34501DE35','SP')",
+                new { Id = alphanumericStoreId, EmpresaId = empresaId });
+            await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
+                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento) VALUES (@Id,@EmpresaId,'Lowercase','Lowercase','12abc34501de35')",
+                new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId }));
+            await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
+                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento) VALUES (@Id,@EmpresaId,'DV letra','DV letra','12ABC34501DEA5')",
+                new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId }));
+            await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
+                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento) VALUES (@Id,@EmpresaId,'Especial','Especial','12@BC34501DE35')",
+                new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId }));
+            await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
+                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento) VALUES (@Id,@EmpresaId,'Duplicada','Duplicada','12ABC34501DE35')",
+                new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId }));
 
             Assert.Equal(1, await validation.ExecuteScalarAsync<int>("SELECT ativo FROM empresa WHERE id_empresa=@Id", new { Id = empresaId }));
             await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
@@ -67,21 +85,31 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
             await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync("DELETE FROM empresa WHERE id_empresa=@Id", new { Id = empresaId }));
         }
 
+        // O down recusa perda de compatibilidade enquanto houver CNPJ alfanumérico e mantém a migration no ledger.
+        await Assert.ThrowsAsync<MySqlException>(() => runner.DownAsync());
+        Assert.True((await runner.StatusAsync())[5].Applied);
+        await using (var cleanup = await dataSource.OpenConnectionAsync())
+            await cleanup.ExecuteAsync("DELETE FROM loja WHERE id_loja=@Id", new { Id = alphanumericStoreId });
+
         Assert.Equal(1, await runner.DownAsync());
         var rolledBack = await runner.StatusAsync();
         Assert.True(rolledBack[0].Applied);
         Assert.True(rolledBack[1].Applied);
         Assert.True(rolledBack[2].Applied);
         Assert.True(rolledBack[3].Applied);
-        Assert.False(rolledBack[4].Applied);
+        Assert.True(rolledBack[4].Applied);
+        Assert.False(rolledBack[5].Applied);
         await using (var preserved = await dataSource.OpenConnectionAsync())
         {
             Assert.True(await preserved.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM empresa") > 0);
             Assert.True(await preserved.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM loja") > 0);
             Assert.Equal(10, await preserved.ExecuteScalarAsync<int>(
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('empresa','loja','usuarios','funcionario','funcionario_loja','perfis','usuario_perfis','permissao','usuario_claims','perfil_permissao')"));
-            Assert.Equal(0, await preserved.ExecuteScalarAsync<int>(
+            Assert.Equal(4, await preserved.ExecuteScalarAsync<int>(
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('sessao_usuario','token_refresh','tentativa_login','evento_seguranca')"));
+            await Assert.ThrowsAsync<MySqlException>(() => preserved.ExecuteAsync(
+                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento) SELECT @Id,id_empresa,'Rollback alfa','Rollback alfa','12ABC34501DE35' FROM empresa LIMIT 1",
+                new { Id = Guid.NewGuid().ToString() }));
         }
         Assert.Equal(1, await runner.UpAsync());
 
