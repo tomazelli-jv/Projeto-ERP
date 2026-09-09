@@ -81,6 +81,15 @@ public static class MigrationCatalog
             // Restoring the numeric CHECK before dropping the new one aborts safely if alphanumeric rows prevent rollback.
             $"ALTER TABLE `loja` ADD CONSTRAINT `chk_loja_documento` CHECK ({LegacyNumericCnpjCheck})",
             "ALTER TABLE `loja` DROP CONSTRAINT `chk_loja_documento_alfanumerico`"
+        ]),
+
+        new("007_cliente.js",
+        [
+            // The composite FK alone proves both company ownership and store provenance without redundant constraints.
+            $"CREATE TABLE `cliente` (`id_cliente` CHAR(36) NOT NULL,`id_empresa` CHAR(36) NOT NULL,`id_loja_cadastro` CHAR(36) NOT NULL,`nome_fantasia` VARCHAR(180) NOT NULL,`razao_social` VARCHAR(180) NULL,`tipo` VARCHAR(2) NOT NULL,`documento` VARCHAR(14) NULL,`telefone` VARCHAR(20) NULL,`email` VARCHAR(254) NULL,`cep` VARCHAR(8) NULL,`cidade` VARCHAR(120) NULL,`rua` VARCHAR(180) NULL,`uf` CHAR(2) NULL,`ativo` TINYINT(1) NOT NULL DEFAULT 1,`data_cadastro` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),PRIMARY KEY (`id_cliente`),UNIQUE KEY `uq_cliente_empresa_documento` (`id_empresa`,`documento`),KEY `idx_cliente_loja_cadastro` (`id_loja_cadastro`),KEY `idx_cliente_empresa_ativo` (`id_empresa`,`ativo`),KEY `idx_cliente_empresa_nome` (`id_empresa`,`nome_fantasia`,`id_cliente`),CONSTRAINT `fk_cliente_empresa_loja` FOREIGN KEY (`id_empresa`,`id_loja_cadastro`) REFERENCES `loja` (`id_empresa`,`id_loja`) ON DELETE RESTRICT ON UPDATE RESTRICT,CONSTRAINT `chk_cliente_tipo` CHECK (`tipo` IN ('PF','PJ')),CONSTRAINT `chk_cliente_documento` CHECK (`documento` IS NULL OR (`tipo`='PF' AND CHAR_LENGTH(`documento`)=11 AND {string.Join(" AND ", Enumerable.Range(1, 11).Select(NumericCnpjPosition))}) OR (`tipo`='PJ' AND CHAR_LENGTH(`documento`)=14 AND {CnpjAlphanumericCheck})),CONSTRAINT `chk_cliente_cep` CHECK (`cep` IS NULL OR (CHAR_LENGTH(`cep`)=8 AND {string.Join(" AND ", Enumerable.Range(1, 8).Select(position => $"(ASCII(SUBSTRING(`cep`, {position}, 1)) BETWEEN 48 AND 57)"))})),CONSTRAINT `chk_cliente_uf` CHECK (`uf` IS NULL OR (CHAR_LENGTH(`uf`)=2 AND ASCII(SUBSTRING(`uf`,1,1)) BETWEEN 65 AND 90 AND ASCII(SUBSTRING(`uf`,2,1)) BETWEEN 65 AND 90))) {TableOptions}"
+        ],
+        [
+            "DROP TABLE `cliente`"
         ])
     ];
 

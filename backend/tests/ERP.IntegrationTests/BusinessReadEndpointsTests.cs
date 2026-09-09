@@ -73,7 +73,7 @@ public sealed class BusinessReadEndpointsTests(DatabaseFixture database)
         var foreignDocument = $"{documentPrefix}00003";
         var email = $"business-{Guid.NewGuid():N}@example.test";
         await InsertUserAsync(dataSource, factory, userId, email, password);
-        // Administrador recebe as seis permissões antes de exercitar o escopo entre empresas e lojas.
+        // Administrador recebe o catálogo oficial antes de exercitar o escopo entre empresas e lojas.
         await new EnsureRbacService(new MariaDbConnectionFactory(dataSource)).EnsureAsync(email);
 
         // Os dados são isolados por UUID e não dependem de seed ou estado preexistente do banco de teste.
