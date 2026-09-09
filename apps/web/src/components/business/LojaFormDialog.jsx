@@ -15,7 +15,14 @@ import {
 } from '@mui/material';
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
-import { formatCep, formatCnpj, formatPhone, onlyDigits } from './business-formatters.js';
+import {
+  formatCep,
+  formatCnpj,
+  formatPhone,
+  normalizeCnpj,
+  onlyDigits,
+  validateCnpj
+} from './business-formatters.js';
 
 const emptyForm = {
   razaoSocial: '',
@@ -77,7 +84,7 @@ export function LojaFormDialog({ loja, open, loading, apiError, onClose, onSubmi
     else if (form.razaoSocial.trim().length > 180) next.razaoSocial = 'Use no máximo 180 caracteres.';
     if (!form.nomeFantasia.trim()) next.nomeFantasia = 'Informe o nome fantasia.';
     else if (form.nomeFantasia.trim().length > 180) next.nomeFantasia = 'Use no máximo 180 caracteres.';
-    if (onlyDigits(form.documento, 14).length !== 14) next.documento = 'Informe os 14 dígitos do CNPJ.';
+    if (!validateCnpj(form.documento)) next.documento = 'CNPJ inválido.';
     if (form.telefone && onlyDigits(form.telefone, 30).length > 20)
       next.telefone = 'Use no máximo 20 dígitos.';
     if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
@@ -91,7 +98,7 @@ export function LojaFormDialog({ loja, open, loading, apiError, onClose, onSubmi
     return next;
   }
 
-  // O submit remove somente máscaras e espaços externos, enviando exclusivamente campos aceitos pelo backend.
+  // O submit envia CNPJ uppercase sem pontuação; a API repete integralmente a validação por ser a autoridade.
   function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = validate();
@@ -100,7 +107,7 @@ export function LojaFormDialog({ loja, open, loading, apiError, onClose, onSubmi
     onSubmit({
       razaoSocial: form.razaoSocial.trim(),
       nomeFantasia: form.nomeFantasia.trim(),
-      documento: onlyDigits(form.documento, 14),
+      documento: normalizeCnpj(form.documento),
       telefone: onlyDigits(form.telefone, 20) || null,
       email: form.email.trim() || null,
       cep: onlyDigits(form.cep, 8) || null,

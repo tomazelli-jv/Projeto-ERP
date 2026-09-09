@@ -128,7 +128,7 @@ public sealed class EmpresaService(IMariaDbConnectionFactory connections, Empres
     private static EmpresaResponse ToResponse(EmpresaRecord empresa) =>
         new(empresa.Id, empresa.Nome, empresa.Ativo, empresa.DataCadastro);
 
-    // O documento permanece com os 14 dígitos armazenados; formatação pertence ao frontend.
+    // O CNPJ permanece com 14 posições alfanuméricas normalizadas; pontuação pertence exclusivamente à apresentação.
     private static LojaResponse ToResponse(LojaRecord loja) =>
         new(loja.Id, loja.IdEmpresa, loja.RazaoSocial, loja.NomeFantasia, loja.Documento, loja.Telefone,
             loja.Email, loja.Cep, loja.Rua, loja.Numero, loja.Complemento, loja.Bairro, loja.Cidade,

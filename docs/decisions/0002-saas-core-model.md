@@ -8,7 +8,7 @@ Status: aceito.
 - UUIDs são gerados por helper compartilhado no runtime; migrations não dependem de geração do banco.
 - Status usam `VARCHAR` com schemas Zod e CHECK constraints nomeadas, evitando ENUM nativo.
 - Relações internas de tenant usam foreign keys compostas para bloquear referências cross-tenant.
-- CNPJ é persistido apenas com dígitos e validado na aplicação; CHECK constraints protegem o formato armazenado.
+- CNPJ é texto alfanumérico normalizado em uppercase: as 12 primeiras posições aceitam A-Z/0-9 e os dois DVs são numéricos. Todo código futuro deve preservar letras; a aplicação valida os DVs e CHECK constraints protegem a estrutura armazenada.
 - Valores de plan limits são inteiros não negativos, pois os limites atuais são contagens estruturais.
 - Colunas geradas implementam unicidade condicional compatível com MariaDB para matriz, owner ativo e assinatura corrente.
 - SQL de runtime permanece explícito e parametrizado em repositories com MySqlConnector/Dapper.

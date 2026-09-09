@@ -4,24 +4,49 @@ namespace ERP.Domain.Brazil;
 
 public static partial class Cnpj
 {
-    public static string Normalize(string? value) => DigitsRegex().Replace(value ?? string.Empty, string.Empty);
+    // A representação lógica preserva letras e remove somente a pontuação visual oficial; caracteres desconhecidos nunca são descartados silenciosamente.
+    public static string Normalize(string? value)
+    {
+        if (!TryNormalize(value, out var normalized))
+            throw new FormatException("CNPJ contains unsupported characters.");
+        return normalized;
+    }
+
+    public static bool TryNormalize(string? value, out string normalized)
+    {
+        var candidate = (value ?? string.Empty).Trim().ToUpperInvariant();
+        if (!AllowedInputRegex().IsMatch(candidate))
+        {
+            normalized = string.Empty;
+            return false;
+        }
+        normalized = VisualPunctuationRegex().Replace(candidate, string.Empty);
+        return true;
+    }
 
     public static bool IsValid(string? value)
     {
-        var digits = Normalize(value);
-        if (digits.Length != 14 || digits.Distinct().Count() == 1) return false;
-        var first = Calculate(digits[..12], [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-        var second = Calculate($"{digits[..12]}{first}", [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-        return digits.EndsWith($"{first}{second}", StringComparison.Ordinal);
+        if (!TryNormalize(value, out var document) || !StructureRegex().IsMatch(document) || document.Distinct().Count() == 1)
+            return false;
+        var first = Calculate(document[..12], [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+        var second = Calculate($"{document[..12]}{first}", [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+        return document.EndsWith($"{first}{second}", StringComparison.Ordinal);
     }
 
     private static int Calculate(string value, int[] weights)
     {
-        var sum = weights.Select((weight, index) => (value[index] - '0') * weight).Sum();
+        // O padrão da Receita atribui a cada caractere o código ASCII menos 48, mantendo dígitos legados com seus valores históricos.
+        var sum = weights.Select((weight, index) => (value[index] - 48) * weight).Sum();
         var remainder = sum % 11;
         return remainder < 2 ? 0 : 11 - remainder;
     }
 
-    [GeneratedRegex("[^0-9]")]
-    private static partial Regex DigitsRegex();
+    [GeneratedRegex("^[A-Z0-9./-]*$", RegexOptions.CultureInvariant)]
+    private static partial Regex AllowedInputRegex();
+
+    [GeneratedRegex("[./-]", RegexOptions.CultureInvariant)]
+    private static partial Regex VisualPunctuationRegex();
+
+    [GeneratedRegex("^[A-Z0-9]{12}[0-9]{2}$", RegexOptions.CultureInvariant)]
+    private static partial Regex StructureRegex();
 }
