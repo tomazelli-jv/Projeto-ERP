@@ -94,8 +94,9 @@ public sealed class BusinessWriteEndpointsTests(DatabaseFixture database)
         Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(client, HttpMethod.Put, $"/api/v1/empresas/{setup.EmpresaId}", EmpresaPayload(new string('x', 161), true), setup.AccessToken)).StatusCode);
 
         // POST loja cria loja e funcionario_loja juntos; a representação criada já fica visível no GET.
-        const string createdInput = "12.ABC.345/01DE-35";
-        const string createdDocument = "12ABC34501DE35";
+        // Cada cenário gera CNPJ alfanumérico válido próprio para não depender da ordem nem dos resíduos de outra classe.
+        var createdDocument = AlphanumericDocument();
+        var createdInput = FormatDocument(createdDocument);
         using var createLoja = await SendAsync(client, HttpMethod.Post, $"/api/v1/empresas/{setup.EmpresaId}/lojas", LojaPayload(createdInput, "SP", true), setup.AccessToken);
         Assert.Equal(HttpStatusCode.Created, createLoja.StatusCode);
         using var createdJson = JsonDocument.Parse(await createLoja.Content.ReadAsStringAsync());
@@ -119,7 +120,8 @@ public sealed class BusinessWriteEndpointsTests(DatabaseFixture database)
         int linksBefore;
         await using (var verification = await dataSource.OpenConnectionAsync())
             linksBefore = await verification.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM funcionario_loja WHERE id_funcionario=@Id", new { Id = setup.FuncionarioId });
-        using var duplicateCreate = await SendAsync(client, HttpMethod.Post, $"/api/v1/empresas/{setup.EmpresaId}/lojas", LojaPayload("12abc34501de35", "TO", true), setup.AccessToken);
+        // A variação formatada/lowercase do mesmo documento prova normalização antes da UNIQUE, sem usar um valor global fixo.
+        using var duplicateCreate = await SendAsync(client, HttpMethod.Post, $"/api/v1/empresas/{setup.EmpresaId}/lojas", LojaPayload(createdInput.ToLowerInvariant(), "TO", true), setup.AccessToken);
         Assert.Equal(HttpStatusCode.Conflict, duplicateCreate.StatusCode);
         Assert.Contains("LOJA_DOCUMENTO_ALREADY_EXISTS", await duplicateCreate.Content.ReadAsStringAsync());
         await using (var verification = await dataSource.OpenConnectionAsync())
@@ -129,8 +131,9 @@ public sealed class BusinessWriteEndpointsTests(DatabaseFixture database)
         }
 
         // PUT loja persiste campos permitidos, inclusive inativação, sem aceitar lojas não vinculadas ou externas.
-        const string updatedInput = "11.222.333/0001-81";
-        const string updatedDocument = "11222333000181";
+        // A atualização também usa valor válido exclusivo, pois a UNIQUE global sobrevive entre execuções no banco compartilhado.
+        var updatedDocument = Document();
+        var updatedInput = FormatDocument(updatedDocument);
         using var updateLoja = await SendAsync(client, HttpMethod.Put, $"/api/v1/lojas/{createdId}", LojaPayload(updatedInput, "TO", false, nomeFantasia: "Loja Atualizada"), setup.AccessToken);
         Assert.Equal(HttpStatusCode.OK, updateLoja.StatusCode);
         await using (var verification = await dataSource.OpenConnectionAsync())
@@ -202,6 +205,18 @@ public sealed class BusinessWriteEndpointsTests(DatabaseFixture database)
         var second = CheckDigit($"{root}{first}", [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
         return $"{root}{first}{second}";
     }
+
+    // A letra inicial garante cobertura alfanumérica; o restante vem de GUID para minimizar colisões entre execuções persistentes.
+    private static string AlphanumericDocument()
+    {
+        var root = $"A{Guid.NewGuid():N}"[..12].ToUpperInvariant();
+        var first = CheckDigit(root, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+        var second = CheckDigit($"{root}{first}", [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+        return $"{root}{first}{second}";
+    }
+
+    // A máscara de teste conserva as 14 posições para exercitar a entrada visual sem depender do formatter de produção.
+    private static string FormatDocument(string value) => $"{value[..2]}.{value[2..5]}.{value[5..8]}/{value[8..12]}-{value[12..]}";
 
     // ASCII menos 48 mantém o gerador de teste alinhado ao mesmo algoritmo numérico/alfanumérico do domínio.
     private static int CheckDigit(string value, int[] weights)

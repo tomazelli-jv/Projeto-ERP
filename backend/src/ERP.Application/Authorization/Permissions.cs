@@ -12,6 +12,7 @@ public static class Permissions
     public const string AdministracaoEmpresaEditar = "administracao.empresa.editar";
     public const string AdministracaoLojasVisualizar = "administracao.lojas.visualizar";
     public const string AdministracaoLojasGerenciar = "administracao.lojas.gerenciar";
+    public const string ClientesVisualizar = "clientes.visualizar";
 
     // A ordem determinística facilita bootstrap, auditoria e testes sem ampliar o escopo para módulos futuros.
     public static IReadOnlyList<PermissionDefinition> All { get; } =
@@ -21,7 +22,9 @@ public static class Permissions
         new(AdministracaoEmpresaVisualizar, "administracao", "Visualizar dados da empresa."),
         new(AdministracaoEmpresaEditar, "administracao", "Editar dados da empresa."),
         new(AdministracaoLojasVisualizar, "administracao", "Visualizar lojas autorizadas."),
-        new(AdministracaoLojasGerenciar, "administracao", "Criar e editar lojas autorizadas.")
+        new(AdministracaoLojasGerenciar, "administracao", "Criar e editar lojas autorizadas."),
+        // Clientes são compartilhados na empresa, mas acessados somente dentro de contexto operacional válido.
+        new(ClientesVisualizar, "clientes", "Visualizar clientes da empresa.")
     ];
 }
 

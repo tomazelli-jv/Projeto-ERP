@@ -7,7 +7,7 @@ namespace ERP.AdminCli;
 // Compartilha o catálogo idempotente entre bootstrap-company e ensure-rbac dentro da transação de cada comando.
 public static class MariaDbRbacBootstrapper
 {
-    // Garante perfil, seis permissões, vínculos do perfil e vínculo do usuário sem apagar ou renumerar dados existentes.
+    // Garante perfil, catálogo oficial completo, vínculos do perfil e vínculo do usuário sem apagar dados existentes.
     public static async Task EnsureAdministratorAsync(
         MySqlConnection connection,
         MySqlTransaction transaction,

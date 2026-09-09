@@ -57,6 +57,9 @@ public static class DependencyInjection
         // Contexto operacional permanece stateless e valida X-Loja-Id por uma fronteira reutilizável.
         services.AddSingleton<OperationalContextRepository>();
         services.AddSingleton<IOperationalContextResolver, OperationalContextService>();
+        // Clientes reutilizam o contexto operacional, mantendo leitura company-wide e isolamento no SQL.
+        services.AddSingleton<CustomerRepository>();
+        services.AddSingleton<CustomerService>();
         return services;
     }
 }

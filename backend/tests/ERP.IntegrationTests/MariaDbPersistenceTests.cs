@@ -20,7 +20,7 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
         var initial = await runner.StatusAsync();
         Assert.Equal(MigrationCatalog.All.Select(item => item.Name), initial.Select(item => item.Name));
         Assert.All(initial, item => Assert.True(item.Applied));
-        Assert.Equal(["001_empresa_loja.js", "002_usuarios_funcionarios.js", "003_perfis_permissoes.js", "004_perfil_permissao.js", "005_autenticacao.js", "006_cnpj_alfanumerico.js"], initial.Select(item => item.Name));
+        Assert.Equal(["001_empresa_loja.js", "002_usuarios_funcionarios.js", "003_perfis_permissoes.js", "004_perfil_permissao.js", "005_autenticacao.js", "006_cnpj_alfanumerico.js", "007_cliente.js"], initial.Select(item => item.Name));
 
         await using (var ledger = await dataSource.OpenConnectionAsync())
         {
@@ -30,6 +30,7 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
             await ledger.ExecuteAsync("UPDATE knex_migrations SET batch=4 WHERE name='004_perfil_permissao.js'");
             await ledger.ExecuteAsync("UPDATE knex_migrations SET batch=5 WHERE name='005_autenticacao.js'");
             await ledger.ExecuteAsync("UPDATE knex_migrations SET batch=6 WHERE name='006_cnpj_alfanumerico.js'");
+            await ledger.ExecuteAsync("UPDATE knex_migrations SET batch=7 WHERE name='007_cliente.js'");
         }
 
         var alphanumericStoreId = Guid.NewGuid().ToString();
@@ -37,7 +38,7 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
         {
             var tables = (await validation.QueryAsync<string>(
                 "SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name NOT IN ('knex_migrations','knex_migrations_lock')")).ToArray();
-            string[] expectedTables = ["empresa", "evento_seguranca", "funcionario", "funcionario_loja", "loja", "perfil_permissao", "perfis", "permissao", "sessao_usuario", "tentativa_login", "token_refresh", "usuario_claims", "usuario_perfis", "usuarios"];
+            string[] expectedTables = ["cliente", "empresa", "evento_seguranca", "funcionario", "funcionario_loja", "loja", "perfil_permissao", "perfis", "permissao", "sessao_usuario", "tentativa_login", "token_refresh", "usuario_claims", "usuario_perfis", "usuarios"];
             Assert.Equal(
                 expectedTables.OrderBy(name => name, StringComparer.Ordinal),
                 tables.OrderBy(name => name, StringComparer.Ordinal));
@@ -70,6 +71,20 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
                 "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento) VALUES (@Id,@EmpresaId,'Duplicada','Duplicada','12ABC34501DE35')",
                 new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId }));
 
+            // Cliente aceita CPF/PJ estruturais e a FK composta impede associar loja de outra empresa.
+            await validation.ExecuteAsync(
+                "INSERT INTO cliente (id_cliente,id_empresa,id_loja_cadastro,nome_fantasia,tipo,documento) VALUES (@Id,@EmpresaId,@LojaId,'Cliente PJ','PJ','12ABC34501DE35'),(@PfId,@EmpresaId,@LojaId,'Cliente PF','PF','12345678901')",
+                new { Id = Guid.NewGuid().ToString(), PfId = Guid.NewGuid().ToString(), EmpresaId = empresaId, LojaId = alphanumericStoreId });
+            await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
+                "INSERT INTO cliente (id_cliente,id_empresa,id_loja_cadastro,nome_fantasia,tipo,documento) VALUES (@Id,@EmpresaId,@LojaId,'Duplicado','PJ','12ABC34501DE35')",
+                new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId, LojaId = alphanumericStoreId }));
+            await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
+                "INSERT INTO cliente (id_cliente,id_empresa,id_loja_cadastro,nome_fantasia,tipo,documento) VALUES (@Id,@EmpresaId,@LojaId,'Lowercase','PJ','12abc34501DE35')",
+                new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId, LojaId = alphanumericStoreId }));
+            await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
+                "INSERT INTO cliente (id_cliente,id_empresa,id_loja_cadastro,nome_fantasia,tipo,documento) VALUES (@Id,@EmpresaId,@LojaId,'Tipo','XX',NULL)",
+                new { Id = Guid.NewGuid().ToString(), EmpresaId = empresaId, LojaId = alphanumericStoreId }));
+
             Assert.Equal(1, await validation.ExecuteScalarAsync<int>("SELECT ativo FROM empresa WHERE id_empresa=@Id", new { Id = empresaId }));
             await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync(
                 "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento) VALUES (@Id,@EmpresaId,'Inválida','Inválida','123')",
@@ -85,12 +100,7 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
             await Assert.ThrowsAsync<MySqlException>(() => validation.ExecuteAsync("DELETE FROM empresa WHERE id_empresa=@Id", new { Id = empresaId }));
         }
 
-        // O down recusa perda de compatibilidade enquanto houver CNPJ alfanumérico e mantém a migration no ledger.
-        await Assert.ThrowsAsync<MySqlException>(() => runner.DownAsync());
-        Assert.True((await runner.StatusAsync())[5].Applied);
-        await using (var cleanup = await dataSource.OpenConnectionAsync())
-            await cleanup.ExecuteAsync("DELETE FROM loja WHERE id_loja=@Id", new { Id = alphanumericStoreId });
-
+        // O último batch contém somente 007; rollback remove cliente sem tocar no suporte alfanumérico anterior.
         Assert.Equal(1, await runner.DownAsync());
         var rolledBack = await runner.StatusAsync();
         Assert.True(rolledBack[0].Applied);
@@ -98,7 +108,8 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
         Assert.True(rolledBack[2].Applied);
         Assert.True(rolledBack[3].Applied);
         Assert.True(rolledBack[4].Applied);
-        Assert.False(rolledBack[5].Applied);
+        Assert.True(rolledBack[5].Applied);
+        Assert.False(rolledBack[6].Applied);
         await using (var preserved = await dataSource.OpenConnectionAsync())
         {
             Assert.True(await preserved.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM empresa") > 0);
@@ -107,9 +118,7 @@ public sealed class MariaDbPersistenceTests(DatabaseFixture database)
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('empresa','loja','usuarios','funcionario','funcionario_loja','perfis','usuario_perfis','permissao','usuario_claims','perfil_permissao')"));
             Assert.Equal(4, await preserved.ExecuteScalarAsync<int>(
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('sessao_usuario','token_refresh','tentativa_login','evento_seguranca')"));
-            await Assert.ThrowsAsync<MySqlException>(() => preserved.ExecuteAsync(
-                "INSERT INTO loja (id_loja,id_empresa,razao_social,nome_fantasia,documento) SELECT @Id,id_empresa,'Rollback alfa','Rollback alfa','12ABC34501DE35' FROM empresa LIMIT 1",
-                new { Id = Guid.NewGuid().ToString() }));
+            Assert.Equal(0, await preserved.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='cliente'"));
         }
         Assert.Equal(1, await runner.UpAsync());
 

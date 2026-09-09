@@ -49,4 +49,7 @@ public static class BusinessErrors
         "LOJA_DOCUMENTO_ALREADY_EXISTS",
         "Já existe uma loja com este documento.",
         409);
+
+    // Ausência e acesso cross-company compartilham 404 para não revelar a existência de outro cliente.
+    public static DomainException CustomerNotFound() => new("CLIENTE_NOT_FOUND", "Cliente não encontrado.", 404);
 }
