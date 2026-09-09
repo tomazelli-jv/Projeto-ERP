@@ -51,6 +51,9 @@ public static class DependencyInjection
         services.AddSingleton<EmpresaService>();
         // Resolução RBAC permanece server-side e consulta perfis/permissões atuais a cada decisão.
         services.AddSingleton<IPermissionResolver, PermissionRepository>();
+        // Gestão de usuários compartilha a conexão oficial e mantém transações coordenadas no service.
+        services.AddSingleton<UserManagementRepository>();
+        services.AddSingleton<UserManagementService>();
         return services;
     }
 }

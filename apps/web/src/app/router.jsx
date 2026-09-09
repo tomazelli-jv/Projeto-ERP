@@ -6,6 +6,7 @@ import { NotFoundPage } from '../pages/NotFoundPage.jsx';
 import { LoginPage } from '../pages/LoginPage.jsx';
 import { AccountPage } from '../pages/AccountPage.jsx';
 import { CompaniesPage } from '../pages/CompaniesPage.jsx';
+import { UsersPage } from '../pages/UsersPage.jsx';
 import { RequireAuth } from './auth/RequireAuth.jsx';
 import { modulePages } from './navigation.js';
 
@@ -24,8 +25,10 @@ export const router = createBrowserRouter([
       { path: 'account', element: <AccountPage /> },
       // Empresas possui implementação real; as demais rotas de módulo continuam usando o placeholder compartilhado.
       { path: 'admin/companies', element: <CompaniesPage /> },
+      // Gestão de usuários possui implementação real e deixa de usar o placeholder genérico.
+      { path: 'admin/users', element: <UsersPage /> },
       ...modulePages
-        .filter((page) => page.path !== '/admin/companies')
+        .filter((page) => !['/admin/companies', '/admin/users'].includes(page.path))
         .map((page) => ({
           path: page.path.slice(1),
           element: <ModulePage {...page} />

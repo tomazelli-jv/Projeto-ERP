@@ -12,8 +12,14 @@ namespace ERP.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/lojas")]
-public sealed class LojasController(EmpresaService empresas) : ControllerBase
+public sealed class LojasController(EmpresaService empresas, UserManagementService users) : ControllerBase
 {
+    // Administração de usuários consulta todas as lojas da empresa para montar a seleção de acesso.
+    [HttpGet]
+    [RequirePermission(Permissions.AdministracaoUsuariosVisualizar)]
+    public async Task<IActionResult> List(CancellationToken token) =>
+        Ok(new { data = await users.ListStoresAsync(User.FindFirstValue("sub")!, token) });
+
     // Mesmo com permissão de leitura, a rota retorna 404 quando a loja não está vinculada ao funcionário.
     [HttpGet("{idLoja:guid}")]
     [RequirePermission(Permissions.AdministracaoLojasVisualizar)]
