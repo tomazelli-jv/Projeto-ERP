@@ -1,14 +1,14 @@
-# Tomazelli ERP
+#  ERP
 
-ERP SaaS comercial multi-tenant da Tomazelli.dev. O backend oficial é ASP.NET Core em .NET 10, com MariaDB 11.8 e SQL explícito via MySqlConnector/Dapper. O cliente web permanece React/Vite.
+ERP SaaS comercial multi-tenant da Tomazelli.dev. O backend oficial é ASP.NET Core em .NET 8, com Postgres 16 e SQL explícito via MySqlConnector/Dapper. O cliente web permanece React/Vite.
 
 O escopo atual contém fundação técnica, modelo SaaS, onboarding transacional, definição segura da senha inicial e autenticação global com JWT curto, refresh rotativo e sessões persistidas. RBAC, contexto ativo de tenant e módulos operacionais ainda não fazem parte do produto.
 
 ## Requisitos
 
-- SDK .NET 10 LTS;
+- SDK .NET 8 LTS;
 - Node.js 24 LTS e npm 10 ou superior para o frontend;
-- Docker com Docker Compose para o MariaDB local.
+- Docker com Docker Compose para o Postgres local.
 
 ## Instalação
 
