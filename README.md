@@ -1,4 +1,4 @@
-#  ERP
+# ERP
 
 ERP SaaS comercial multi-tenant da Tomazelli.dev. O backend oficial é ASP.NET Core em .NET 8, com Postgres 16 e SQL explícito via MySqlConnector/Dapper. O cliente web permanece React/Vite.
 
