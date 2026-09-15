@@ -2,54 +2,74 @@ import { apiRequest } from './client.js';
 
 let refreshPromise = null;
 
-export async function login(email, password) {
-  const response = await apiRequest('/auth/login', {
+// O contrato oficial aceita tanto username quanto e-mail no mesmo campo.
+export function login(usuarioOuEmail, senha) {
+  return apiRequest('/auth/login', {
     method: 'POST',
     authenticated: false,
     retryUnauthorized: false,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ usuarioOuEmail, senha })
   });
-  return response.data;
 }
 
+// O token temporÃ¡rio existe apenas no argumento em memÃ³ria e autoriza exclusivamente a seleÃ§Ã£o inicial.
+export function selectInitialStore(tokenSelecaoLoja, lojaId) {
+  return apiRequest('/auth/selecionar-loja', {
+    method: 'POST',
+    authenticated: false,
+    retryUnauthorized: false,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSelecaoLoja}` },
+    body: JSON.stringify({ lojaId })
+  });
+}
+
+export function switchStore(lojaId) {
+  return apiRequest('/auth/trocar-loja', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lojaId })
+  });
+}
+
+// Uma Promise Ãºnica evita que cookies rotativos sejam consumidos simultaneamente por vÃ¡rias respostas 401.
 export function refresh() {
   if (!refreshPromise) {
     refreshPromise = apiRequest('/auth/refresh', {
       method: 'POST',
       authenticated: false,
       retryUnauthorized: false
-    })
-      .then((response) => response.data)
-      .finally(() => {
-        refreshPromise = null;
-      });
+    }).finally(() => {
+      refreshPromise = null;
+    });
   }
   return refreshPromise;
 }
 
-export async function logout() {
-  await apiRequest('/auth/logout', {
-    method: 'POST',
-    authenticated: false,
-    retryUnauthorized: false
-  });
-}
-
-export async function getCurrentUser() {
-  const response = await apiRequest('/auth/me');
-  return response.data;
+export function logout() {
+  return apiRequest('/auth/logout', { method: 'POST', authenticated: false, retryUnauthorized: false });
 }
 
 export async function getSessions() {
-  const response = await apiRequest('/auth/sessions');
-  return response.data;
+  const response = await apiRequest('/auth/sessoes');
+  const items = response?.data ?? response ?? [];
+  // Normaliza o DTO na fronteira para a AccountPage permanecer independente dos nomes do backend.
+  return items.map((item) => ({
+    id: String(item.id),
+    createdAtUtc: item.criadoEm,
+    lastUsedAtUtc: item.ultimoUsoEm,
+    expiresAtUtc: item.expiraEm,
+    ip: item.ip,
+    device: item.userAgent,
+    current: Boolean(item.atual),
+    status: 'active'
+  }));
 }
 
-export async function revokeSession(sessionId) {
-  await apiRequest(`/auth/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+export function revokeSession(sessionId) {
+  return apiRequest(`/auth/sessoes/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
 }
 
-export async function logoutAll() {
-  await apiRequest('/auth/logout-all', { method: 'POST' });
+export function logoutAll() {
+  return apiRequest('/auth/logout-todas', { method: 'POST' });
 }

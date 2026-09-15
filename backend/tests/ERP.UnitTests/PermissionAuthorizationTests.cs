@@ -10,19 +10,19 @@ namespace ERP.UnitTests;
 public sealed class PermissionAuthorizationTests
 {
     [Fact]
-    public void Catalog_ContainsExactlySevenUniqueInitialPermissions()
+    public void Catalog_ContainsExactlyEightUniqueInitialPermissions()
     {
         var expected = new[]
         {
             Permissions.AdministracaoUsuariosVisualizar, Permissions.AdministracaoUsuariosGerenciar,
             Permissions.AdministracaoEmpresaVisualizar, Permissions.AdministracaoEmpresaEditar,
             Permissions.AdministracaoLojasVisualizar, Permissions.AdministracaoLojasGerenciar,
-            Permissions.ClientesVisualizar
+            Permissions.ClientesVisualizar, Permissions.ClientesGerenciar
         };
 
-        Assert.Equal(7, Permissions.All.Count);
+        Assert.Equal(8, Permissions.All.Count);
         Assert.Equal(expected.Order(StringComparer.Ordinal), Permissions.All.Select(item => item.Code).Order(StringComparer.Ordinal));
-        Assert.Equal(7, Permissions.All.Select(item => item.Code).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(8, Permissions.All.Select(item => item.Code).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(expected.Order(StringComparer.Ordinal), InitialProfiles.AdministratorPermissions.Order(StringComparer.Ordinal));
         Assert.Equal("ADMINISTRADOR", InitialProfiles.AdministratorNormalizedName);
     }

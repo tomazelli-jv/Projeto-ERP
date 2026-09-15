@@ -8,6 +8,30 @@ namespace ERP.UnitTests;
 public sealed class CoreDomainTests
 {
     [Theory]
+    [InlineData("529.982.247-25", "52998224725", true)]
+    [InlineData("52998224724", "52998224724", false)]
+    [InlineData("01234567890", "01234567890", true)]
+    [InlineData("01234567880", "01234567880", false)]
+    [InlineData("01234567891", "01234567891", false)]
+    [InlineData("00000000000", "00000000000", false)]
+    public void NormalizesAndValidatesCpf(string input, string normalized, bool valid)
+    {
+        // CPF remains text, preserves leading zeroes, and validates both official check digits.
+        Assert.True(Cpf.TryNormalize(input, out var actual));
+        Assert.Equal(normalized, actual);
+        Assert.Equal(valid, Cpf.IsValid(input));
+    }
+
+    [Theory]
+    [InlineData("529@98224725")]
+    [InlineData("5299822472")]
+    [InlineData("529982247250")]
+    [InlineData("5299822472A")]
+    public void RejectsInvalidCpfInput(string input)
+    {
+        Assert.False(Cpf.IsValid(input));
+    }
+    [Theory]
     [InlineData("11.222.333/0001-81", "11222333000181", true)]
     [InlineData("11.222.333/0001-82", "11222333000182", false)]
     [InlineData("12.ABC.345/01DE-35", "12ABC34501DE35", true)]

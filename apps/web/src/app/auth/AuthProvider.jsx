@@ -3,40 +3,94 @@ import { useQueryClient } from '@tanstack/react-query';
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  getCurrentUser,
   login as requestLogin,
   logout as requestLogout,
   logoutAll as requestLogoutAll,
-  refresh
+  refresh,
+  selectInitialStore
 } from '../../api/auth.js';
 import { configureApiAuthentication } from '../../api/client.js';
+import { decodeJwtPayload } from '../../api/jwt.js';
 import { AuthContext } from './auth-context.js';
+
+const metadataKey = 'erp.session.display';
+const terminalAuthCodes = new Set([
+  'REFRESH_TOKEN_INVALIDO',
+  'REFRESH_TOKEN_EXPIRADO',
+  'REFRESH_TOKEN_REUTILIZADO',
+  'SESSAO_INVALIDA'
+]);
+
+function readMetadata() {
+  try {
+    return JSON.parse(sessionStorage.getItem(metadataKey)) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function identityFrom(token, response = {}) {
+  const claims = decodeJwtPayload(token) ?? {};
+  const previous = readMetadata();
+  const metadata = {
+    userName: response.userName ?? previous.userName,
+    email: response.email ?? claims.email ?? previous.email
+  };
+  try {
+    sessionStorage.setItem(metadataKey, JSON.stringify(metadata));
+  } catch {
+    /* A sessão continua sem metadados visuais. */
+  }
+  const email = metadata.email ?? '';
+  return {
+    claims,
+    user: {
+      id: String(response.usuarioId ?? claims.sub ?? ''),
+      name: metadata.userName ?? email,
+      email,
+      status: 'active'
+    }
+  };
+}
 
 export function AuthProvider({ children }) {
   const queryClient = useQueryClient();
   const accessTokenRef = useRef(null);
   const [accessToken, setAccessToken] = useState(null);
+  const [claims, setClaims] = useState(null);
   const [user, setUser] = useState(null);
   const [status, setStatus] = useState('loading');
+  const [storeSelection, setStoreSelection] = useState(null);
 
-  const storeAccessToken = useCallback((token) => {
-    accessTokenRef.current = token;
-    setAccessToken(token);
+  // Toda conclusão de login passa por este ponto para manter token e claims exclusivamente em memória.
+  const acceptAccessToken = useCallback((result) => {
+    if (!result?.accessToken) throw new Error('O backend não retornou um Access Token.');
+    const identity = identityFrom(result.accessToken, result);
+    accessTokenRef.current = result.accessToken;
+    setAccessToken(result.accessToken);
+    setClaims(identity.claims);
+    setUser(identity.user);
+    setStoreSelection(null);
+    setStatus('authenticated');
+    return identity.user;
   }, []);
 
   const clearAuthentication = useCallback(() => {
     accessTokenRef.current = null;
     setAccessToken(null);
+    setClaims(null);
     setUser(null);
+    setStoreSelection(null);
     setStatus('unauthenticated');
+    try {
+      sessionStorage.removeItem(metadataKey);
+    } catch {
+      /* Limpeza em memória continua suficiente para tokens. */
+    }
     queryClient.clear();
   }, [queryClient]);
 
-  const refreshSession = useCallback(async () => {
-    const result = await refresh();
-    storeAccessToken(result.accessToken);
-    return result.accessToken;
-  }, [storeAccessToken]);
+  const refreshSession = useCallback(async () => acceptAccessToken(await refresh()), [acceptAccessToken]);
 
   useEffect(() => {
     configureApiAuthentication({
@@ -46,43 +100,47 @@ export function AuthProvider({ children }) {
     });
   }, [clearAuthentication, refreshSession]);
 
+  // Após F5, somente o cookie HttpOnly pode restaurar a sessão; /auth/me e tokens persistidos não são usados.
   useEffect(() => {
     let active = true;
-    async function restore() {
-      try {
-        await refreshSession();
-        const currentUser = await getCurrentUser();
-        if (active) {
-          setUser(currentUser);
-          setStatus('authenticated');
-        }
-      } catch {
-        if (active) clearAuthentication();
-      }
-    }
-    restore();
+    refreshSession().catch((error) => {
+      if (active && (error.status === 401 || terminalAuthCodes.has(error.code))) clearAuthentication();
+      else if (active) clearAuthentication();
+    });
     return () => {
       active = false;
     };
   }, [clearAuthentication, refreshSession]);
 
   const login = useCallback(
-    async (email, password) => {
+    async (usuarioOuEmail, senha) => {
       queryClient.clear();
-      const result = await requestLogin(email, password);
-      storeAccessToken(result.accessToken);
-      try {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-        setStatus('authenticated');
-        return currentUser;
-      } catch (error) {
-        clearAuthentication();
-        throw error;
+      const result = await requestLogin(usuarioOuEmail, senha);
+      if (result.requerSelecaoLoja) {
+        // Token de seleção e lojas transitórias nunca saem do estado React.
+        setStoreSelection({ token: result.tokenSelecaoLoja, stores: result.lojasDisponiveis ?? [] });
+        setStatus('selecting-store');
+        return null;
       }
+      return acceptAccessToken(result);
     },
-    [clearAuthentication, queryClient, storeAccessToken]
+    [acceptAccessToken, queryClient]
   );
+
+  const selectStore = useCallback(
+    async (storeId) => {
+      const numericId = Number(storeId);
+      if (!storeSelection?.token || !Number.isSafeInteger(numericId) || numericId <= 0)
+        throw new Error('Selecione uma loja válida.');
+      return acceptAccessToken(await selectInitialStore(storeSelection.token, numericId));
+    },
+    [acceptAccessToken, storeSelection]
+  );
+
+  const cancelStoreSelection = useCallback(() => {
+    setStoreSelection(null);
+    setStatus('unauthenticated');
+  }, []);
 
   const logout = useCallback(async () => {
     try {
@@ -93,16 +151,45 @@ export function AuthProvider({ children }) {
   }, [clearAuthentication]);
 
   const logoutAll = useCallback(async () => {
-    await requestLogoutAll();
-    clearAuthentication();
+    try {
+      await requestLogoutAll();
+    } finally {
+      clearAuthentication();
+    }
   }, [clearAuthentication]);
 
   const value = useMemo(
-    () => ({ status, user, accessToken, login, logout, logoutAll, refreshSession }),
-    [accessToken, login, logout, logoutAll, refreshSession, status, user]
+    () => ({
+      status,
+      user,
+      accessToken,
+      claims,
+      login,
+      logout,
+      logoutAll,
+      refreshSession,
+      storeSelection,
+      selectStore,
+      cancelStoreSelection,
+      acceptAccessToken
+    }),
+    [
+      accessToken,
+      acceptAccessToken,
+      cancelStoreSelection,
+      claims,
+      login,
+      logout,
+      logoutAll,
+      refreshSession,
+      selectStore,
+      status,
+      storeSelection,
+      user
+    ]
   );
 
-  if (status === 'loading') {
+  if (status === 'loading')
     return (
       <Box sx={{ display: 'grid', minHeight: '100vh', placeItems: 'center' }}>
         <Stack alignItems="center" spacing={2} role="status">
@@ -114,7 +201,6 @@ export function AuthProvider({ children }) {
         </Stack>
       </Box>
     );
-  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

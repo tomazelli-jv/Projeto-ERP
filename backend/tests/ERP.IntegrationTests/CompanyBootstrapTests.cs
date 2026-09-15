@@ -46,7 +46,7 @@ public sealed class CompanyBootstrapTests(DatabaseFixture database)
                 new { UserId = userId }));
 
             // O bootstrap novo deve entregar Administrador e exatamente todo o catálogo oficial na mesma transação.
-            Assert.Equal(7, await connection.ExecuteScalarAsync<int>(
+            Assert.Equal(8, await connection.ExecuteScalarAsync<int>(
                 "SELECT COUNT(DISTINCT pe.nome) FROM usuario_perfis up INNER JOIN perfis p ON p.id_perfil=up.id_perfil INNER JOIN perfil_permissao pp ON pp.id_perfil=p.id_perfil INNER JOIN permissao pe ON pe.id_permissao=pp.id_permissao WHERE up.id_usuario=@UserId AND p.nome_normalizado='ADMINISTRADOR'",
                 new { UserId = userId }));
             await new EnsureRbacService(new MariaDbConnectionFactory(dataSource)).EnsureAsync(email);

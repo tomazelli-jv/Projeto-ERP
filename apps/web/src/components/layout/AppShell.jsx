@@ -41,6 +41,7 @@ export function AppShell() {
     stores,
     activeStore,
     setActiveStore,
+    isSwitchingStore,
     isLoading: contextLoading,
     error: contextError,
     retry
@@ -126,6 +127,7 @@ export function AppShell() {
                 >
                   <InputLabel id="active-store-label">Loja</InputLabel>
                   <Select
+                    disabled={isSwitchingStore}
                     labelId="active-store-label"
                     label="Loja"
                     value={activeStore?.id ?? ''}
@@ -133,10 +135,12 @@ export function AppShell() {
                     displayEmpty
                     renderValue={(value) => {
                       const selected = stores.find((store) => store.id === value);
-                      return (
-                        selected?.nomeFantasia ??
-                        (stores.some((store) => store.ativo) ? 'Selecionar loja' : 'Nenhuma loja disponível')
-                      );
+                      return isSwitchingStore
+                        ? 'Trocando loja...'
+                        : (selected?.nomeFantasia ??
+                            (stores.some((store) => store.ativo)
+                              ? 'Selecionar loja'
+                              : 'Nenhuma loja disponível'));
                     }}
                   >
                     {stores.map((store) => (

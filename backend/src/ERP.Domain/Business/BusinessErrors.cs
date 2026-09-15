@@ -52,4 +52,6 @@ public static class BusinessErrors
 
     // Ausência e acesso cross-company compartilham 404 para não revelar a existência de outro cliente.
     public static DomainException CustomerNotFound() => new("CLIENTE_NOT_FOUND", "Cliente não encontrado.", 404);
+    // Only the named company/document UNIQUE is translated; unrelated SQL failures remain internal errors.
+    public static DomainException CustomerDocumentExists() => new("CLIENTE_DOCUMENTO_ALREADY_EXISTS", "Já existe cliente com este documento.", 409);
 }
