@@ -1,93 +1,92 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PropTypes from 'prop-types';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getOperationalContext } from '../../api/operational-context.js';
-import { configureApiOperationalContext } from '../../api/client.js';
+import { useCallback, useMemo, useState } from 'react';
+import { switchStore } from '../../api/auth.js';
+import { getMyStores } from '../../api/operational-context.js';
 import { useAuth } from '../auth/auth-context.js';
 import { OperationalContext } from './operational-context.js';
 
-// Provider valida toda seleção persistida contra a resposta atual antes de expô-la como loja ativa.
+// O contexto operacional Ã© reconstruÃ­do do JWT e dos vÃ­nculos atuais; localStorage deixou de ser fonte de verdade.
 export function OperationalContextProvider({ children }) {
-  const { status, user } = useAuth();
-  const [activeStoreId, setActiveStoreId] = useState(null);
-  const activeStoreIdRef = useRef(null);
+  const queryClient = useQueryClient();
+  const { status, claims, acceptAccessToken } = useAuth();
+  const [isSwitchingStore, setIsSwitchingStore] = useState(false);
+  const [switchError, setSwitchError] = useState(null);
+  const employeeId = claims?.funcionarioId;
+  const companyId = claims?.empresaId;
+  const claimedStoreId = claims?.lojaId == null ? null : String(claims.lojaId);
   const query = useQuery({
-    queryKey: ['operational-context', user?.id],
-    queryFn: getOperationalContext,
-    enabled: status === 'authenticated' && Boolean(user?.id)
+    queryKey: ['my-stores', employeeId],
+    queryFn: getMyStores,
+    enabled: status === 'authenticated' && Boolean(employeeId)
   });
+  const stores = useMemo(() => query.data ?? [], [query.data]);
+  const refetchStores = query.refetch;
+  const activeStore = stores.find((store) => store.id === claimedStoreId) ?? null;
 
-  const storageKey = user?.id ? `erp.activeStore.${user.id}` : null;
-  // Referência estável evita revalidar localStorage por mudanças de array criadas apenas durante renderização.
-  const stores = useMemo(() => query.data?.lojas ?? [], [query.data]);
-  const activeStore = stores.find((store) => store.id === activeStoreId && store.ativo) ?? null;
-
-  // Getter por ref permanece atual para apiRequest sem criar dependência circular ou renderização extra.
-  useEffect(() => {
-    activeStoreIdRef.current = activeStore?.id ?? null;
-    configureApiOperationalContext({ getActiveStoreId: () => activeStoreIdRef.current });
-  }, [activeStore]);
-
-  useEffect(() => {
-    if (status !== 'authenticated' || !user?.id) {
-      setActiveStoreId(null);
-      return;
-    }
-    if (!query.data) return;
-    let persisted = null;
-    try {
-      persisted = localStorage.getItem(storageKey);
-    } catch {
-      // Navegação continua mesmo quando o browser bloqueia armazenamento local.
-    }
-    const validPersisted = stores.find((store) => store.id === persisted && store.ativo);
-    const activeStores = stores.filter((store) => store.ativo);
-    const selected = validPersisted?.id ?? (activeStores.length === 1 ? activeStores[0].id : null);
-    setActiveStoreId(selected);
-    try {
-      if (selected) localStorage.setItem(storageKey, selected);
-      else localStorage.removeItem(storageKey);
-    } catch {
-      // A seleção ainda funciona em memória durante esta sessão.
-    }
-  }, [query.data, status, storageKey, stores, user?.id]);
-
-  // Troca aceita somente objeto vindo da lista atual e ativo, nunca um UUID arbitrário do componente.
+  // A UI sÃ³ muda de loja depois de o backend emitir um JWT novo; falhas preservam integralmente o contexto anterior.
   const setActiveStore = useCallback(
-    (storeId) => {
-      const selected = stores.find((store) => store.id === storeId && store.ativo) ?? null;
-      setActiveStoreId(selected?.id ?? null);
+    async (storeId) => {
+      const numericId = Number(storeId);
+      if (
+        !Number.isSafeInteger(numericId) ||
+        numericId <= 0 ||
+        !stores.some((store) => store.id === String(storeId) && store.ativo)
+      )
+        throw new Error('Loja invÃ¡lida.');
+      setIsSwitchingStore(true);
+      setSwitchError(null);
       try {
-        if (selected && storageKey) localStorage.setItem(storageKey, selected.id);
-        else if (storageKey) localStorage.removeItem(storageKey);
-      } catch {
-        // Falha de persistência não invalida o contexto em memória.
+        const result = await switchStore(numericId);
+        acceptAccessToken(result);
+        // Limpar todo o cache evita exibir por um instante dados obtidos sob o JWT da loja anterior.
+        queryClient.clear();
+      } catch (error) {
+        setSwitchError(error);
+      } finally {
+        setIsSwitchingStore(false);
       }
     },
-    [storageKey, stores]
+    [acceptAccessToken, queryClient, stores]
   );
+
+  const retry = useCallback(() => {
+    setSwitchError(null);
+    return refetchStores();
+  }, [refetchStores]);
 
   const value = useMemo(
     () => ({
-      company: query.data?.empresa ?? null,
-      employee: query.data?.funcionario ?? null,
+      company: companyId == null ? null : { id: String(companyId) },
+      employee: employeeId == null ? null : { id: String(employeeId) },
       stores,
       activeStore,
       setActiveStore,
-      isLoading: query.isPending && query.isFetching,
-      error: query.error ?? null,
+      isSwitchingStore,
+      isLoading: Boolean(employeeId) && query.isPending && query.isFetching,
+      error:
+        switchError ??
+        query.error ??
+        (claimedStoreId && query.isSuccess && !activeStore
+          ? new Error('A loja do token nÃ£o consta mais entre as lojas permitidas.')
+          : null),
       hasStores: stores.length > 0,
-      retry: query.refetch
+      retry
     }),
     [
       activeStore,
-      query.data,
+      claimedStoreId,
+      companyId,
+      employeeId,
+      isSwitchingStore,
       query.error,
       query.isFetching,
       query.isPending,
-      query.refetch,
+      query.isSuccess,
+      retry,
       setActiveStore,
-      stores
+      stores,
+      switchError
     ]
   );
 
