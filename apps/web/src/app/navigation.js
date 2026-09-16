@@ -89,6 +89,14 @@ export const appRoutes = [
     module: true
   },
   {
+    // Área distinta de Identity: o backend gerencia o cadastro via Funcionario.
+    path: '/admin/employees',
+    label: 'Funcionários',
+    title: 'Funcionários',
+    group: 'Administração',
+    icon: GroupsOutlinedIcon
+  },
+  {
     path: '/admin/plan',
     label: 'Plano',
     title: 'Plano',
@@ -116,7 +124,12 @@ export const navigationGroups = [
   { items: [byPath['/inventory'], byPath['/sales'], byPath['/financial']] },
   {
     label: 'Administração',
-    items: [byPath['/admin/companies'], byPath['/admin/users'], byPath['/admin/plan']]
+    items: [
+      byPath['/admin/companies'],
+      byPath['/admin/employees'],
+      byPath['/admin/users'],
+      byPath['/admin/plan']
+    ]
   },
   { items: [byPath['/settings']] }
 ];

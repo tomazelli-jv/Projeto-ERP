@@ -2,6 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PropTypes from 'prop-types';
 import { useCallback, useMemo, useState } from 'react';
 import { switchStore } from '../../api/auth.js';
+import { decodeJwtPayload } from '../../api/jwt.js';
+import { retainEmployeeQuery } from '../../api/employees-contract.js';
 import { getMyStores } from '../../api/operational-context.js';
 import { useAuth } from '../auth/auth-context.js';
 import { OperationalContext } from './operational-context.js';
@@ -39,15 +41,18 @@ export function OperationalContextProvider({ children }) {
       try {
         const result = await switchStore(numericId);
         acceptAccessToken(result);
-        // Limpar todo o cache evita exibir por um instante dados obtidos sob o JWT da loja anterior.
-        queryClient.clear();
+        // Funcionários têm escopo de empresa; outras queries continuam sendo descartadas na troca.
+        const nextClaims = decodeJwtPayload(result.accessToken);
+        queryClient.removeQueries({
+          predicate: (query) => !retainEmployeeQuery(query.queryKey, claims, nextClaims)
+        });
       } catch (error) {
         setSwitchError(error);
       } finally {
         setIsSwitchingStore(false);
       }
     },
-    [acceptAccessToken, queryClient, stores]
+    [acceptAccessToken, claims, queryClient, stores]
   );
 
   const retry = useCallback(() => {

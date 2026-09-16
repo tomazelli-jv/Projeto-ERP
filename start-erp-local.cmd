@@ -1,1 +1,3 @@
-@PowerShell.exe -NoProfile -ExecutionPolicy Bypass -Command "$script = Get-Content -Raw -Encoding UTF8 -LiteralPath '%~dp0scripts\start-erp-local.ps1'; & ([scriptblock]::Create($script)) -ProjectRoot '%~dp0'"
+@echo off
+rem O auxiliar inicia exclusivamente o backend oficial irmao e o frontend.
+PowerShell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-erp-local.ps1" -ProjectRoot "%~dp0." %*
