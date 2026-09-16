@@ -30,7 +30,7 @@ export function formatCnpj(value) {
     .replace(/(.{4})(.{1,2})$/, '$1-$2');
 }
 
-// O cálculo usa ASCII menos 48 e módulo 11, compartilhando o mesmo algoritmo oficial aplicado pelo backend.
+// O cálculo usa ASCII menos 48 e módulo 11, preservando CNPJ alfanumérico; a compatibilidade do backend é verificada separadamente.
 export function validateCnpj(value) {
   const document = normalizeCnpj(value);
   if (!document || !/^[A-Z0-9]{12}[0-9]{2}$/.test(document) || new Set(document).size === 1) return false;

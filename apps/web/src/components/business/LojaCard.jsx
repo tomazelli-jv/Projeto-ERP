@@ -5,7 +5,7 @@ import { StatusChip } from '../common/StatusChip.jsx';
 import { formatCnpj, formatPhone } from './business-formatters.js';
 
 // Card responsivo apresenta informações operacionais sem expor UUIDs ou recorrer a uma tabela pesada.
-export function LojaCard({ loja, onEdit }) {
+export function LojaCard({ loja, onEdit, active = false }) {
   const location = [loja.cidade, loja.uf].filter(Boolean).join(' / ') || 'Localização não informada';
   return (
     <Card sx={{ height: '100%' }}>
@@ -18,6 +18,7 @@ export function LojaCard({ loja, onEdit }) {
             <Box sx={{ minWidth: 0 }}>
               <Typography fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
                 {loja.nomeFantasia}
+                {active ? ' · Loja ativa' : ''}
               </Typography>
               <Typography color="text.secondary" variant="body2">
                 {loja.razaoSocial}
@@ -29,7 +30,8 @@ export function LojaCard({ loja, onEdit }) {
         <Divider sx={{ my: 2 }} />
         <Stack spacing={0.75} sx={{ flexGrow: 1 }}>
           <Typography variant="body2">
-            <strong>CNPJ:</strong> {formatCnpj(loja.documento)}
+            <strong>{loja.tipoPessoa === 1 ? 'CPF:' : 'CNPJ:'}</strong>{' '}
+            {loja.tipoPessoa === 1 ? loja.documento : formatCnpj(loja.documento)}
           </Typography>
           <Typography variant="body2">
             <strong>Localização:</strong> {location}
@@ -53,4 +55,8 @@ export function LojaCard({ loja, onEdit }) {
   );
 }
 
-LojaCard.propTypes = { loja: PropTypes.object.isRequired, onEdit: PropTypes.func.isRequired };
+LojaCard.propTypes = {
+  loja: PropTypes.object.isRequired,
+  active: PropTypes.bool,
+  onEdit: PropTypes.func.isRequired
+};
