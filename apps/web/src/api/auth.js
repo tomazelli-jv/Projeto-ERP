@@ -1,4 +1,5 @@
 import { apiRequest } from './client.js';
+import { normalizeSessions } from './session-formatters.js';
 
 let refreshPromise = null;
 
@@ -52,18 +53,8 @@ export function logout() {
 
 export async function getSessions() {
   const response = await apiRequest('/auth/sessoes');
-  const items = response?.data ?? response ?? [];
-  // Normaliza o DTO na fronteira para a AccountPage permanecer independente dos nomes do backend.
-  return items.map((item) => ({
-    id: String(item.id),
-    createdAtUtc: item.criadoEm,
-    lastUsedAtUtc: item.ultimoUsoEm,
-    expiresAtUtc: item.expiraEm,
-    ip: item.ip,
-    device: item.userAgent,
-    current: Boolean(item.atual),
-    status: 'active'
-  }));
+  // O endpoint oficial retorna uma lista direta de SessaoDto.
+  return normalizeSessions(response);
 }
 
 export function revokeSession(sessionId) {

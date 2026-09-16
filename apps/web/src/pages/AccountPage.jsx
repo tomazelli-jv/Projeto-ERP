@@ -16,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { getSessions, revokeSession } from '../api/auth.js';
+import { describeDevice, formatSessionDate as formatDate, sortSessions } from '../api/session-formatters.js';
 import { useAuth } from '../app/auth/auth-context.js';
 import { ConfirmDialog } from '../components/common/ConfirmDialog.jsx';
 import { PageHeader } from '../components/common/PageHeader.jsx';
@@ -24,28 +25,32 @@ import { StatusChip } from '../components/common/StatusChip.jsx';
 import { ErrorState } from '../components/feedback/ErrorState.jsx';
 import { LoadingState } from '../components/feedback/LoadingState.jsx';
 
-const sessionQueryKey = ['auth', 'sessions'];
-const accountStatuses = { active: 'Ativo', pending: 'Pendente', blocked: 'Bloqueado', inactive: 'Inativo' };
-const sessionStatuses = { active: 'Ativa', revoked: 'Encerrada', expired: 'Expirada' };
-
-function formatDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Não informada';
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(date);
-}
-
 export function AccountPage() {
-  const { user, logoutAll } = useAuth();
+  const { user, claims, status, logout, logoutAll } = useAuth();
+  // Sessões pertencem ao usuário autenticado, sem dependência de loja ou role.
+  const sessionQueryKey = ['account', 'sessions', user?.id, claims?.sid];
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [sessionToRevoke, setSessionToRevoke] = useState(null);
   const [logoutAllOpen, setLogoutAllOpen] = useState(false);
   const [feedback, setFeedback] = useState(null);
-  const sessionsQuery = useQuery({ queryKey: sessionQueryKey, queryFn: getSessions });
+  const sessionsQuery = useQuery({
+    queryKey: sessionQueryKey,
+    queryFn: getSessions,
+    enabled: status === 'authenticated',
+    select: sortSessions,
+    retry: false
+  });
 
   const revokeMutation = useMutation({
-    mutationFn: revokeSession,
-    onSuccess: async () => {
+    // Sessão atual usa logout; DELETE fica restrito a uma sessão remota retornada pela API.
+    mutationFn: (id) => {
+      if (!sessionsQuery.data?.some((session) => session.id === id && !session.current))
+        throw new Error('Sessão remota indisponível.');
+      return revokeSession(id);
+    },
+    onSuccess: async (_, id) => {
+      queryClient.setQueryData(sessionQueryKey, (items) => items?.filter((session) => session.id !== id));
       setSessionToRevoke(null);
       setFeedback({ severity: 'success', message: 'Sessão encerrada com sucesso.' });
       await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
@@ -60,6 +65,11 @@ export function AccountPage() {
     }
   });
 
+  const logoutMutation = useMutation({
+    mutationFn: logout,
+    onSuccess: () => navigate('/login', { replace: true })
+  });
+  // Logout global reutiliza AuthProvider, que limpa identidade e cache após sucesso.
   const logoutAllMutation = useMutation({
     mutationFn: logoutAll,
     onSuccess: () => navigate('/login', { replace: true }),
@@ -80,25 +90,21 @@ export function AccountPage() {
         description="Consulte seu perfil e gerencie a segurança da sua conta."
       />
       <Stack spacing={3}>
-        <SectionCard title="Perfil" subtitle="Informações da sua identidade no Tomazelli ERP.">
+        <SectionCard title="Informações da conta" subtitle="Informações da sua identidade no Tomazelli ERP.">
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, sm: 5 }}>
               <Typography color="text.secondary" variant="caption">
                 Nome
               </Typography>
-              <Typography fontWeight={650}>{user.name}</Typography>
+              <Typography fontWeight={650}>{user?.name || 'Nome não informado'}</Typography>
             </Grid>
             <Grid size={{ xs: 12, sm: 5 }}>
               <Typography color="text.secondary" variant="caption">
                 E-mail
               </Typography>
-              <Typography sx={{ overflowWrap: 'anywhere' }}>{user.email}</Typography>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 2 }}>
-              <Typography color="text.secondary" display="block" variant="caption">
-                Status da conta
+              <Typography sx={{ overflowWrap: 'anywhere' }}>
+                {user?.email || 'E-mail não informado'}
               </Typography>
-              <StatusChip labels={accountStatuses} status={user.status} sx={{ mt: 0.5 }} />
             </Grid>
           </Grid>
         </SectionCard>
@@ -133,6 +139,18 @@ export function AccountPage() {
               </Button>
             </Stack>
             <Divider />
+            <Typography component="h3" fontWeight={700}>
+              Sessões e dispositivos
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Datas no horário local deste navegador.
+            </Typography>
+            <Button onClick={() => sessionsQuery.refetch()} disabled={sessionsQuery.isFetching}>
+              Atualizar sessões
+            </Button>
+            {sessionsQuery.data?.length === 1 && sessionsQuery.data[0].current && (
+              <Alert severity="info">Você está conectado somente neste dispositivo.</Alert>
+            )}
 
             {sessionsQuery.isPending && <LoadingState message="Carregando sessões..." />}
 
@@ -169,11 +187,14 @@ export function AccountPage() {
                           >
                             <Stack direction="row" alignItems="center" spacing={1.25} sx={{ minWidth: 0 }}>
                               <DevicesOutlinedIcon color="action" />
-                              <Typography fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
-                                {session.device || 'Dispositivo não identificado'}
+                              <Typography component="h4" fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
+                                {describeDevice(session.device)}
                               </Typography>
                             </Stack>
-                            {session.current && <StatusChip label="Sessão atual" status="active" />}
+                            <StatusChip
+                              label={session.current ? 'Sessão atual — Este dispositivo' : 'Outra sessão'}
+                              status={session.current ? 'active' : 'inactive'}
+                            />
                           </Stack>
                           <Grid container spacing={1.5}>
                             <Grid size={{ xs: 12, sm: 6 }}>
@@ -196,15 +217,26 @@ export function AccountPage() {
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
                               <Typography color="text.secondary" display="block" variant="caption">
-                                Status
+                                IP
                               </Typography>
-                              <StatusChip labels={sessionStatuses} status={session.status} />
+                              <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+                                {session.ip || 'Não informado'}
+                              </Typography>
                             </Grid>
                           </Grid>
-                          {!session.current && session.status === 'active' && (
+                          {session.current && (
+                            <Button
+                              onClick={() => logoutMutation.mutate()}
+                              disabled={logoutMutation.isPending || logoutAllMutation.isPending}
+                            >
+                              Sair
+                            </Button>
+                          )}
+                          {!session.current && (
                             <Button
                               color="error"
-                              disabled={revokeMutation.isPending && sessionToRevoke?.id === session.id}
+                              disabled={revokeMutation.isPending || logoutAllMutation.isPending}
+                              aria-label={`Encerrar sessão: ${describeDevice(session.device)}, ${formatDate(session.createdAtUtc)}`}
                               onClick={() => setSessionToRevoke(session)}
                               sx={{ alignSelf: 'flex-end' }}
                               variant="text"
@@ -228,7 +260,9 @@ export function AccountPage() {
         description="O dispositivo selecionado precisará entrar novamente no sistema."
         loading={revokeMutation.isPending}
         onClose={() => setSessionToRevoke(null)}
-        onConfirm={() => revokeMutation.mutate(sessionToRevoke.id)}
+        onConfirm={() => {
+          if (sessionToRevoke && !revokeMutation.isPending) revokeMutation.mutate(sessionToRevoke.id);
+        }}
         open={Boolean(sessionToRevoke)}
         title="Encerrar esta sessão?"
       />

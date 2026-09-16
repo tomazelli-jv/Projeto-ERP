@@ -151,11 +151,9 @@ export function AuthProvider({ children }) {
   }, [clearAuthentication]);
 
   const logoutAll = useCallback(async () => {
-    try {
-      await requestLogoutAll();
-    } finally {
-      clearAuthentication();
-    }
+    // Falha remota mantém a conta aberta para informar o erro; sucesso encerra cache e sessão local.
+    await requestLogoutAll();
+    clearAuthentication();
   }, [clearAuthentication]);
 
   const value = useMemo(
