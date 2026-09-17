@@ -8,6 +8,7 @@ import { Link } from 'react-router';
 import { PageHeader } from '../components/common/PageHeader.jsx';
 import { SectionCard } from '../components/common/SectionCard.jsx';
 import { EmptyState } from '../components/feedback/EmptyState.jsx';
+import { useAuth } from '../app/auth/auth-context.js';
 
 const indicators = [
   {
@@ -43,10 +44,12 @@ const shortcuts = [
 ];
 
 export function DashboardPage() {
+  // Saudação usa o contexto real; indicadores continuam indisponíveis sem API, nunca zero fictício.
+  const { user } = useAuth();
   return (
     <>
       <PageHeader
-        title="Dashboard"
+        title={user?.name ? `Olá, ${user.name}` : 'Dashboard'}
         description="Uma visão geral dos módulos e das rotinas disponíveis no seu ambiente."
         action={<Chip label="Módulos aguardando integração" variant="outlined" />}
       />
@@ -70,8 +73,8 @@ export function DashboardPage() {
                       placeItems: 'center',
                       width: 42,
                       height: 42,
-                      borderRadius: 2.5,
-                      color: 'primary.main',
+                      borderRadius: 1,
+                      color: 'primary.dark',
                       backgroundColor: 'primary.light'
                     }}
                   >
@@ -85,19 +88,15 @@ export function DashboardPage() {
             </Card>
           </Grid>
         ))}
-        <Grid size={{ xs: 12, lg: 7 }}>
-          <SectionCard
-            title="Atividades recentes"
-            subtitle="Atualizações reais aparecerão aqui quando os módulos forem conectados."
-            sx={{ height: '100%' }}
-          >
+        <Grid size={{ xs: 12, lg: 8 }}>
+          <SectionCard title="Faturamento" subtitle="Últimos 7 dias" sx={{ height: '100%' }}>
             <EmptyState
-              title="Atividades ainda não disponíveis"
-              description="Nenhuma informação operacional será exibida sem uma fonte de dados real."
+              title="Sem dados disponíveis"
+              description="Dados disponíveis após integração do módulo de vendas."
             />
           </SectionCard>
         </Grid>
-        <Grid size={{ xs: 12, lg: 5 }}>
+        <Grid size={{ xs: 12, lg: 4 }}>
           <SectionCard
             title="Atalhos rápidos"
             subtitle="Acesse as áreas principais do ERP."
@@ -118,6 +117,13 @@ export function DashboardPage() {
                 </Button>
               ))}
             </Stack>
+          </SectionCard>
+        </Grid>
+        <Grid size={12}>
+          <SectionCard title="Atividades recentes">
+            <Typography color="text.secondary" variant="body2">
+              As atividades aparecerão quando os módulos estiverem conectados.
+            </Typography>
           </SectionCard>
         </Grid>
       </Grid>

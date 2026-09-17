@@ -1,6 +1,7 @@
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import {
   Box,
+  Avatar,
   Divider,
   Drawer,
   IconButton,
@@ -14,11 +15,12 @@ import {
 import PropTypes from 'prop-types';
 import { NavLink, useLocation } from 'react-router';
 import { navigationGroups } from '../../app/navigation.js';
+import { useAuth } from '../../app/auth/auth-context.js';
 
 function Navigation({ onNavigate }) {
   const location = useLocation();
   return (
-    <Box component="nav" aria-label="Navegação principal" sx={{ px: 1.5, py: 2 }}>
+    <Box component="nav" aria-label="Navegação principal" sx={{ px: 1.5, py: 2, flex: 1, overflowY: 'auto' }}>
       {navigationGroups.map((group, groupIndex) => (
         <Box
           key={group.label ?? `group-${groupIndex}`}
@@ -50,9 +52,11 @@ function Navigation({ onNavigate }) {
                   selected={active}
                   to={path}
                   sx={{
-                    borderRadius: 2,
+                    borderRadius: 1,
+                    color: 'text.secondary',
                     mb: 0.5,
-                    minHeight: 42,
+                    minHeight: 40,
+                    py: 0.5,
                     position: 'relative',
                     '&:hover': { backgroundColor: 'action.hover' },
                     '&.Mui-selected': {
@@ -66,13 +70,13 @@ function Navigation({ onNavigate }) {
                         bottom: 9,
                         width: 3,
                         borderRadius: 3,
-                        bgcolor: 'primary.main'
+                        bgcolor: 'primary.dark'
                       },
                       '&:hover': { backgroundColor: 'primary.light' }
                     }
                   }}
                 >
-                  <ListItemIcon sx={{ color: active ? 'primary.main' : 'text.secondary', minWidth: 38 }}>
+                  <ListItemIcon sx={{ color: active ? 'primary.dark' : 'text.secondary', minWidth: 38 }}>
                     <Icon fontSize="small" />
                   </ListItemIcon>
                   <ListItemText
@@ -93,6 +97,8 @@ function Navigation({ onNavigate }) {
 Navigation.propTypes = { onNavigate: PropTypes.func.isRequired };
 
 export function Sidebar({ drawerWidth, mobileOpen, onClose }) {
+  // Rodapé lê somente identidade real; não infere role pelo nome ADM.
+  const { user } = useAuth();
   const content = (
     <>
       <Stack
@@ -115,6 +121,30 @@ export function Sidebar({ drawerWidth, mobileOpen, onClose }) {
       </Stack>
       <Divider />
       <Navigation onNavigate={onClose} />
+      <Box sx={{ borderTop: 1, borderColor: 'divider', p: 2 }}>
+        <ListItemButton component={NavLink} to="/account" onClick={onClose} sx={{ borderRadius: 1, p: 0.5 }}>
+          <Avatar
+            sx={{
+              width: 34,
+              height: 34,
+              mr: 1.5,
+              bgcolor: 'primary.light',
+              color: 'primary.dark',
+              fontSize: 14
+            }}
+          >
+            {user?.name?.charAt(0).toUpperCase()}
+          </Avatar>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography noWrap fontWeight={600}>
+              {user?.name || 'Minha Conta'}
+            </Typography>
+            <Typography noWrap variant="caption" color="text.secondary">
+              {user?.email || 'Minha Conta'}
+            </Typography>
+          </Box>
+        </ListItemButton>
+      </Box>
     </>
   );
 
@@ -134,7 +164,7 @@ export function Sidebar({ drawerWidth, mobileOpen, onClose }) {
         variant="permanent"
         sx={{
           display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', bgcolor: '#fbfcfd' }
+          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
         }}
       >
         {content}

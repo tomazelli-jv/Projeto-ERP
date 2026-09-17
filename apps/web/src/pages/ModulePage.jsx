@@ -1,32 +1,31 @@
-import { Chip } from '@mui/material';
+﻿import { Box, Chip, Stack, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 import { PageHeader } from '../components/common/PageHeader.jsx';
-import { SectionCard } from '../components/common/SectionCard.jsx';
-import { EmptyState } from '../components/feedback/EmptyState.jsx';
 
-// Estado compartilhado evita erros HTTP enquanto cada módulo recebe seu contrato no backend oficial.
-export function ModulePage({ title, description, icon }) {
+// Integration state is informational, not a promise of a working search or API action.
+export function ModulePage({ title, description, icon: Icon }) {
   return (
     <>
-      <PageHeader
-        title={title}
-        description={description}
-        action={<Chip label="Integração em andamento" variant="outlined" />}
-      />
-      <SectionCard
-        title={`Visão geral de ${title.toLowerCase()}`}
-        subtitle="A estrutura visual está pronta para receber os contratos oficiais deste módulo."
+      <PageHeader title={title} description={description} />
+      <Stack
+        direction="row"
+        spacing={2}
+        alignItems="flex-start"
+        sx={{ borderTop: 1, borderColor: 'divider', py: 3 }}
       >
-        <EmptyState
-          icon={icon}
-          title="Integração em andamento"
-          description="Este módulo está sendo conectado ao novo backend. Nenhuma chamada à API antiga é realizada."
-        />
-      </SectionCard>
+        <Box sx={{ color: 'text.secondary', pt: 0.5 }}>
+          <Icon fontSize="small" />
+        </Box>
+        <Stack spacing={1.5} alignItems="flex-start">
+          <Chip label="Integração em andamento" variant="outlined" />
+          <Typography color="text.secondary">
+            Este módulo estará disponível após a integração dos dados operacionais.
+          </Typography>
+        </Stack>
+      </Stack>
     </>
   );
 }
-
 ModulePage.propTypes = {
   title: PropTypes.string.isRequired,
   description: PropTypes.string.isRequired,

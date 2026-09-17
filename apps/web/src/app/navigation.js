@@ -111,14 +111,14 @@ export const appRoutes = [
 const byPath = Object.fromEntries(appRoutes.map((route) => [route.path, route]));
 
 export const navigationGroups = [
-  { items: [byPath['/dashboard']] },
+  // Agrupamento visual preserva exclusivamente destinos já registrados.
+  { label: 'Visão geral', items: [byPath['/dashboard']] },
   { label: 'Cadastros', items: [byPath['/customers'], byPath['/suppliers'], byPath['/products']] },
   { items: [byPath['/inventory'], byPath['/sales'], byPath['/financial']] },
   {
     label: 'Administração',
-    items: [byPath['/admin/companies'], byPath['/admin/users'], byPath['/admin/plan']]
-  },
-  { items: [byPath['/settings']] }
+    items: [byPath['/admin/companies'], byPath['/admin/users'], byPath['/admin/plan'], byPath['/settings']]
+  }
 ];
 
 export const modulePages = appRoutes.filter((route) => route.module);

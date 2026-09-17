@@ -27,6 +27,7 @@ import { useAuth } from '../../app/auth/auth-context.js';
 import { useOperationalContext } from '../../app/operational-context/operational-context.js';
 import { Sidebar } from '../navigation/Sidebar.jsx';
 
+// Sidebar fixa no desktop; o breakpoint existente mantém o drawer em telas menores.
 const drawerWidth = 264;
 
 export function AppShell() {
@@ -82,7 +83,7 @@ export function AppShell() {
           width: { md: `calc(100% - ${drawerWidth}px)` }
         }}
       >
-        <Toolbar sx={{ minHeight: { xs: 64, md: 72 }, gap: 2 }}>
+        <Toolbar sx={{ minHeight: { xs: 64, md: 64 }, gap: 2 }}>
           <IconButton
             aria-label="Abrir navegação"
             edge="start"
@@ -125,7 +126,9 @@ export function AppShell() {
                   size="small"
                   sx={{ minWidth: { xs: 150, sm: 210 }, maxWidth: { xs: 180, md: 280 } }}
                 >
-                  <InputLabel id="active-store-label">Loja</InputLabel>
+                  <InputLabel id="active-store-label" shrink>
+                    Loja
+                  </InputLabel>
                   <Select
                     disabled={isSwitchingStore}
                     labelId="active-store-label"
@@ -214,8 +217,8 @@ export function AppShell() {
       </AppBar>
 
       <Sidebar drawerWidth={drawerWidth} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
-      <Box component="main" sx={{ flexGrow: 1, minWidth: 0, pt: { xs: '64px', md: '72px' } }}>
-        <Box sx={{ mx: 'auto', maxWidth: 1440, p: { xs: 2, sm: 3, lg: 4 } }}>
+      <Box component="main" sx={{ flexGrow: 1, minWidth: 0, pt: '64px' }}>
+        <Box sx={{ mx: 'auto', maxWidth: 1680, p: { xs: 2, sm: 2.5, lg: 3 } }}>
           <Outlet />
         </Box>
       </Box>
