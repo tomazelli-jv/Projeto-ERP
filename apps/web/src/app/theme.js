@@ -1,7 +1,7 @@
 ﻿import { alpha, createTheme } from '@mui/material/styles';
 import { darkPalette, lightPalette } from './theme-tokens.js';
 
-// Uma fábrica e os mesmos overrides atendem ambos os modos. Não há toggle ou persistência nova.
+// Uma fábrica e os mesmos overrides atendem ambos os modos.
 export const createErpTheme = (mode = 'light') =>
   createTheme({
     palette: mode === 'dark' ? darkPalette : lightPalette,
@@ -24,7 +24,17 @@ export const createErpTheme = (mode = 'light') =>
     components: {
       MuiCssBaseline: {
         styleOverrides: (t) => ({
-          body: { minWidth: 320, colorScheme: t.palette.mode },
+          'html, body, #root': {
+            backgroundColor: t.palette.background.default,
+            colorScheme: t.palette.mode,
+            minHeight: '100%'
+          },
+          body: { minWidth: 320 },
+          '@media (prefers-reduced-motion: no-preference)': {
+            'body, .MuiPaper-root, .MuiButtonBase-root, .MuiOutlinedInput-root': {
+              transition: 'background-color 180ms ease, color 180ms ease, border-color 180ms ease'
+            }
+          },
           '*': {
             scrollbarWidth: 'thin',
             scrollbarColor: `${t.palette.divider} ${t.palette.background.default}`
@@ -170,6 +180,3 @@ export const createErpTheme = (mode = 'light') =>
       }
     }
   });
-
-// Light é o modo ativo desta entrega; dark reutiliza a mesma estrutura, sem novo seletor de tema.
-export const theme = createErpTheme('light');

@@ -84,13 +84,13 @@ export const appRoutes = [
     label: 'Usuários',
     title: 'Usuários',
     description: 'Gerencie quem poderá acessar este ambiente.',
-    group: 'Administração',
+    group: 'Configurações',
     icon: ManageAccountsOutlinedIcon,
-    module: true
+    module: false
   },
   {
     path: '/admin/plan',
-    label: 'Plano',
+    label: 'Planos',
     title: 'Plano',
     description: 'Consulte o plano e os limites comerciais do ambiente.',
     group: 'Administração',
@@ -99,7 +99,7 @@ export const appRoutes = [
   },
   {
     path: '/settings',
-    label: 'Configurações',
+    label: 'Parametrização',
     title: 'Configurações',
     description: 'Centralize preferências institucionais e do sistema.',
     icon: SettingsOutlinedIcon,
@@ -117,12 +117,16 @@ export const navigationGroups = [
   { items: [byPath['/inventory'], byPath['/sales'], byPath['/financial']] },
   {
     label: 'Administração',
-    items: [byPath['/admin/companies'], byPath['/admin/users'], byPath['/admin/plan'], byPath['/settings']]
+    items: [byPath['/admin/companies']]
   }
 ];
 
 export const modulePages = appRoutes.filter((route) => route.module);
 
 export function getRouteMetadata(pathname) {
+  // Breadcrumb de subrotas não cria uma segunda seção Funcionários.
+  if (pathname === '/admin/users/new') return { group: 'Usuários', label: 'Novo usuário' };
+  if (/^\/admin\/users\/\d+\/edit$/.test(pathname)) return { group: 'Usuários', label: 'Editar usuário' };
+  if (/^\/admin\/users\/\d+$/.test(pathname)) return { group: 'Usuários', label: 'Dados do usuário' };
   return byPath[pathname];
 }

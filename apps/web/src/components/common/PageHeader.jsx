@@ -2,7 +2,8 @@ import { Box, Stack, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 import { AppBreadcrumbs } from './AppBreadcrumbs.jsx';
 
-export function PageHeader({ title, description, action }) {
+// Badge opcional acompanha o título sem alterar breadcrumb ou ações das demais páginas.
+export function PageHeader({ title, description, action, titleBadge }) {
   return (
     <Stack
       direction={{ xs: 'column', sm: 'row' }}
@@ -13,9 +14,12 @@ export function PageHeader({ title, description, action }) {
     >
       <Box sx={{ minWidth: 0 }}>
         <AppBreadcrumbs />
-        <Typography component="h1" sx={{ overflowWrap: 'anywhere' }} variant="h1">
-          {title}
-        </Typography>
+        <Stack direction="row" alignItems="center" gap={1.5} flexWrap="wrap">
+          <Typography component="h1" sx={{ overflowWrap: 'anywhere' }} variant="h1">
+            {title}
+          </Typography>
+          {titleBadge}
+        </Stack>
         <Typography color="text.secondary" sx={{ mt: 0.75, maxWidth: 760 }}>
           {description}
         </Typography>
@@ -28,5 +32,6 @@ export function PageHeader({ title, description, action }) {
 PageHeader.propTypes = {
   title: PropTypes.string.isRequired,
   description: PropTypes.string.isRequired,
-  action: PropTypes.node
+  action: PropTypes.node,
+  titleBadge: PropTypes.node
 };
