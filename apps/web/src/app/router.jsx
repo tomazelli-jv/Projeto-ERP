@@ -1,6 +1,7 @@
 import { Navigate, createBrowserRouter } from 'react-router';
 import { AppShell } from '../components/layout/AppShell.jsx';
 import { AccountPage } from '../pages/AccountPage.jsx';
+import { CompaniesPage } from '../pages/CompaniesPage.jsx';
 import { UsersPage } from '../pages/UsersPage.jsx';
 import { UserEditorPage } from '../pages/UserEditorPage.jsx';
 import { DashboardPage } from '../pages/DashboardPage.jsx';
@@ -23,6 +24,8 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate replace to="/dashboard" /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'account', element: <AccountPage /> },
+      // Área existente conectada aos contratos oficiais Empresa/Loja.
+      { path: 'admin/companies', element: <CompaniesPage /> },
       // Usuários mantém a URL administrativa; o contrato Funcionario fica encapsulado no client.
       { path: 'admin/users', element: <UsersPage /> },
       { path: 'admin/users/new', element: <UserEditorPage mode="create" /> },

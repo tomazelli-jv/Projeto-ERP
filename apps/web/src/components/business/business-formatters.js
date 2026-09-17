@@ -30,7 +30,7 @@ export function formatCnpj(value) {
     .replace(/(.{4})(.{1,2})$/, '$1-$2');
 }
 
-// O cálculo usa ASCII menos 48 e módulo 11, compartilhando o mesmo algoritmo oficial aplicado pelo backend.
+// O cálculo alfanumérico usa ASCII menos 48 e módulo 11; o backend atual ainda requer adequação.
 export function validateCnpj(value) {
   const document = normalizeCnpj(value);
   if (!document || !/^[A-Z0-9]{12}[0-9]{2}$/.test(document) || new Set(document).size === 1) return false;
@@ -61,6 +61,7 @@ export function formatPhone(value) {
 
 // Datas inválidas não quebram a página e são apresentadas como informação indisponível.
 export function formatDate(value) {
+  if (!value) return 'Não informada';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 'Não informada' : new Intl.DateTimeFormat('pt-BR').format(date);
 }

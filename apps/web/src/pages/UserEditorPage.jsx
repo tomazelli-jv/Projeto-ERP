@@ -38,6 +38,7 @@ import { PageHeader } from '../components/common/PageHeader.jsx';
 import { SectionCard } from '../components/common/SectionCard.jsx';
 import { ErrorState } from '../components/feedback/ErrorState.jsx';
 import { LoadingState } from '../components/feedback/LoadingState.jsx';
+import { UserProfile } from '../components/users/UserProfile.jsx';
 import {
   userError,
   userPermissions,
@@ -62,7 +63,7 @@ export function UserEditorPage({ mode }) {
     enabled: !creating && allowed && validId && Boolean(claims?.empresaId) && !context.isSwitchingStore,
     retry: false
   });
-  const title = creating ? 'Criar usuário' : mode === 'edit' ? 'Editar usuário' : 'Dados do usuário';
+  const title = creating ? 'Criar usuário' : mode === 'edit' ? 'Editar usuário' : 'Perfil do colaborador';
   return (
     <>
       <PageHeader
@@ -93,6 +94,8 @@ export function UserEditorPage({ mode }) {
         <LoadingState message="Carregando usuário..." />
       ) : query.isError ? (
         <ErrorState description={userError(query.error)} onRetry={() => query.refetch()} />
+      ) : mode === 'view' ? (
+        <UserProfile user={query.data} canEdit={permissions.update} />
       ) : (
         <UserForm
           key={JSON.stringify([...scope, id, mode])}

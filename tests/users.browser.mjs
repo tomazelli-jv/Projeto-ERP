@@ -205,7 +205,7 @@ await delay(400);
 check(await evaluate("location.pathname==='/admin/users'"), 'cancelar retorna lista');
 for (const mode of ['light', 'dark']) {
   await evaluate(`localStorage.setItem('erp.themeMode','${mode}')`);
-  for (const page of ['/admin/users', '/admin/users/new', '/admin/users/1/edit']) {
+  for (const page of ['/admin/users', '/admin/users/new', '/admin/users/1/edit', '/admin/users/1']) {
     await go(page);
     for (const [width, height] of [
       [1920, 1080],
@@ -258,7 +258,13 @@ for (const mode of ['light', 'dark']) {
       'tmp/users-' +
         mode +
         '-' +
-        (page.endsWith('new') ? 'new' : page.endsWith('edit') ? 'edit' : 'list') +
+        (page.endsWith('new')
+          ? 'new'
+          : page.endsWith('edit')
+            ? 'edit'
+            : page.endsWith('/1')
+              ? 'profile'
+              : 'list') +
         '.png',
       Buffer.from(shot.data, 'base64')
     );

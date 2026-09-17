@@ -77,7 +77,7 @@ export const appRoutes = [
     description: 'Gerencie sua empresa e os estabelecimentos vinculados.',
     group: 'Administração',
     icon: BusinessOutlinedIcon,
-    module: true
+    module: false
   },
   {
     path: '/admin/users',
@@ -124,9 +124,11 @@ export const navigationGroups = [
 export const modulePages = appRoutes.filter((route) => route.module);
 
 export function getRouteMetadata(pathname) {
+  // A listagem agrupa as lojas sob a empresa escolhida.
+  if (pathname === '/admin/companies') return { group: 'Empresas', label: 'Lojas' };
   // Breadcrumb de subrotas não cria uma segunda seção Funcionários.
   if (pathname === '/admin/users/new') return { group: 'Usuários', label: 'Novo usuário' };
   if (/^\/admin\/users\/\d+\/edit$/.test(pathname)) return { group: 'Usuários', label: 'Editar usuário' };
-  if (/^\/admin\/users\/\d+$/.test(pathname)) return { group: 'Usuários', label: 'Dados do usuário' };
+  if (/^\/admin\/users\/\d+$/.test(pathname)) return { group: 'Usuários', label: 'Perfil do colaborador' };
   return byPath[pathname];
 }

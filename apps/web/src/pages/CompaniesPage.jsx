@@ -1,319 +1,328 @@
-import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+﻿import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
-import { Alert, Button, Grid, Snackbar, Stack, Typography } from '@mui/material';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  MenuItem,
+  Skeleton,
+  Snackbar,
+  Stack,
+  TextField,
+  Typography
+} from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { createLoja, listEmpresas, listLojas, updateEmpresa, updateLoja } from '../api/business.js';
-import { EmpresaFormDialog } from '../components/business/EmpresaFormDialog.jsx';
+import PropTypes from 'prop-types';
+import { useRef, useState } from 'react';
+import {
+  createLoja,
+  getEmpresa,
+  listEmpresas,
+  listLojas,
+  updateEmpresa,
+  updateLoja
+} from '../api/business.js';
+import { useAuth } from '../app/auth/auth-context.js';
+import { useOperationalContext } from '../app/operational-context/operational-context.js';
+import { BusinessDetailDialog } from '../components/business/BusinessDetailDialog.jsx';
+import { BusinessFormDialog } from '../components/business/BusinessFormDialog.jsx';
 import { LojaCard } from '../components/business/LojaCard.jsx';
-import { LojaFormDialog } from '../components/business/LojaFormDialog.jsx';
-import { formatDate } from '../components/business/business-formatters.js';
+import { businessError, businessScope, canManageBusiness } from '../components/business/business-model.js';
+import { businessDensitySx } from '../components/business/business-styles.js';
 import { ConfirmDialog } from '../components/common/ConfirmDialog.jsx';
 import { PageHeader } from '../components/common/PageHeader.jsx';
 import { SectionCard } from '../components/common/SectionCard.jsx';
-import { StatusChip } from '../components/common/StatusChip.jsx';
 import { EmptyState } from '../components/feedback/EmptyState.jsx';
 import { ErrorState } from '../components/feedback/ErrorState.jsx';
-import { LoadingState } from '../components/feedback/LoadingState.jsx';
 
-const empresasQueryKey = ['empresas'];
-
-// Traduz falhas conhecidas para mensagens úteis sem apresentar códigos internos como texto principal.
-function mutationMessage(error) {
-  if (error?.code === 'LOJA_DOCUMENTO_ALREADY_EXISTS') return 'Já existe uma loja cadastrada com este CNPJ.';
-  return error?.message || 'Não foi possível salvar as alterações. Tente novamente.';
-}
-
-// Esta é a primeira página administrativa conectada aos contratos reais de empresa e loja do ERP.
+// Guard antes de montar as queries; troca de JWT remonta o estado local sem misturar empresas.
 export function CompaniesPage() {
-  const queryClient = useQueryClient();
-  const [empresaDialogOpen, setEmpresaDialogOpen] = useState(false);
-  const [lojaDialog, setLojaDialog] = useState({ open: false, loja: null });
-  const [pendingConfirmation, setPendingConfirmation] = useState(null);
-  const [empresaError, setEmpresaError] = useState('');
-  const [lojaError, setLojaError] = useState('');
-  const [feedback, setFeedback] = useState('');
-
-  // A consulta inicial diferencia ausência real de registros de ausência de contexto empresarial.
-  const empresasQuery = useQuery({ queryKey: empresasQueryKey, queryFn: listEmpresas });
-  const empresa = empresasQuery.data?.[0] ?? null;
-  const lojasQueryKey = ['empresas', empresa?.id, 'lojas'];
-
-  // A query dependente nunca é executada até existir uma empresa autorizada retornada pela API.
-  const lojasQuery = useQuery({
-    queryKey: lojasQueryKey,
-    queryFn: () => listLojas(empresa.id),
-    enabled: Boolean(empresa?.id)
-  });
-
-  // Atualizar a empresa invalida sua fonte de verdade e mantém o formulário aberto quando a API rejeita o payload.
-  const empresaMutation = useMutation({
-    mutationFn: (body) => updateEmpresa(empresa.id, body),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: empresasQueryKey });
-      setEmpresaDialogOpen(false);
-      setEmpresaError('');
-      setFeedback('Empresa atualizada com sucesso.');
-    },
-    onError: (error) => setEmpresaError(mutationMessage(error))
-  });
-
-  // Uma única mutation atende cadastro e edição, invalidando somente as lojas da empresa ativa.
-  const lojaMutation = useMutation({
-    mutationFn: ({ loja, body }) => (loja ? updateLoja(loja.id, body) : createLoja(empresa.id, body)),
-    onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({ queryKey: lojasQueryKey });
-      setLojaDialog({ open: false, loja: null });
-      setLojaError('');
-      setFeedback(variables.loja ? 'Loja atualizada com sucesso.' : 'Loja cadastrada com sucesso.');
-    },
-    onError: (error) => setLojaError(mutationMessage(error))
-  });
-
-  // Submissões que mudam um registro ativo para inativo aguardam uma decisão explícita do usuário.
-  function submitEmpresa(body) {
-    setEmpresaError('');
-    if (empresa.ativo && !body.ativo) {
-      setPendingConfirmation({ kind: 'empresa', body });
-      return;
-    }
-    empresaMutation.mutate(body);
-  }
-
-  // A loja selecionada é preservada junto do payload para que a confirmação use a operação correta.
-  function submitLoja(body) {
-    setLojaError('');
-    if (lojaDialog.loja?.ativo && !body.ativo) {
-      setPendingConfirmation({ kind: 'loja', body, loja: lojaDialog.loja });
-      return;
-    }
-    lojaMutation.mutate({ loja: lojaDialog.loja, body });
-  }
-
-  // Confirmação reutiliza as mesmas mutations e não cria endpoints paralelos de ativação ou exclusão.
-  function confirmInactivation() {
-    const pending = pendingConfirmation;
-    setPendingConfirmation(null);
-    if (pending.kind === 'empresa') empresaMutation.mutate(pending.body);
-    else lojaMutation.mutate({ loja: pending.loja, body: pending.body });
-  }
-
-  // Loading, erro de contexto, erro inesperado e coleção vazia são estados semanticamente distintos.
-  if (empresasQuery.isPending) return <LoadingState message="Carregando empresa..." rows={2} />;
-  if (empresasQuery.isError && empresasQuery.error?.code === 'BUSINESS_CONTEXT_REQUIRED') {
-    return (
-      <>
-        <PageHeader
-          title="Empresas e lojas"
-          description="Gerencie sua empresa e os estabelecimentos vinculados."
-        />
-        <SectionCard>
-          <EmptyState
-            icon={BusinessOutlinedIcon}
-            title="Acesso empresarial não configurado"
-            description="Seu usuário ainda não está vinculado a uma empresa. Solicite ao administrador a configuração do seu acesso."
-            action={
-              <Button onClick={() => empresasQuery.refetch()} variant="outlined">
-                Tentar novamente
-              </Button>
-            }
-          />
-        </SectionCard>
-      </>
-    );
-  }
-  if (empresasQuery.isError) {
-    return (
-      <>
-        <PageHeader
-          title="Empresas e lojas"
-          description="Gerencie sua empresa e os estabelecimentos vinculados."
-        />
-        <SectionCard>
-          <ErrorState
-            description="Ocorreu uma falha ao consultar sua empresa."
-            onRetry={() => empresasQuery.refetch()}
-          />
-        </SectionCard>
-      </>
-    );
-  }
-  if (!empresa) {
-    return (
-      <>
-        <PageHeader
-          title="Empresas e lojas"
-          description="Gerencie sua empresa e os estabelecimentos vinculados."
-        />
-        <SectionCard>
-          <EmptyState
-            icon={BusinessOutlinedIcon}
-            title="Nenhuma empresa disponível"
-            description="Não há uma empresa acessível para este usuário."
-          />
-        </SectionCard>
-      </>
-    );
-  }
-
+  const { claims } = useAuth();
+  const context = useOperationalContext();
   return (
-    <>
-      <PageHeader
-        title="Empresas e lojas"
-        description="Gerencie sua empresa e os estabelecimentos vinculados."
-      />
-
-      {/* Um card único concentra os dados institucionais e evita fragmentar excessivamente a página. */}
-      <SectionCard title="Informações da empresa">
-        <Stack spacing={3}>
-          <Stack
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
-            direction={{ xs: 'column', sm: 'row' }}
-            gap={1.5}
-            justifyContent="space-between"
-          >
-            <Typography component="h2" variant="h2">
-              {empresa.nome}
-            </Typography>
-            <StatusChip
-              label={empresa.ativo ? 'Ativa' : 'Inativa'}
-              status={empresa.ativo ? 'active' : 'inactive'}
-            />
-          </Stack>
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <Typography color="text.secondary" variant="caption">
-                Nome
-              </Typography>
-              <Typography>{empresa.nome}</Typography>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
-              <Typography color="text.secondary" variant="caption">
-                Situação
-              </Typography>
-              <Typography>{empresa.ativo ? 'Ativa' : 'Inativa'}</Typography>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 3 }}>
-              <Typography color="text.secondary" variant="caption">
-                Cadastrada em
-              </Typography>
-              <Typography>{formatDate(empresa.dataCadastro)}</Typography>
-            </Grid>
-          </Grid>
-          <Button
-            onClick={() => {
-              setEmpresaError('');
-              setEmpresaDialogOpen(true);
-            }}
-            sx={{ alignSelf: { xs: 'stretch', sm: 'flex-end' } }}
-            variant="outlined"
-          >
-            Editar empresa
-          </Button>
-        </Stack>
+    <Box sx={businessDensitySx}>
+      <PageHeader title="Empresas e Lojas" description="Gerencie as lojas vinculadas a cada empresa." />
+      {!canManageBusiness(claims) ? (
+        <Alert severity="info">Você não possui permissão para acessar Empresas e Lojas.</Alert>
+      ) : context.isSwitchingStore ? (
+        <BusinessLoading />
+      ) : (
+        <CompaniesContent key={JSON.stringify(businessScope(claims))} claims={claims} />
+      )}
+    </Box>
+  );
+}
+function BusinessLoading() {
+  return (
+    <Stack role="status" aria-label="Carregando empresas e lojas" spacing={2}>
+      {[0, 1, 2].map((item) => (
+        <Skeleton key={item} variant="rounded" height={100} />
+      ))}
+    </Stack>
+  );
+}
+function CompaniesContent({ claims }) {
+  const queryClient = useQueryClient();
+  const scope = businessScope(claims);
+  const [selected, setSelected] = useState('');
+  const [dialog, setDialog] = useState(null);
+  const [confirmation, setConfirmation] = useState(null);
+  const [error, setError] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const lock = useRef(false);
+  const empresas = useQuery({
+    queryKey: [...scope, 'companies'],
+    queryFn: ({ signal }) => listEmpresas(signal),
+    retry: false
+  });
+  // Preferência pelo contexto atual, depois primeira empresa acessível. Seleção local nunca fabrica JWT.
+  const companyId =
+    selected ||
+    String(
+      empresas.data?.find((item) => String(item.id) === String(claims.empresaId))?.id ??
+        empresas.data?.[0]?.id ??
+        ''
+    );
+  const company = useQuery({
+    queryKey: [...scope, 'company', companyId],
+    queryFn: ({ signal }) => getEmpresa(companyId, signal),
+    enabled: Boolean(companyId),
+    retry: false
+  });
+  const matchesContext = Boolean(claims.empresaId) && String(claims.empresaId) === companyId;
+  // GET Loja não aceita empresaId: só é consultado para a empresa representada no JWT.
+  const lojas = useQuery({
+    queryKey: [...scope, 'stores', companyId],
+    queryFn: ({ signal }) => listLojas(signal),
+    enabled: matchesContext && company.isSuccess,
+    retry: false
+  });
+  const rows = (lojas.data ?? []).filter((item) => String(item.empresaId) === companyId);
+  const mutation = useMutation({
+    mutationFn: ({ kind, record, body }) =>
+      kind === 'empresa'
+        ? updateEmpresa(record.id, body)
+        : record
+          ? updateLoja(record.id, body)
+          : createLoja(companyId, body),
+    onSuccess: async () => {
+      // Invalida só o módulo e o seletor global; não muda activeStore nem limpa cache global.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: scope }),
+        queryClient.invalidateQueries({ queryKey: ['my-stores', claims.funcionarioId] })
+      ]);
+      setDialog(null);
+      setConfirmation(null);
+      setError('');
+      setFeedback('Cadastro salvo com sucesso.');
+    },
+    onError: (cause) => setError(businessError(cause))
+  });
+  async function save(operation) {
+    if (lock.current) return;
+    lock.current = true;
+    setError('');
+    try {
+      await mutation.mutateAsync(operation);
+    } catch {
+      /* Erro permanece no dialog para correção sem perder o rascunho. */
+    } finally {
+      lock.current = false;
+    }
+  }
+  function submit(body) {
+    const operation = { kind: dialog.kind, record: dialog.record, body };
+    if (dialog.record && dialog.record.ativo !== body.ativo) {
+      setConfirmation(operation);
+      return;
+    }
+    return save(operation);
+  }
+  function open(kind, mode, record = null) {
+    setError('');
+    setDialog({ kind, mode, record });
+  }
+  if (empresas.isPending) return <BusinessLoading />;
+  if (empresas.isError)
+    return <ErrorState description={businessError(empresas.error)} onRetry={() => empresas.refetch()} />;
+  if (!empresas.data?.length)
+    return (
+      <SectionCard>
+        <EmptyState
+          title="Nenhuma empresa disponível"
+          description="Não há empresas acessíveis para este usuário."
+        />
       </SectionCard>
-
-      {/* A seção de lojas ocupa toda a largura, com ação acessível também no estado vazio. */}
-      <SectionCard sx={{ mt: 3 }}>
-        <Stack spacing={2.5}>
-          <Stack
-            alignItems={{ xs: 'stretch', sm: 'center' }}
-            direction={{ xs: 'column', sm: 'row' }}
-            gap={2}
-            justifyContent="space-between"
-          >
-            <div>
-              <Typography component="h2" variant="h3">
-                Lojas
-              </Typography>
-              <Typography color="text.secondary" variant="body2">
-                {lojasQuery.data?.length ?? 0}{' '}
-                {(lojasQuery.data?.length ?? 0) === 1 ? 'loja cadastrada' : 'lojas cadastradas'}
-              </Typography>
-            </div>
-            <Button
-              startIcon={<AddOutlinedIcon />}
-              onClick={() => {
-                setLojaError('');
-                setLojaDialog({ open: true, loja: null });
-              }}
-              variant="contained"
+    );
+  return (
+    <Stack spacing={2}>
+      {empresas.data.length > 1 && (
+        <TextField
+          select
+          label="Empresa"
+          value={companyId}
+          onChange={(event) => {
+            setSelected(event.target.value);
+            setDialog(null);
+            setConfirmation(null);
+          }}
+          sx={{ maxWidth: 480 }}
+        >
+          {empresas.data.map((item) => (
+            <MenuItem key={item.id} value={String(item.id)}>
+              {item.nome}
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
+      {company.isPending ? (
+        <BusinessLoading />
+      ) : company.isError ? (
+        <ErrorState description={businessError(company.error)} onRetry={() => company.refetch()} />
+      ) : (
+        <>
+          <SectionCard>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={2}
+              alignItems={{ xs: 'flex-start', md: 'center' }}
             >
+              <Avatar
+                variant="rounded"
+                sx={{ width: 48, height: 48, bgcolor: 'primary.soft', color: 'primary.dark' }}
+              >
+                <BusinessOutlinedIcon sx={{ fontSize: 28 }} />
+              </Avatar>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Stack direction="row" alignItems="center" flexWrap="wrap" gap={2}>
+                  <Typography variant="h2" sx={{ overflowWrap: 'anywhere' }}>
+                    {company.data.nome}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    color={company.data.ativo ? 'success' : 'error'}
+                    label={company.data.ativo ? 'Ativa' : 'Inativa'}
+                  />
+                </Stack>
+                <Typography color="text.secondary" sx={{ mt: 1 }}>
+                  Dados da empresa e suas unidades
+                </Typography>
+              </Box>
+              <Button
+                variant="outlined"
+                startIcon={<VisibilityOutlinedIcon />}
+                onClick={() => open('empresa', 'view', company.data)}
+              >
+                Visualizar dados da empresa
+              </Button>
+            </Stack>
+          </SectionCard>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+            justifyContent="space-between"
+            gap={2}
+            sx={{ pt: 1 }}
+          >
+            <Box>
+              <Typography variant="h2">
+                Lojas{matchesContext && lojas.isSuccess ? ` (${rows.length})` : ''}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                Cadastre e gerencie as lojas desta empresa.
+              </Typography>
+            </Box>
+            <Button variant="contained" startIcon={<AddOutlinedIcon />} onClick={() => open('loja', 'edit')}>
               Nova loja
             </Button>
           </Stack>
-          {lojasQuery.isPending && <LoadingState message="Carregando lojas..." rows={2} />}
-          {lojasQuery.isError && (
-            <ErrorState
-              description="Ocorreu uma falha ao consultar as lojas."
-              onRetry={() => lojasQuery.refetch()}
+          {!matchesContext ? (
+            <Alert severity="info">
+              Para consultar as lojas desta empresa, selecione uma loja dela no seletor global. A consulta de
+              lojas usa a empresa da sessão atual.
+            </Alert>
+          ) : lojas.isPending ? (
+            <BusinessLoading />
+          ) : lojas.isError ? (
+            <ErrorState description={businessError(lojas.error)} onRetry={() => lojas.refetch()} />
+          ) : rows.length === 0 ? (
+            <SectionCard>
+              <EmptyState
+                title="Nenhuma loja cadastrada"
+                description="Cadastre a primeira loja desta empresa."
+                action={
+                  <Button variant="outlined" onClick={() => open('loja', 'edit')}>
+                    Nova loja
+                  </Button>
+                }
+              />
+            </SectionCard>
+          ) : (
+            rows.map((loja) => (
+              <LojaCard
+                key={loja.id}
+                loja={loja}
+                disabled={mutation.isPending}
+                onView={(record) => open('loja', 'view', record)}
+                onStatus={(record) => {
+                  setError('');
+                  setConfirmation({ kind: 'loja', record, body: { ...record, ativo: !record.ativo } });
+                }}
+              />
+            ))
+          )}
+          {dialog?.mode === 'view' && (
+            <BusinessDetailDialog
+              kind={dialog.kind}
+              record={dialog.record}
+              companyName={company.data.nome}
+              onClose={() => setDialog(null)}
+              onEdit={() => setDialog((previous) => ({ ...previous, mode: 'edit' }))}
             />
           )}
-          {lojasQuery.isSuccess && lojasQuery.data.length === 0 && (
-            <EmptyState
-              title="Nenhuma loja cadastrada"
-              description="Cadastre o primeiro estabelecimento vinculado a esta empresa."
-              action={
-                <Button onClick={() => setLojaDialog({ open: true, loja: null })} variant="outlined">
-                  Cadastrar loja
-                </Button>
-              }
+          {dialog?.mode === 'edit' && (
+            <BusinessFormDialog
+              key={`${dialog.kind}-${dialog.record?.id ?? 'new'}`}
+              kind={dialog.kind}
+              record={dialog.record}
+              company={company.data}
+              loading={mutation.isPending}
+              apiError={error}
+              onClose={() => setDialog(null)}
+              onSubmit={submit}
             />
           )}
-          {lojasQuery.isSuccess && lojasQuery.data.length > 0 && (
-            <Grid container spacing={2.5}>
-              {lojasQuery.data.map((loja) => (
-                <Grid key={loja.id} size={{ xs: 12, lg: 6 }}>
-                  <LojaCard
-                    loja={loja}
-                    onEdit={(selected) => {
-                      setLojaError('');
-                      setLojaDialog({ open: true, loja: selected });
-                    }}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </Stack>
-      </SectionCard>
-
-      <EmpresaFormDialog
-        empresa={empresa}
-        open={empresaDialogOpen}
-        loading={empresaMutation.isPending}
-        apiError={empresaError}
-        onClose={() => setEmpresaDialogOpen(false)}
-        onSubmit={submitEmpresa}
-      />
-      <LojaFormDialog
-        loja={lojaDialog.loja}
-        open={lojaDialog.open}
-        loading={lojaMutation.isPending}
-        apiError={lojaError}
-        onClose={() => setLojaDialog({ open: false, loja: null })}
-        onSubmit={submitLoja}
-      />
+        </>
+      )}
+      {error && confirmation && <Alert severity="error">{error}</Alert>}
       <ConfirmDialog
-        open={Boolean(pendingConfirmation)}
-        title={pendingConfirmation?.kind === 'empresa' ? 'Inativar esta empresa?' : 'Inativar esta loja?'}
-        description="O cadastro será preservado, mas ficará inativo até uma nova alteração de status."
-        confirmLabel="Inativar"
-        loading={empresaMutation.isPending || lojaMutation.isPending}
-        onClose={() => setPendingConfirmation(null)}
-        onConfirm={confirmInactivation}
+        open={Boolean(confirmation)}
+        title={`${confirmation?.body.ativo ? 'Ativar' : 'Inativar'} ${confirmation?.kind === 'empresa' ? 'empresa' : 'loja'}?`}
+        description={
+          error ||
+          (confirmation?.kind === 'loja' &&
+          String(confirmation.record.id) === String(claims.lojaId) &&
+          !confirmation.body.ativo
+            ? 'Esta é a loja da sessão atual. A alteração será salva; o contexto da sessão não será trocado automaticamente.'
+            : 'O cadastro será preservado e sua situação será atualizada.')
+        }
+        confirmLabel={confirmation?.body.ativo ? 'Ativar' : 'Inativar'}
+        loading={mutation.isPending}
+        onClose={() => {
+          setConfirmation(null);
+          setError('');
+        }}
+        onConfirm={() => save(confirmation)}
       />
-      {/* Snackbar fornece retorno não bloqueante e aria-live após cada mutation concluída. */}
-      <Snackbar
-        autoHideDuration={5000}
-        open={Boolean(feedback)}
-        onClose={() => setFeedback('')}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity="success" variant="filled" onClose={() => setFeedback('')}>
+      <Snackbar open={Boolean(feedback)} autoHideDuration={5000} onClose={() => setFeedback('')}>
+        <Alert severity="success" onClose={() => setFeedback('')}>
           {feedback}
         </Alert>
       </Snackbar>
-    </>
+    </Stack>
   );
 }
+CompaniesContent.propTypes = { claims: PropTypes.object.isRequired };
