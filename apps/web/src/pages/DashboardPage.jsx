@@ -15,24 +15,28 @@ const indicators = [
     label: 'Vendas do dia',
     value: '—',
     detail: 'Aguardando integração do módulo',
+    tone: 'info',
     icon: PointOfSaleOutlinedIcon
   },
   {
     label: 'Contas a receber',
     value: '—',
     detail: 'Aguardando integração do módulo',
+    tone: 'success',
     icon: ReceiptLongOutlinedIcon
   },
   {
     label: 'Contas a pagar',
     value: '—',
     detail: 'Aguardando integração do módulo',
+    tone: 'error',
     icon: AccountBalanceWalletOutlinedIcon
   },
   {
     label: 'Estoque baixo',
     value: '—',
     detail: 'Aguardando integração do módulo',
+    tone: 'warning',
     icon: Inventory2OutlinedIcon
   }
 ];
@@ -54,7 +58,7 @@ export function DashboardPage() {
         action={<Chip label="Módulos aguardando integração" variant="outlined" />}
       />
       <Grid container spacing={2.5}>
-        {indicators.map(({ label, value, detail, icon: Icon }) => (
+        {indicators.map(({ label, value, detail, tone, icon: Icon }) => (
           <Grid key={label} size={{ xs: 12, sm: 6, lg: 3 }}>
             <Card sx={{ height: '100%' }}>
               <CardContent sx={{ p: 2.5 }}>
@@ -74,8 +78,8 @@ export function DashboardPage() {
                       width: 42,
                       height: 42,
                       borderRadius: 1,
-                      color: 'primary.dark',
-                      backgroundColor: 'primary.light'
+                      color: `${tone}.main`,
+                      backgroundColor: `${tone}.soft`
                     }}
                   >
                     <Icon />

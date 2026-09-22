@@ -164,8 +164,8 @@ export function UsersPage() {
                                 sx={{
                                   width: 36,
                                   height: 36,
-                                  bgcolor: 'primary.soft',
-                                  color: 'primary.dark',
+                                  bgcolor: 'surface.secondary',
+                                  color: 'text.secondary',
                                   fontSize: 13
                                 }}
                               >

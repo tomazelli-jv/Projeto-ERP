@@ -91,19 +91,20 @@ export const appRoutes = [
   {
     path: '/admin/plan',
     label: 'Planos',
-    title: 'Plano',
-    description: 'Consulte o plano e os limites comerciais do ambiente.',
-    group: 'Administração',
+    title: 'Planos',
+    description: 'A gestão de planos ainda não está disponível neste ambiente.',
+    group: 'Configurações',
     icon: ReceiptLongOutlinedIcon,
-    module: true
+    module: false
   },
   {
     path: '/settings',
     label: 'Parametrização',
-    title: 'Configurações',
-    description: 'Centralize preferências institucionais e do sistema.',
+    title: 'Parametrização',
+    description: 'Personalize o comportamento e a aparência do sistema.',
+    group: 'Configurações',
     icon: SettingsOutlinedIcon,
-    module: true
+    module: false
   },
   { path: '/account', label: 'Minha Conta', title: 'Minha Conta', hidden: true }
 ];

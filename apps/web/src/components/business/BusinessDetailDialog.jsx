@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 import PropTypes from 'prop-types';
 import { SectionCard } from '../common/SectionCard.jsx';
-import { formatDate } from './business-formatters.js';
+import { formatDate, formatPhone } from './business-formatters.js';
 import { addressLines, documentLabel, documentValue } from './business-model.js';
 import { businessDensitySx, businessCardSx } from './business-styles.js';
 
@@ -53,7 +53,7 @@ export function BusinessDetailDialog({ record, kind, companyName, onClose, onEdi
       <DialogTitle id="business-detail-title">{store ? 'Perfil da loja' : 'Perfil da empresa'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
-          <SectionCard sx={{ ...businessCardSx, bgcolor: 'primary.soft' }}>
+          <SectionCard sx={{ ...businessCardSx, bgcolor: 'surface.secondary' }}>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               alignItems={{ xs: 'flex-start', sm: 'center' }}
@@ -61,7 +61,7 @@ export function BusinessDetailDialog({ record, kind, companyName, onClose, onEdi
             >
               <Avatar
                 variant="rounded"
-                sx={{ width: 56, height: 56, bgcolor: 'primary.main', color: 'primary.contrastText' }}
+                sx={{ width: 56, height: 56, bgcolor: 'surface.secondary', color: 'text.secondary' }}
               >
                 <Icon sx={{ fontSize: 30 }} />
               </Avatar>
@@ -118,7 +118,7 @@ export function BusinessDetailDialog({ record, kind, companyName, onClose, onEdi
                     {record.email || 'E-mail não informado'}
                   </Typography>
                   <Divider sx={{ my: 2 }} />
-                  <Typography>{record.telefone || 'Telefone não informado'}</Typography>
+                  <Typography>{formatPhone(record.telefone) || 'Telefone não informado'}</Typography>
                 </SectionCard>
               </Stack>
             )}

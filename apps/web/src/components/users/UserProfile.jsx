@@ -23,13 +23,13 @@ const cardStyle = {
     left: 0,
     width: '100%',
     height: 3,
-    background: (theme) => `linear-gradient(90deg, ${theme.palette.primary.main}, transparent)`
+    background: (theme) => theme.palette.divider
   },
   '& .MuiCardContent-root > .MuiStack-root:first-of-type .MuiSvgIcon-root': {
     boxSizing: 'content-box',
     p: 1.25,
     borderRadius: 1.5,
-    bgcolor: 'primary.soft'
+    bgcolor: 'surface.secondary'
   }
 };
 
@@ -50,9 +50,8 @@ export function UserProfile({ user, canEdit }) {
         <SectionCard
           sx={{
             ...cardStyle,
-            borderColor: 'primary.border',
-            background: (theme) =>
-              `linear-gradient(120deg, ${theme.palette.primary.soft}, ${theme.palette.background.paper} 65%)`
+            borderColor: 'divider',
+            background: (theme) => theme.palette.background.paper
           }}
         >
           <SecurityOutlinedIcon
@@ -78,8 +77,8 @@ export function UserProfile({ user, canEdit }) {
                   width: 88,
                   height: 88,
                   borderRadius: 3,
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
+                  bgcolor: 'surface.secondary',
+                  color: 'text.secondary',
                   fontSize: 32,
                   fontWeight: 700
                 }}
@@ -188,7 +187,7 @@ export function UserProfile({ user, canEdit }) {
           </Typography>
         </SectionCard>
         <SectionCard title="Histórico" subtitle="Atividades mais recentes" icon={HistoryIcon} sx={cardStyle}>
-          <Stack spacing={1} sx={{ py: 3, pl: 2, borderLeft: 2, borderColor: 'primary.border' }}>
+          <Stack spacing={1} sx={{ py: 3, pl: 2, borderLeft: 2, borderColor: 'divider' }}>
             <Typography fontWeight={600}>Histórico ainda não disponível</Typography>
             <Typography variant="body2" color="text.secondary">
               As atividades deste colaborador aparecerão aqui quando estiverem disponíveis.

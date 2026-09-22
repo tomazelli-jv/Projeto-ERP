@@ -199,13 +199,13 @@ function UserForm({ mode, initial, scope, context, canEdit }) {
       left: 0,
       width: '100%',
       height: 3,
-      bgcolor: 'primary.border'
+      bgcolor: 'divider'
     },
     '& .MuiCardContent-root > .MuiStack-root:first-of-type .MuiSvgIcon-root': {
       boxSizing: 'content-box',
       p: 1.25,
       borderRadius: 1.5,
-      bgcolor: 'primary.soft'
+      bgcolor: 'surface.secondary'
     }
   };
   const disabled = mutation.isPending;
@@ -223,7 +223,7 @@ function UserForm({ mode, initial, scope, context, canEdit }) {
           fontSize: 13,
           color: 'text.secondary'
         },
-        '& .MuiInputLabel-asterisk': { color: 'primary.dark' },
+        '& .MuiInputLabel-asterisk': { color: 'text.secondary' },
         '& .MuiOutlinedInput-root': { minHeight: 48, bgcolor: 'background.default' },
         '& .MuiOutlinedInput-notchedOutline legend': { display: 'none' },
         '& .MuiOutlinedInput-notchedOutline': { top: 0 },
@@ -344,7 +344,7 @@ function UserForm({ mode, initial, scope, context, canEdit }) {
                 <TextField
                   label="Empresa atual"
                   value={companyName}
-                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'primary.soft' } }}
+                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'surface.secondary' } }}
                   slotProps={{
                     input: {
                       ...fieldInput(BusinessOutlinedIcon),
@@ -441,7 +441,7 @@ function UserForm({ mode, initial, scope, context, canEdit }) {
           <SectionCard sx={{ borderRadius: 2 }}>
             <Stack alignItems="center" spacing={1} sx={{ pb: 3 }}>
               <Avatar
-                sx={{ width: 72, height: 72, bgcolor: 'primary.main', color: 'primary.contrastText', mb: 1 }}
+                sx={{ width: 72, height: 72, bgcolor: 'surface.secondary', color: 'text.secondary', mb: 1 }}
               >
                 <PersonOutlineIcon sx={{ fontSize: 36 }} />
               </Avatar>
@@ -518,13 +518,13 @@ function UserForm({ mode, initial, scope, context, canEdit }) {
             <Alert
               severity="info"
               sx={{
-                bgcolor: 'primary.soft',
-                borderColor: 'primary.border',
+                bgcolor: 'surface.secondary',
+                borderColor: 'divider',
                 borderLeft: 3,
                 borderLeftColor: 'primary.main',
                 borderRadius: 2,
                 p: 2,
-                '& .MuiAlert-icon': { color: 'primary.dark' }
+                '& .MuiAlert-icon': { color: 'text.secondary' }
               }}
             >
               Após a criação, o usuário poderá acessar o sistema com as credenciais definidas, conforme as

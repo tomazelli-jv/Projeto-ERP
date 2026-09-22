@@ -10,7 +10,7 @@ export function SectionCard({ title, subtitle, children, sx, icon: Icon }) {
           <Stack spacing={0.5} sx={{ mb: 2.5 }}>
             {title && (
               <Stack direction="row" alignItems="center" spacing={1}>
-                {Icon && <Icon color="primary" fontSize="small" />}
+                {Icon && <Icon sx={{ color: 'text.secondary' }} fontSize="small" />}
                 <Typography component="h2" variant="h3">
                   {title}
                 </Typography>

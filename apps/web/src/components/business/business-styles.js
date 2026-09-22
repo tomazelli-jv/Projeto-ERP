@@ -11,13 +11,13 @@ export const businessCardSx = {
     left: 0,
     width: '100%',
     height: 3,
-    background: (theme) => `linear-gradient(90deg, ${theme.palette.primary.main}, transparent)`
+    background: (theme) => theme.palette.divider
   },
   '& .MuiCardContent-root > .MuiStack-root:first-of-type .MuiSvgIcon-root': {
     boxSizing: 'content-box',
     p: 0.75,
     borderRadius: 1.5,
-    bgcolor: 'primary.soft'
+    bgcolor: 'surface.secondary'
   }
 };
 export const businessFormSx = {

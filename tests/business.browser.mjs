@@ -28,7 +28,7 @@ const evaluate = async (expression) => {
 };
 const click = async (text) => {
   await evaluate(
-    `(()=>{const b=[...document.querySelectorAll('button')].find(e=>e.textContent.trim()===${JSON.stringify(text)});if(!b)throw Error('Botao ausente: '+${JSON.stringify(text)});b.click()})()`
+    `(()=>{const b=[...document.querySelectorAll('button')].find(e=>(e.textContent.trim()===${JSON.stringify(text)}||e.getAttribute('aria-label')===${JSON.stringify(text)}));if(!b)throw Error('Botao ausente: '+${JSON.stringify(text)});b.click()})()`
   );
   await delay(500);
 };
@@ -93,8 +93,13 @@ await go();
 check((await body()).includes('Empresa Real Fixture'), 'empresa real');
 check((await body()).includes('Lojas (2)'), 'quantidade real');
 check((await body()).includes('12.ABC.345/01DE-35'), 'CNPJ alfanumerico');
-check((await body()).includes('Araguaina - TO'), 'endereco');
-check((await body()).includes('Ativar') && (await body()).includes('Inativar'), 'acoes de status corretas');
+check(await evaluate("document.querySelector('table').innerText.includes('E-MAIL')"), 'tabela compacta');
+check(
+  await evaluate(
+    "!!document.querySelector('button[aria-label=Ativar]') && !!document.querySelector('button[aria-label=Inativar]')"
+  ),
+  'acoes de status corretas'
+);
 check(!(await body()).includes('Matriz'), 'nao infere matriz pelo nome');
 await click('Visualizar dados da empresa');
 check((await body()).includes('Perfil da empresa'), 'detalhe empresa');

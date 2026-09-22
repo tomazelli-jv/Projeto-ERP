@@ -46,11 +46,17 @@ export function SettingsNavigation({ collapsed, onNavigate }) {
             borderRadius: 1,
             px: collapsed ? 0 : 1.5,
             justifyContent: collapsed ? 'center' : 'flex-start',
-            color: active ? 'primary.dark' : 'text.secondary',
+            color: active ? 'text.primary' : 'text.secondary',
             '&.Mui-selected': { bgcolor: 'primary.soft' }
           }}
         >
-          <ListItemIcon sx={{ minWidth: collapsed ? 0 : 38, color: 'inherit', justifyContent: 'center' }}>
+          <ListItemIcon
+            sx={{
+              minWidth: collapsed ? 0 : 38,
+              color: active ? 'primary.dark' : 'text.secondary',
+              justifyContent: 'center'
+            }}
+          >
             <SettingsIcon fontSize="small" />
           </ListItemIcon>
           {!collapsed && (
@@ -74,7 +80,7 @@ export function SettingsNavigation({ collapsed, onNavigate }) {
                 sx={{
                   minHeight: 44,
                   borderRadius: 1,
-                  '&.Mui-selected': { bgcolor: 'primary.soft', color: 'primary.dark' }
+                  '&.Mui-selected': { bgcolor: 'primary.soft', color: 'text.primary' }
                 }}
               >
                 <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 14 }} />

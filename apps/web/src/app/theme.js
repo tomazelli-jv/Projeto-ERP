@@ -56,13 +56,13 @@ export const createErpTheme = (mode = 'light') =>
         defaultProps: { disableElevation: true },
         styleOverrides: {
           root: { minHeight: 40, borderRadius: 8, paddingInline: 16 },
-          textPrimary: ({ theme: t }) => ({ color: t.palette.primary.dark }),
+          textPrimary: ({ theme: t }) => ({ color: t.palette.text.secondary }),
           containedPrimary: ({ theme: t }) => ({ '&:hover': { backgroundColor: t.palette.primary.hover } }),
           outlinedPrimary: ({ theme: t }) => ({
             borderColor: t.palette.divider,
             color: t.palette.text.primary,
             backgroundColor: t.palette.surface.secondary,
-            '&:hover': { borderColor: t.palette.primary.border, backgroundColor: t.palette.action.hover }
+            '&:hover': { borderColor: t.palette.text.disabled, backgroundColor: t.palette.surface.hover }
           })
         }
       },

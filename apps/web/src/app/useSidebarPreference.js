@@ -12,15 +12,15 @@ export function readSidebarPreference() {
 }
 
 export function useSidebarPreference() {
-  const [collapsed, setCollapsed] = useState(readSidebarPreference);
-  function toggleCollapsed() {
-    const next = !collapsed;
-    setCollapsed(next);
+  const [collapsed, setPreference] = useState(readSidebarPreference);
+  // AppShell compartilha este setter com Parametrização, mantendo uma única preferência.
+  function setCollapsed(next) {
+    setPreference(next);
     try {
       window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
     } catch {
       // A troca continua em memória quando o navegador bloqueia persistência.
     }
   }
-  return { collapsed, toggleCollapsed };
+  return { collapsed, setCollapsed, toggleCollapsed: () => setCollapsed(!collapsed) };
 }

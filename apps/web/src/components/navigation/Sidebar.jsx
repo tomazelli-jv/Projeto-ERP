@@ -72,7 +72,7 @@ function Navigation({ collapsed, onNavigate }) {
                       overflow: 'hidden',
                       '&:hover': { backgroundColor: 'action.hover' },
                       '&.Mui-selected': {
-                        color: 'primary.dark',
+                        color: 'text.primary',
                         backgroundColor: 'primary.light',
                         '&::before': {
                           content: '""',

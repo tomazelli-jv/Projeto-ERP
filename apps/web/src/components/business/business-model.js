@@ -1,4 +1,4 @@
-﻿import { formatCnpj, normalizeCnpj, validateCnpj } from './business-formatters.js';
+﻿import { formatCnpj, formatCpf, formatCep, normalizeCnpj, validateCnpj } from './business-formatters.js';
 
 // A API usa role Administrador; nome ADM não é uma credencial de autorização.
 export function canManageBusiness(claims) {
@@ -16,11 +16,11 @@ export const addressLines = (loja) =>
   [
     loja.rua?.trim(),
     [loja.cidade?.trim(), loja.uf?.trim()].filter(Boolean).join(' - '),
-    loja.cep?.trim()
+    formatCep(loja.cep)
   ].filter(Boolean);
 export const documentLabel = (loja) => (loja.tipoPessoa === 1 ? 'CPF' : 'CNPJ');
 export const documentValue = (loja) =>
-  loja.tipoPessoa === 1 ? loja.documento || 'Não informado' : formatCnpj(loja.documento) || 'Não informado';
+  (loja.tipoPessoa === 1 ? formatCpf(loja.documento) : formatCnpj(loja.documento)) || 'Não informado';
 // CNPJ é string alfanumérica. CPF usa somente remoção de sua pontuação, sem conversão numérica.
 export function lojaPayload(empresaId, form, editing) {
   const nullable = (value) => String(value ?? '').trim() || null;
@@ -31,9 +31,9 @@ export function lojaPayload(empresaId, form, editing) {
     tipoPessoa: Number(form.tipoPessoa),
     documento:
       Number(form.tipoPessoa) === 2 ? normalizeCnpj(form.documento) : form.documento.replace(/[.\-\s]/g, ''),
-    telefone: nullable(form.telefone),
+    telefone: nullable(String(form.telefone ?? '').replace(/\D/g, '')),
     email: nullable(form.email),
-    cep: nullable(form.cep),
+    cep: nullable(String(form.cep ?? '').replace(/\D/g, '')),
     cidade: nullable(form.cidade),
     rua: nullable(form.rua),
     uf: nullable(form.uf),
@@ -41,6 +41,10 @@ export function lojaPayload(empresaId, form, editing) {
   };
 }
 export function validateLoja(form) {
+  // Campos opcionais, mas quando preenchidos devem estar completos; não converter para Number.
+  if (form.telefone && ![10, 11].includes(form.telefone.replace(/\D/g, '').length))
+    return 'Informe o telefone com DDD e 10 ou 11 dígitos.';
+  if (form.cep && form.cep.replace(/\D/g, '').length !== 8) return 'Informe os 8 dígitos do CEP.';
   if (!form.nome.trim()) return 'Informe o nome da loja.';
   if (form.nome.length > 100 || form.razaoSocial.length > 100)
     return 'Nome e razão social devem ter até 100 caracteres.';

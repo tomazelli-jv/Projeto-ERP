@@ -23,11 +23,14 @@ export function formatCnpj(value) {
       .toUpperCase();
   // Excesso permanece visível para validação, evitando truncar e aceitar silenciosamente outro documento.
   if (normalized.length > 14) return normalized;
-  return normalized
-    .replace(/^(.{2})(.)/, '$1.$2')
-    .replace(/^(..\....)(.)/, '$1.$2')
-    .replace(/^(..\....\....)(.)/, '$1/$2')
-    .replace(/(.{4})(.{1,2})$/, '$1-$2');
+  // Separadores dependem da posição lógica, inclusive durante digitação e exclusão parcial.
+  return (
+    normalized.slice(0, 2) +
+    (normalized.length > 2 ? `.${normalized.slice(2, 5)}` : '') +
+    (normalized.length > 5 ? `.${normalized.slice(5, 8)}` : '') +
+    (normalized.length > 8 ? `/${normalized.slice(8, 12)}` : '') +
+    (normalized.length > 12 ? `-${normalized.slice(12)}` : '')
+  );
 }
 
 // O cálculo alfanumérico usa ASCII menos 48 e módulo 11; o backend atual ainda requer adequação.
@@ -64,4 +67,15 @@ export function formatDate(value) {
   if (!value) return 'Não informada';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 'Não informada' : new Intl.DateTimeFormat('pt-BR').format(date);
+}
+
+// CPF aceita somente 11 digitos, preservando zeros e separadores progressivos.
+export function formatCpf(value) {
+  const digits = onlyDigits(value, 11);
+  return (
+    digits.slice(0, 3) +
+    (digits.length > 3 ? '.' + digits.slice(3, 6) : '') +
+    (digits.length > 6 ? '.' + digits.slice(6, 9) : '') +
+    (digits.length > 9 ? '-' + digits.slice(9) : '')
+  );
 }

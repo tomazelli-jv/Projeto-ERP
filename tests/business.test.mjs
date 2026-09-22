@@ -69,3 +69,31 @@ test('erros conhecidos não expõem resposta interna', () => {
   for (const status of [400, 401, 403, 404, 409, 422, 500])
     assert.ok(!businessError({ status, message: 'stacktrace-secret' }).includes('secret'));
 });
+
+// Regressão de máscara progressiva: o hífen só aparece depois das doze posições da base.
+test('máscara progressiva não desloca caracteres durante digitação', () => {
+  const cases = [
+    '',
+    '1',
+    '12',
+    '12.A',
+    '12.AB',
+    '12.ABC',
+    '12.ABC.3',
+    '12.ABC.34',
+    '12.ABC.345',
+    '12.ABC.345/0',
+    '12.ABC.345/01',
+    '12.ABC.345/01D',
+    '12.ABC.345/01DE',
+    '12.ABC.345/01DE-3',
+    '12.ABC.345/01DE-35'
+  ];
+  for (let i = 0; i < cases.length; i++) {
+    assert.equal(formatCnpj('12abc34501de35'.slice(0, i)), cases[i]);
+    assert.equal(formatCnpj(cases[i]), cases[i]);
+  }
+  assert.equal(validateLoja({ ...form, documento: '12ABC34501DEAA' }), 'CNPJ inválido.');
+  assert.equal(validateLoja({ ...form, documento: '12ABC34501DE350' }), 'CNPJ inválido.');
+  assert.equal(validateLoja({ ...form, documento: '12ABC34501DE34' }), 'CNPJ inválido.');
+});

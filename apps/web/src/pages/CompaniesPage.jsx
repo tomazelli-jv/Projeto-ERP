@@ -29,7 +29,7 @@ import { useAuth } from '../app/auth/auth-context.js';
 import { useOperationalContext } from '../app/operational-context/operational-context.js';
 import { BusinessDetailDialog } from '../components/business/BusinessDetailDialog.jsx';
 import { BusinessFormDialog } from '../components/business/BusinessFormDialog.jsx';
-import { LojaCard } from '../components/business/LojaCard.jsx';
+import { LojasTable } from '../components/business/LojasTable.jsx';
 import { businessError, businessScope, canManageBusiness } from '../components/business/business-model.js';
 import { businessDensitySx } from '../components/business/business-styles.js';
 import { ConfirmDialog } from '../components/common/ConfirmDialog.jsx';
@@ -192,7 +192,7 @@ function CompaniesContent({ claims }) {
             >
               <Avatar
                 variant="rounded"
-                sx={{ width: 48, height: 48, bgcolor: 'primary.soft', color: 'primary.dark' }}
+                sx={{ width: 48, height: 48, bgcolor: 'surface.secondary', color: 'text.secondary' }}
               >
                 <BusinessOutlinedIcon sx={{ fontSize: 28 }} />
               </Avatar>
@@ -261,18 +261,16 @@ function CompaniesContent({ claims }) {
               />
             </SectionCard>
           ) : (
-            rows.map((loja) => (
-              <LojaCard
-                key={loja.id}
-                loja={loja}
-                disabled={mutation.isPending}
-                onView={(record) => open('loja', 'view', record)}
-                onStatus={(record) => {
-                  setError('');
-                  setConfirmation({ kind: 'loja', record, body: { ...record, ativo: !record.ativo } });
-                }}
-              />
-            ))
+            <LojasTable
+              lojas={rows}
+              onEdit={(record) => open('loja', 'edit', record)}
+              disabled={mutation.isPending}
+              onView={(record) => open('loja', 'view', record)}
+              onStatus={(record) => {
+                setError('');
+                setConfirmation({ kind: 'loja', record, body: { ...record, ativo: !record.ativo } });
+              }}
+            />
           )}
           {dialog?.mode === 'view' && (
             <BusinessDetailDialog

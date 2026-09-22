@@ -1,58 +1,65 @@
 // Paletas compartilham nomes semânticos; componentes e overrides não precisam duplicar estilos por modo.
 export const darkPalette = {
   mode: 'dark',
-  background: { default: '#0B0B0C', paper: '#111113' },
-  surface: { secondary: '#151518', hover: '#1A1A1E' },
-  divider: '#29292E',
-  text: { primary: '#F2F1ED', secondary: '#A39F96', disabled: '#706D66' },
+  background: { default: '#141414', paper: '#1B1B1A' },
+  surface: { secondary: '#222220', hover: '#292825' },
+  divider: '#33312D',
+  text: { primary: '#ECE8E1', secondary: '#A8A198', disabled: '#706D66' },
   primary: {
-    main: '#D3AD49',
-    dark: '#D3AD49',
-    light: 'rgba(211,173,73,0.12)',
-    contrastText: '#0B0B0C',
-    hover: '#E0BD5B',
-    soft: 'rgba(211,173,73,0.12)',
-    border: 'rgba(211,173,73,0.30)'
+    main: '#B99A52',
+    dark: '#B99A52',
+    light: 'rgba(185,154,82,0.10)',
+    contrastText: '#141414',
+    hover: '#C6A85F',
+    soft: 'rgba(185,154,82,0.10)',
+    border: 'rgba(185,154,82,0.24)'
   },
-  secondary: { main: '#A39F96' },
-  success: { main: '#80B594' },
-  warning: { main: '#D3AD49' },
-  error: { main: '#D68B83' },
-  info: { main: '#8DAABA' },
+  secondary: { main: '#A8A198' },
+  success: { main: '#91B19A' },
+  warning: { main: '#BEA078' },
+  error: { main: '#C58D87' },
+  info: { main: '#94ABB6' },
   action: {
-    hover: '#1A1A1E',
-    selected: 'rgba(211,173,73,0.12)',
+    hover: '#292825',
+    selected: 'rgba(185,154,82,0.10)',
     disabled: '#706D66',
-    disabledBackground: '#1A1A1E'
+    disabledBackground: '#292825'
   }
 };
 
 // Dourado sólido identifica ações. A variante escura garante leitura de texto e foco em superfícies claras.
 export const lightPalette = {
   mode: 'light',
-  background: { default: '#F4F1EA', subtle: '#EEE9DF', paper: '#FCFBF8' },
-  surface: { secondary: '#F7F4EE', hover: '#F1EBDD' },
-  divider: '#D9D1C3',
+  background: { default: '#F5F3EE', subtle: '#EEEAE2', paper: '#FBFAF7' },
+  surface: { secondary: '#EEEAE2', hover: '#E9E4DA' },
+  divider: '#D8D2C8',
   border: { soft: 'rgba(88,74,45,0.12)' },
-  text: { primary: '#1F1B16', secondary: '#6E665C', disabled: '#A49B8D' },
+  text: { primary: '#2A2824', secondary: '#655F57', disabled: '#A49B8D' },
   primary: {
-    main: '#C9A646',
-    dark: '#795B16',
-    light: 'rgba(201,166,70,0.14)',
-    contrastText: '#1F1B16',
-    hover: '#B89335',
-    soft: 'rgba(201,166,70,0.14)',
-    border: 'rgba(201,166,70,0.32)'
+    main: '#B5964D',
+    dark: '#715620',
+    light: '#EAE0C7',
+    contrastText: '#171510',
+    hover: '#A9873F',
+    soft: '#EAE0C7',
+    border: 'rgba(181,150,77,0.24)'
   },
-  secondary: { main: '#6E665C' },
-  success: { main: '#3D7150' },
-  warning: { main: '#795B16' },
-  error: { main: '#A0443C' },
-  info: { main: '#416B7A' },
+  secondary: { main: '#655F57' },
+  success: { main: '#4E7057' },
+  warning: { main: '#715620' },
+  error: { main: '#95534E' },
+  info: { main: '#506C7B' },
   action: {
-    hover: '#F1EBDD',
-    selected: 'rgba(201,166,70,0.14)',
+    hover: '#E9E4DA',
+    selected: '#EAE0C7',
     disabled: '#A49B8D',
-    disabledBackground: '#EEE9DF'
+    disabledBackground: '#EEEAE2'
   }
 };
+
+// Fundo semântico discreto compartilhado por indicadores, alertas e chips.
+for (const palette of [lightPalette, darkPalette]) {
+  for (const key of ['success', 'error', 'info', 'warning']) {
+    palette[key].soft = palette[key].main + '14';
+  }
+}

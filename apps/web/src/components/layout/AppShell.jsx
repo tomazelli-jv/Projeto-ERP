@@ -39,7 +39,7 @@ export function AppShell() {
   const theme = useTheme();
   const { themeMode, resolvedMode, setThemeMode, toggleTheme } = useThemeMode();
   const compact = useMediaQuery(theme.breakpoints.down(layout.desktopBreakpoint));
-  const { collapsed, toggleCollapsed } = useSidebarPreference();
+  const { collapsed, setCollapsed, toggleCollapsed } = useSidebarPreference();
   const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
@@ -277,7 +277,8 @@ export function AppShell() {
 
         <Box component="main" sx={{ minWidth: 0 }}>
           <Box sx={{ p: { xs: 2, sm: 2.5, lg: 3 } }}>
-            <Outlet />
+            {/* Compartilha a preferência desktop; o Drawer mantém seu estado independente. */}
+            <Outlet context={{ collapsed, setCollapsed }} />
           </Box>
         </Box>
       </Box>

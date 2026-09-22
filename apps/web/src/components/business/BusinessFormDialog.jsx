@@ -23,7 +23,11 @@ import {
 import PropTypes from 'prop-types';
 import { useRef, useState } from 'react';
 import { SectionCard } from '../common/SectionCard.jsx';
-import { formatCnpj } from './business-formatters.js';
+import { CnpjField } from './CnpjField.jsx';
+import { CpfField } from './CpfField.jsx';
+import { ContactField } from './ContactField.jsx';
+import { useCepLookup } from '../../app/useCepLookup.js';
+import { mergeCepAddress } from '../../api/cep.js';
 import { addressLines, documentLabel, documentValue, validateLoja } from './business-model.js';
 import { businessDensitySx, businessCardSx, businessFormSx } from './business-styles.js';
 
@@ -45,6 +49,10 @@ export function BusinessFormDialog({ kind, record, company, loading, apiError, o
     ativo: true,
     ...Object.fromEntries(Object.entries(record ?? {}).map(([key, value]) => [key, value ?? '']))
   }));
+  // Somente campos reais do DTO; número/complemento e campos não mapeados ficam intactos.
+  const cepLookup = useCepLookup((address) =>
+    setForm((previous) => mergeCepAddress(previous, address, { street: 'rua', city: 'cidade', state: 'uf' }))
+  );
   const [error, setError] = useState('');
   const submitting = useRef(false);
   const fullScreen = useMediaQuery(useTheme().breakpoints.down('sm'));
@@ -65,21 +73,42 @@ export function BusinessFormDialog({ kind, record, company, loading, apiError, o
       submitting.current = false;
     }
   }
-  const field = (name, label, maximum, required = false) => (
-    <TextField
-      fullWidth
-      required={required}
-      label={label}
-      value={form[name]}
-      onChange={
-        name === 'documento' && Number(form.tipoPessoa) === 2
-          ? (event) => setForm((previous) => ({ ...previous, documento: formatCnpj(event.target.value) }))
-          : change(name)
-      }
-      type={name === 'email' ? 'email' : 'text'}
-      slotProps={{ htmlInput: maximum ? { maxLength: maximum } : {} }}
-    />
-  );
+  const field = (name, label, maximum, required = false) =>
+    // Toda exibição rotulada CNPJ usa o campo limitado, inclusive registros legados sem tipo válido.
+    name === 'documento' && Number(form.tipoPessoa) !== 1 ? (
+      <CnpjField
+        value={form.documento}
+        required={required}
+        onChange={(documento) => setForm((previous) => ({ ...previous, documento }))}
+      />
+    ) : name === 'documento' ? (
+      <CpfField
+        value={form.documento}
+        required={required}
+        onChange={(documento) => setForm((previous) => ({ ...previous, documento }))}
+      />
+    ) : name === 'telefone' || name === 'cep' ? (
+      <ContactField
+        kind={name === 'telefone' ? 'phone' : 'cep'}
+        value={form[name]}
+        required={required}
+        helperText={name === 'cep' ? cepLookup.feedback : undefined}
+        onChange={(value) => {
+          setForm((previous) => ({ ...previous, [name]: value }));
+          if (name === 'cep') cepLookup.change(value);
+        }}
+      />
+    ) : (
+      <TextField
+        fullWidth
+        required={required}
+        label={label}
+        value={form[name]}
+        onChange={change(name)}
+        type={name === 'email' ? 'email' : 'text'}
+        slotProps={{ htmlInput: maximum ? { maxLength: maximum } : {} }}
+      />
+    );
   const grid = {
     display: 'grid',
     gridTemplateColumns: { xs: 'minmax(0,1fr)', sm: 'repeat(2,minmax(0,1fr))' },
@@ -203,9 +232,7 @@ export function BusinessFormDialog({ kind, record, company, loading, apiError, o
             </Stack>
             <SectionCard sx={businessCardSx}>
               <Stack alignItems="center" spacing={1} sx={{ pb: 2 }}>
-                <Avatar
-                  sx={{ width: 56, height: 56, bgcolor: 'primary.main', color: 'primary.contrastText' }}
-                >
+                <Avatar sx={{ width: 56, height: 56, bgcolor: 'surface.secondary', color: 'text.secondary' }}>
                   <Icon sx={{ fontSize: 30 }} />
                 </Avatar>
                 <Typography variant="h3" sx={{ overflowWrap: 'anywhere', textAlign: 'center' }}>
