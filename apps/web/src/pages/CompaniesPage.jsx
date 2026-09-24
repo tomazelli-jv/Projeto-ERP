@@ -51,17 +51,31 @@ export function CompaniesPage() {
   const context = useOperationalContext();
   return (
     <Box sx={businessDensitySx}>
-      <PageHeader title="Empresas e Lojas" description="Gerencie as lojas vinculadas a cada empresa." />
       {!canManageBusiness(claims) ? (
-        <Alert severity="info">Você não possui permissão para acessar Empresas e Lojas.</Alert>
+        <CompaniesListLayout>
+          <Alert severity="info">Você não possui permissão para acessar Empresas e Lojas.</Alert>
+        </CompaniesListLayout>
       ) : context.isSwitchingStore ? (
-        <BusinessLoading />
+        <CompaniesListLayout>
+          <BusinessLoading />
+        </CompaniesListLayout>
       ) : (
         <CompaniesContent key={JSON.stringify(businessScope(claims))} claims={claims} />
       )}
     </Box>
   );
 }
+// O cabeçalho da lista só acompanha a lista e seus estados; perfis têm seu próprio PageHeader.
+function CompaniesListLayout({ children }) {
+  return (
+    <>
+      <PageHeader title="Empresas e Lojas" description="Gerencie as lojas vinculadas a cada empresa." />
+      {children}
+    </>
+  );
+}
+CompaniesListLayout.propTypes = { children: PropTypes.node.isRequired };
+
 function BusinessLoading() {
   return (
     <Stack role="status" aria-label="Carregando empresas e lojas" spacing={2}>
@@ -158,17 +172,28 @@ function CompaniesContent({ claims }) {
     setError('');
     setDialog({ kind, mode, record });
   }
-  if (empresas.isPending) return <BusinessLoading />;
+  if (empresas.isPending)
+    return (
+      <CompaniesListLayout>
+        <BusinessLoading />
+      </CompaniesListLayout>
+    );
   if (empresas.isError)
-    return <ErrorState description={businessError(empresas.error)} onRetry={() => empresas.refetch()} />;
+    return (
+      <CompaniesListLayout>
+        <ErrorState description={businessError(empresas.error)} onRetry={() => empresas.refetch()} />
+      </CompaniesListLayout>
+    );
   if (!empresas.data?.length)
     return (
-      <SectionCard>
-        <EmptyState
-          title="Nenhuma empresa disponível"
-          description="Não há empresas acessíveis para este usuário."
-        />
-      </SectionCard>
+      <CompaniesListLayout>
+        <SectionCard>
+          <EmptyState
+            title="Nenhuma empresa disponível"
+            description="Não há empresas acessíveis para este usuário."
+          />
+        </SectionCard>
+      </CompaniesListLayout>
     );
   // Perfil ocupa o conteúdo da página, sem modal ou rolagem interna sobre a listagem.
   if (dialog?.mode === 'view')
@@ -182,226 +207,228 @@ function CompaniesContent({ claims }) {
       />
     );
   return (
-    <Stack spacing={2}>
-      {empresas.data.length > 1 && (
-        <TextField
-          select
-          label="Empresa"
-          value={companyId}
-          onChange={(event) => {
-            setSelected(event.target.value);
-            setSearch('');
-            setDialog(null);
-            setConfirmation(null);
-          }}
-          sx={{ maxWidth: 480 }}
-        >
-          {empresas.data.map((item) => (
-            <MenuItem key={item.id} value={String(item.id)}>
-              {item.nome}
-            </MenuItem>
-          ))}
-        </TextField>
-      )}
-      {company.isPending ? (
-        <BusinessLoading />
-      ) : company.isError ? (
-        <ErrorState description={businessError(company.error)} onRetry={() => company.refetch()} />
-      ) : (
-        <>
-          <SectionCard>
-            <Stack
-              direction={{ xs: 'column', md: 'row' }}
-              spacing={2}
-              alignItems={{ xs: 'flex-start', md: 'center' }}
-            >
-              <Avatar
-                variant="rounded"
-                sx={{ width: 48, height: 48, bgcolor: 'surface.secondary', color: 'text.secondary' }}
-              >
-                <BusinessOutlinedIcon sx={{ fontSize: 28 }} />
-              </Avatar>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" alignItems="center" flexWrap="wrap" gap={2}>
-                  <Typography variant="h2" sx={{ overflowWrap: 'anywhere' }}>
-                    {company.data.nome}
-                  </Typography>
-                  <Chip
-                    size="small"
-                    color={company.data.ativo ? 'success' : 'error'}
-                    label={company.data.ativo ? 'Ativa' : 'Inativa'}
-                  />
-                </Stack>
-                <Typography color="text.secondary" sx={{ mt: 1 }}>
-                  Dados da empresa e suas unidades
-                </Typography>
-              </Box>
-              <Button
-                variant="outlined"
-                startIcon={<VisibilityOutlinedIcon />}
-                onClick={() => open('empresa', 'view', company.data)}
-              >
-                Visualizar dados da empresa
-              </Button>
-            </Stack>
-          </SectionCard>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(3,minmax(0,1fr))' },
-              gap: 2
+    <CompaniesListLayout>
+      <Stack spacing={2}>
+        {empresas.data.length > 1 && (
+          <TextField
+            select
+            label="Empresa"
+            value={companyId}
+            onChange={(event) => {
+              setSelected(event.target.value);
+              setSearch('');
+              setDialog(null);
+              setConfirmation(null);
             }}
+            sx={{ maxWidth: 480 }}
           >
-            {[
-              ['Total de lojas', StorefrontOutlinedIcon, 'info', rows.length],
-              [
-                'Lojas ativas',
-                CheckCircleOutlineIcon,
-                'success',
-                rows.filter((item) => item.ativo === true).length
-              ],
-              [
-                'Lojas inativas',
-                BlockOutlinedIcon,
-                'error',
-                rows.filter((item) => item.ativo === false).length
-              ]
-            ].map(([label, Icon, tone, value]) => (
-              <Card
-                key={label}
-                sx={{ borderRadius: 2, bgcolor: tone + '.soft', borderColor: tone + '.main' }}
-              >
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      p: 1.25,
-                      borderRadius: 1.5,
-                      color: tone + '.main',
-                      bgcolor: 'background.paper'
-                    }}
-                  >
-                    <Icon />
-                  </Box>
-                  <Box>
-                    <Typography variant="body2" fontWeight={650}>
-                      {label}
-                    </Typography>
-                    <Typography variant="h2" sx={{ mt: 0.5 }}>
-                      {totalsAvailable ? value : '—'}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {totalsAvailable ? 'Na empresa selecionada' : 'Aguardando consulta das lojas'}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
+            {empresas.data.map((item) => (
+              <MenuItem key={item.id} value={String(item.id)}>
+                {item.nome}
+              </MenuItem>
             ))}
-          </Box>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            alignItems={{ xs: 'stretch', sm: 'center' }}
-            justifyContent="space-between"
-            gap={2}
-            sx={{ pt: 1 }}
-          >
-            <TextField
-              fullWidth
-              label="Buscar loja por nome"
-              placeholder="Digite o nome da loja..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              disabled={!totalsAvailable}
-              sx={{ flex: 1 }}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon fontSize="small" />
-                    </InputAdornment>
-                  )
-                }
-              }}
-            />
-            <CreateButton sx={{ flexShrink: 0 }} onClick={() => open('loja', 'edit')}>
-              Nova loja
-            </CreateButton>
-          </Stack>
-          {!matchesContext ? (
-            <Alert severity="info">
-              Para consultar as lojas desta empresa, selecione uma loja dela no seletor global. A consulta de
-              lojas usa a empresa da sessão atual.
-            </Alert>
-          ) : lojas.isPending ? (
-            <BusinessLoading />
-          ) : lojas.isError ? (
-            <ErrorState description={businessError(lojas.error)} onRetry={() => lojas.refetch()} />
-          ) : rows.length === 0 ? (
+          </TextField>
+        )}
+        {company.isPending ? (
+          <BusinessLoading />
+        ) : company.isError ? (
+          <ErrorState description={businessError(company.error)} onRetry={() => company.refetch()} />
+        ) : (
+          <>
             <SectionCard>
-              <EmptyState
-                title="Nenhuma loja cadastrada"
-                description="Cadastre a primeira loja desta empresa."
-                action={<CreateButton onClick={() => open('loja', 'edit')}>Nova loja</CreateButton>}
-              />
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={2}
+                alignItems={{ xs: 'flex-start', md: 'center' }}
+              >
+                <Avatar
+                  variant="rounded"
+                  sx={{ width: 48, height: 48, bgcolor: 'surface.secondary', color: 'text.secondary' }}
+                >
+                  <BusinessOutlinedIcon sx={{ fontSize: 28 }} />
+                </Avatar>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Stack direction="row" alignItems="center" flexWrap="wrap" gap={2}>
+                    <Typography variant="h2" sx={{ overflowWrap: 'anywhere' }}>
+                      {company.data.nome}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      color={company.data.ativo ? 'success' : 'error'}
+                      label={company.data.ativo ? 'Ativa' : 'Inativa'}
+                    />
+                  </Stack>
+                  <Typography color="text.secondary" sx={{ mt: 1 }}>
+                    Dados da empresa e suas unidades
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  startIcon={<VisibilityOutlinedIcon />}
+                  onClick={() => open('empresa', 'view', company.data)}
+                >
+                  Visualizar dados da empresa
+                </Button>
+              </Stack>
             </SectionCard>
-          ) : visibleRows.length === 0 ? (
-            <EmptyState
-              title="Nenhuma loja encontrada"
-              description="Tente outro nome ou limpe a busca."
-              action={<Button onClick={() => setSearch('')}>Limpar busca</Button>}
-            />
-          ) : (
-            <LojasTable
-              lojas={visibleRows}
-              onEdit={(record) => open('loja', 'edit', record)}
-              disabled={mutation.isPending}
-              onView={(record) => open('loja', 'view', record)}
-              onStatus={(record) => {
-                setError('');
-                setConfirmation({ kind: 'loja', record, body: { ...record, ativo: !record.ativo } });
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(3,minmax(0,1fr))' },
+                gap: 2
               }}
-            />
-          )}
-          {dialog?.mode === 'edit' && (
-            <BusinessFormDialog
-              key={`${dialog.kind}-${dialog.record?.id ?? 'new'}`}
-              kind={dialog.kind}
-              record={dialog.record}
-              company={company.data}
-              loading={mutation.isPending}
-              apiError={error}
-              onClose={() => setDialog(null)}
-              onSubmit={submit}
-            />
-          )}
-        </>
-      )}
-      {error && confirmation && <Alert severity="error">{error}</Alert>}
-      <ConfirmDialog
-        open={Boolean(confirmation)}
-        title={`${confirmation?.body.ativo ? 'Ativar' : 'Inativar'} ${confirmation?.kind === 'empresa' ? 'empresa' : 'loja'}?`}
-        description={
-          error ||
-          (confirmation?.kind === 'loja' &&
-          String(confirmation.record.id) === String(claims.lojaId) &&
-          !confirmation.body.ativo
-            ? 'Esta é a loja da sessão atual. A alteração será salva; o contexto da sessão não será trocado automaticamente.'
-            : 'O cadastro será preservado e sua situação será atualizada.')
-        }
-        confirmLabel={confirmation?.body.ativo ? 'Ativar' : 'Inativar'}
-        loading={mutation.isPending}
-        onClose={() => {
-          setConfirmation(null);
-          setError('');
-        }}
-        onConfirm={() => save(confirmation)}
-      />
-      <Snackbar open={Boolean(feedback)} autoHideDuration={5000} onClose={() => setFeedback('')}>
-        <Alert severity="success" onClose={() => setFeedback('')}>
-          {feedback}
-        </Alert>
-      </Snackbar>
-    </Stack>
+            >
+              {[
+                ['Total de lojas', StorefrontOutlinedIcon, 'info', rows.length],
+                [
+                  'Lojas ativas',
+                  CheckCircleOutlineIcon,
+                  'success',
+                  rows.filter((item) => item.ativo === true).length
+                ],
+                [
+                  'Lojas inativas',
+                  BlockOutlinedIcon,
+                  'error',
+                  rows.filter((item) => item.ativo === false).length
+                ]
+              ].map(([label, Icon, tone, value]) => (
+                <Card
+                  key={label}
+                  sx={{ borderRadius: 2, bgcolor: tone + '.soft', borderColor: tone + '.main' }}
+                >
+                  <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        p: 1.25,
+                        borderRadius: 1.5,
+                        color: tone + '.main',
+                        bgcolor: 'background.paper'
+                      }}
+                    >
+                      <Icon />
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" fontWeight={650}>
+                        {label}
+                      </Typography>
+                      <Typography variant="h2" sx={{ mt: 0.5 }}>
+                        {totalsAvailable ? value : '—'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {totalsAvailable ? 'Na empresa selecionada' : 'Aguardando consulta das lojas'}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              alignItems={{ xs: 'stretch', sm: 'center' }}
+              justifyContent="space-between"
+              gap={2}
+              sx={{ pt: 1 }}
+            >
+              <TextField
+                fullWidth
+                label="Buscar loja por nome"
+                placeholder="Digite o nome da loja..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                disabled={!totalsAvailable}
+                sx={{ flex: 1 }}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    )
+                  }
+                }}
+              />
+              <CreateButton sx={{ flexShrink: 0 }} onClick={() => open('loja', 'edit')}>
+                Nova loja
+              </CreateButton>
+            </Stack>
+            {!matchesContext ? (
+              <Alert severity="info">
+                Para consultar as lojas desta empresa, selecione uma loja dela no seletor global. A consulta
+                de lojas usa a empresa da sessão atual.
+              </Alert>
+            ) : lojas.isPending ? (
+              <BusinessLoading />
+            ) : lojas.isError ? (
+              <ErrorState description={businessError(lojas.error)} onRetry={() => lojas.refetch()} />
+            ) : rows.length === 0 ? (
+              <SectionCard>
+                <EmptyState
+                  title="Nenhuma loja cadastrada"
+                  description="Cadastre a primeira loja desta empresa."
+                  action={<CreateButton onClick={() => open('loja', 'edit')}>Nova loja</CreateButton>}
+                />
+              </SectionCard>
+            ) : visibleRows.length === 0 ? (
+              <EmptyState
+                title="Nenhuma loja encontrada"
+                description="Tente outro nome ou limpe a busca."
+                action={<Button onClick={() => setSearch('')}>Limpar busca</Button>}
+              />
+            ) : (
+              <LojasTable
+                lojas={visibleRows}
+                onEdit={(record) => open('loja', 'edit', record)}
+                disabled={mutation.isPending}
+                onView={(record) => open('loja', 'view', record)}
+                onStatus={(record) => {
+                  setError('');
+                  setConfirmation({ kind: 'loja', record, body: { ...record, ativo: !record.ativo } });
+                }}
+              />
+            )}
+            {dialog?.mode === 'edit' && (
+              <BusinessFormDialog
+                key={`${dialog.kind}-${dialog.record?.id ?? 'new'}`}
+                kind={dialog.kind}
+                record={dialog.record}
+                company={company.data}
+                loading={mutation.isPending}
+                apiError={error}
+                onClose={() => setDialog(null)}
+                onSubmit={submit}
+              />
+            )}
+          </>
+        )}
+        {error && confirmation && <Alert severity="error">{error}</Alert>}
+        <ConfirmDialog
+          open={Boolean(confirmation)}
+          title={`${confirmation?.body.ativo ? 'Ativar' : 'Inativar'} ${confirmation?.kind === 'empresa' ? 'empresa' : 'loja'}?`}
+          description={
+            error ||
+            (confirmation?.kind === 'loja' &&
+            String(confirmation.record.id) === String(claims.lojaId) &&
+            !confirmation.body.ativo
+              ? 'Esta é a loja da sessão atual. A alteração será salva; o contexto da sessão não será trocado automaticamente.'
+              : 'O cadastro será preservado e sua situação será atualizada.')
+          }
+          confirmLabel={confirmation?.body.ativo ? 'Ativar' : 'Inativar'}
+          loading={mutation.isPending}
+          onClose={() => {
+            setConfirmation(null);
+            setError('');
+          }}
+          onConfirm={() => save(confirmation)}
+        />
+        <Snackbar open={Boolean(feedback)} autoHideDuration={5000} onClose={() => setFeedback('')}>
+          <Alert severity="success" onClose={() => setFeedback('')}>
+            {feedback}
+          </Alert>
+        </Snackbar>
+      </Stack>
+    </CompaniesListLayout>
   );
 }
 CompaniesContent.propTypes = { claims: PropTypes.object.isRequired };

@@ -1,25 +1,32 @@
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { Breadcrumbs, Typography } from '@mui/material';
+import PropTypes from 'prop-types';
 import { useLocation } from 'react-router';
 import { getRouteMetadata } from '../../app/navigation.js';
 
-export function AppBreadcrumbs() {
+// Estados locais (como o perfil da loja) podem complementar a hierarquia da rota.
+export function AppBreadcrumbs({ items }) {
   const route = getRouteMetadata(useLocation().pathname);
-  if (!route) return null;
+  const labels = items ?? [route?.group, route?.label].filter(Boolean);
+  if (!labels.length) return null;
   return (
     <Breadcrumbs
       aria-label="Navegação estrutural"
       separator={<NavigateNextIcon fontSize="inherit" />}
       sx={{ mb: 1 }}
     >
-      {route.group && (
-        <Typography color="text.secondary" variant="body2">
-          {route.group}
+      {labels.map((label, index) => (
+        <Typography
+          key={`${index}-${label}`}
+          color={index === labels.length - 1 ? 'text.primary' : 'text.secondary'}
+          variant="caption"
+          aria-current={index === labels.length - 1 ? 'page' : undefined}
+        >
+          {label}
         </Typography>
-      )}
-      <Typography color="text.primary" variant="body2">
-        {route.label}
-      </Typography>
+      ))}
     </Breadcrumbs>
   );
 }
+
+AppBreadcrumbs.propTypes = { items: PropTypes.arrayOf(PropTypes.string) };

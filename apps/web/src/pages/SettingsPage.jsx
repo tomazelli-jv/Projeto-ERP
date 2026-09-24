@@ -11,7 +11,7 @@ import { SectionCard } from '../components/common/SectionCard.jsx';
 // Preferências visuais usam os estados oficiais, sem cópia local ou gravação adicional.
 export function SettingsPage() {
   const { themeMode, setThemeMode } = useThemeMode();
-  const { collapsed, setCollapsed } = useOutletContext();
+  const { collapsed, setCollapsed, topNavigation } = useOutletContext();
   return (
     <>
       <PageHeader
@@ -44,19 +44,31 @@ export function SettingsPage() {
               : 'Esta preferência também pode ser alterada no cabeçalho.'}
           </Typography>
         </SectionCard>
-        <SectionCard title="Navegação" subtitle="Menu lateral" icon={ViewSidebarOutlinedIcon}>
-          <ToggleButtonGroup
-            exclusive
-            value={collapsed ? 'collapsed' : 'expanded'}
-            aria-label="Menu lateral"
-            onChange={(_, value) => value && setCollapsed(value === 'collapsed')}
-          >
-            <ToggleButton value="expanded">Expandida</ToggleButton>
-            <ToggleButton value="collapsed">Recolhida</ToggleButton>
-          </ToggleButtonGroup>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            Preferência para desktop. Em telas menores, o menu continua abrindo pelo botão de navegação.
-          </Typography>
+        <SectionCard
+          title="Navegação"
+          subtitle={topNavigation ? 'Menu superior' : 'Menu lateral'}
+          icon={ViewSidebarOutlinedIcon}
+        >
+          {topNavigation ? (
+            <Typography variant="body2" color="text.secondary">
+              Navegação superior no desktop. Em telas menores, use o botão de menu para abrir a navegação.
+            </Typography>
+          ) : (
+            <>
+              <ToggleButtonGroup
+                exclusive
+                value={collapsed ? 'collapsed' : 'expanded'}
+                aria-label="Menu lateral"
+                onChange={(_, value) => value && setCollapsed(value === 'collapsed')}
+              >
+                <ToggleButton value="expanded">Expandida</ToggleButton>
+                <ToggleButton value="collapsed">Recolhida</ToggleButton>
+              </ToggleButtonGroup>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Preferência para desktop. Em telas menores, o menu continua abrindo pelo botão de navegação.
+              </Typography>
+            </>
+          )}
         </SectionCard>
       </Stack>
     </>

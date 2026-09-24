@@ -5,6 +5,8 @@ import { SettingsPage } from '../pages/SettingsPage.jsx';
 import { PlansPage } from '../pages/PlansPage.jsx';
 import { CompaniesPage } from '../pages/CompaniesPage.jsx';
 import { UsersPage } from '../pages/UsersPage.jsx';
+import { CustomersPage } from '../pages/CustomersPage.jsx';
+import { CustomerEditorPage } from '../pages/CustomerEditorPage.jsx';
 import { UserEditorPage } from '../pages/UserEditorPage.jsx';
 import { DashboardPage } from '../pages/DashboardPage.jsx';
 import { LoginPage } from '../pages/LoginPage.jsx';
@@ -36,6 +38,11 @@ export const router = createBrowserRouter([
       { path: 'admin/users/new', element: <UserEditorPage mode="create" /> },
       { path: 'admin/users/:id', element: <UserEditorPage mode="view" /> },
       { path: 'admin/users/:id/edit', element: <UserEditorPage mode="edit" /> },
+      // Clientes usa repository DEV substituível; nenhuma rota HTTP é presumida.
+      { path: 'customers', element: <CustomersPage /> },
+      { path: 'customers/new', element: <CustomerEditorPage mode="create" /> },
+      { path: 'customers/:id', element: <CustomerEditorPage mode="view" /> },
+      { path: 'customers/:id/edit', element: <CustomerEditorPage mode="edit" /> },
       // MÃ³dulos permanecem navegÃ¡veis, mas nÃ£o disparam contratos do backend antigo durante a migraÃ§Ã£o.
       ...modulePages.map((page) => ({ path: page.path.slice(1), element: <ModulePage {...page} /> }))
     ]

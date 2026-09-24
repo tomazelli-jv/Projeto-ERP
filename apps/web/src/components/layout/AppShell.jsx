@@ -1,9 +1,10 @@
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+﻿import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import ComputerIcon from '@mui/icons-material/Computer';
 import { useThemeMode } from '../../app/theme-mode.js';
+import { ThemeToggle } from '../common/ThemeToggle.jsx';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import {
@@ -41,16 +42,16 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../../app/auth/auth-context.js';
 import { useOperationalContext } from '../../app/operational-context/operational-context.js';
-import { Sidebar } from '../navigation/Sidebar.jsx';
+import { TopNavigation } from '../navigation/TopNavigation.jsx';
 
 import { layout } from '../../app/layout-tokens.js';
 import { useSidebarPreference } from '../../app/useSidebarPreference.js';
 
 export function AppShell() {
   const theme = useTheme();
-  const { themeMode, resolvedMode, setThemeMode, toggleTheme } = useThemeMode();
+  const { themeMode, setThemeMode } = useThemeMode();
   const compact = useMediaQuery(theme.breakpoints.down(layout.desktopBreakpoint));
-  const { collapsed, setCollapsed, toggleCollapsed } = useSidebarPreference();
+  const { collapsed, setCollapsed } = useSidebarPreference();
   const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
@@ -62,7 +63,6 @@ export function AppShell() {
   const [loggingOut, setLoggingOut] = useState(false);
   const { user, logout } = useAuth();
   const {
-    company,
     stores,
     activeStore,
     setActiveStore,
@@ -101,15 +101,7 @@ export function AppShell() {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar
-        collapsed={collapsed}
-        compact={compact}
-        mobileOpen={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        onToggle={toggleCollapsed}
-        onUserMenu={(event) => setUserMenuAnchor(event.currentTarget)}
-      />
+    <Box sx={{ minHeight: '100vh' }}>
       {/* O menu da conta abre o seletor oficial; a troca continua passando pelo contexto/JWT existente. */}
       <Dialog
         open={storeDialogOpen}
@@ -266,7 +258,7 @@ export function AppShell() {
             borderColor: 'divider'
           }}
         >
-          <Toolbar sx={{ minHeight: { xs: layout.headerHeight }, gap: { xs: 1, sm: 2 } }}>
+          <Toolbar sx={{ minHeight: { xs: layout.headerHeight }, gap: 1, px: { xs: 2, lg: 2 } }}>
             <IconButton
               aria-label="Abrir navegação"
               edge="start"
@@ -279,32 +271,49 @@ export function AppShell() {
               direction="row"
               alignItems="center"
               justifyContent="space-between"
-              sx={{ minWidth: 0, width: '100%' }}
+              sx={{ minWidth: 0, width: '100%', gap: 1 }}
             >
               <Box sx={{ minWidth: 0, display: { xs: 'none', sm: 'block' } }}>
                 <Typography variant="subtitle1" fontWeight={750} noWrap>
-                  {company?.nome ?? 'Tomazelli ERP'}
+                  Tomazelli ERP
                 </Typography>
-                {import.meta.env.DEV && !compact && (
+                {!compact && (
                   <Typography variant="caption" color="text.secondary">
                     Gestão clara para o seu negócio
                   </Typography>
                 )}
               </Box>
-              <Stack direction="row" alignItems="center" spacing={{ xs: 0.5, sm: 1.5 }}>
+              <TopNavigation compact={compact} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+              <Stack direction="row" alignItems="center" spacing={0.5} sx={{ flexShrink: 0 }}>
                 {!compact && (
-                  <Chip label="Ambiente de desenvolvimento" color="warning" size="small" variant="outlined" />
+                  <Tooltip title={activeStore?.nomeFantasia ?? 'Trocar de loja'}>
+                    <Button
+                      aria-label="Trocar de loja"
+                      startIcon={<StorefrontOutlinedIcon fontSize="small" />}
+                      color="inherit"
+                      onClick={() => {
+                        setChosenStore(activeStore?.id ?? '');
+                        setStoreSearch('');
+                        setStoreDialogOpen(true);
+                      }}
+                      sx={{ minWidth: 0, maxWidth: 130, fontSize: 12 }}
+                    >
+                      <Typography variant="caption" noWrap>
+                        {activeStore?.nomeFantasia ?? 'Loja'}
+                      </Typography>
+                    </Button>
+                  </Tooltip>
                 )}
-                <Tooltip title={resolvedMode === 'light' ? 'Usar tema escuro' : 'Usar tema claro'}>
-                  <IconButton
-                    aria-label={
-                      resolvedMode === 'light' ? 'Alterar para tema escuro' : 'Alterar para tema claro'
-                    }
-                    onClick={toggleTheme}
-                  >
-                    {resolvedMode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
-                  </IconButton>
-                </Tooltip>
+                {import.meta.env.DEV && !compact && (
+                  <Chip
+                    label="DEV"
+                    aria-label="Ambiente de desenvolvimento"
+                    color="warning"
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+                <ThemeToggle />
                 <Button
                   aria-controls={userMenuAnchor ? 'user-menu' : undefined}
                   aria-haspopup="true"
@@ -319,7 +328,7 @@ export function AppShell() {
                   sx={{ minWidth: 0, px: { xs: 0.75, md: 1.25 }, borderRadius: 2 }}
                 >
                   {!compact && (
-                    <Typography noWrap sx={{ maxWidth: 180 }} variant="body2">
+                    <Typography noWrap sx={{ maxWidth: 80 }} variant="body2">
                       {user?.name}
                     </Typography>
                   )}
@@ -398,7 +407,7 @@ export function AppShell() {
         <Box component="main" sx={{ minWidth: 0 }}>
           <Box sx={{ p: { xs: 2, sm: 2.5, lg: 3 } }}>
             {/* Compartilha a preferência desktop; o Drawer mantém seu estado independente. */}
-            <Outlet context={{ collapsed, setCollapsed }} />
+            <Outlet context={{ collapsed, setCollapsed, topNavigation: true }} />
           </Box>
         </Box>
       </Box>

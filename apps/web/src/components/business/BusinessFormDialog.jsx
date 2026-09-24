@@ -24,6 +24,7 @@ import {
 import PropTypes from 'prop-types';
 import { useRef, useState } from 'react';
 import { SectionCard } from '../common/SectionCard.jsx';
+import { AppBreadcrumbs } from '../common/AppBreadcrumbs.jsx';
 import { CnpjField } from './CnpjField.jsx';
 import { CpfField } from './CpfField.jsx';
 import { ContactField } from './ContactField.jsx';
@@ -126,9 +127,11 @@ export function BusinessFormDialog({ kind, record, company, loading, apiError, o
       onClose={loading ? undefined : onClose}
       aria-labelledby="business-form-title"
     >
-      <DialogTitle id="business-form-title">
+      {/* O formulário mantém a mesma hierarquia visual das páginas, sem um segundo título de seção. */}
+      <DialogTitle component="div">
+        <AppBreadcrumbs items={store ? ['Empresas', 'Lojas', title] : ['Empresas', title]} />
         <Stack direction="row" alignItems="center" spacing={2}>
-          <Typography component="span" variant="h2">
+          <Typography component="h2" variant="h2" id="business-form-title">
             {title}
           </Typography>
           {!editing && <Chip size="small" label="Novo cadastro" color="primary" variant="outlined" />}

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { formatCep, formatPhone } from './business-formatters.js';
 
 // Máscaras compartilhadas limitam também colagem e exibem valores não mascarados da API.
-export function ContactField({ kind, value, onChange, required = false, helperText }) {
+export function ContactField({ kind, value, onChange, required = false, helperText, label }) {
   const phone = kind === 'phone';
   const format = phone ? formatPhone : formatCep;
   return (
@@ -11,7 +11,7 @@ export function ContactField({ kind, value, onChange, required = false, helperTe
       helperText={helperText}
       fullWidth
       required={required}
-      label={phone ? 'Telefone' : 'CEP'}
+      label={label ?? (phone ? 'Telefone' : 'CEP')}
       type={phone ? 'tel' : 'text'}
       value={format(value)}
       placeholder={phone ? '(00) 00000-0000' : '00000-000'}
@@ -27,6 +27,7 @@ export function ContactField({ kind, value, onChange, required = false, helperTe
   );
 }
 ContactField.propTypes = {
+  label: PropTypes.string,
   helperText: PropTypes.string,
   kind: PropTypes.oneOf(['phone', 'cep']).isRequired,
   value: PropTypes.string.isRequired,

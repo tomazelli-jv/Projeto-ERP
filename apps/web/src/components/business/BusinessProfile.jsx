@@ -8,6 +8,7 @@ import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import { Avatar, Box, Button, Chip, Divider, Stack, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 import { SectionCard } from '../common/SectionCard.jsx';
+import { PageHeader } from '../common/PageHeader.jsx';
 import { formatDate, formatPhone } from './business-formatters.js';
 import { addressLines, documentLabel, documentValue } from './business-model.js';
 import { businessDensitySx, businessCardSx } from './business-styles.js';
@@ -30,21 +31,21 @@ export function BusinessProfile({ record, kind, companyName, onClose, onEdit }) 
       ];
   return (
     <Box sx={businessDensitySx} component="section" aria-labelledby="business-detail-title">
-      <Stack direction="row" justifyContent="space-between" alignItems="center" gap={2} sx={{ mb: 3 }}>
-        <Box>
-          <Typography component="h2" variant="h2" id="business-detail-title">
-            {store ? 'Perfil da loja' : 'Perfil da empresa'}
-          </Typography>
-          <Typography component="p" variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {store
-              ? 'Identificação, contato e endereço da unidade.'
-              : 'Identificação e situação cadastral da empresa.'}
-          </Typography>
-        </Box>
-        <Button startIcon={<ArrowBackOutlinedIcon />} variant="outlined" onClick={onClose}>
-          Voltar para a lista
-        </Button>
-      </Stack>
+      <PageHeader
+        titleId="business-detail-title"
+        title={store ? 'Perfil da loja' : 'Perfil da empresa'}
+        breadcrumbs={store ? ['Empresas', 'Lojas', 'Perfil da loja'] : ['Empresas', 'Perfil da empresa']}
+        description={
+          store
+            ? 'Identificação, contato e endereço da unidade.'
+            : 'Identificação e situação cadastral da empresa.'
+        }
+        action={
+          <Button startIcon={<ArrowBackOutlinedIcon />} variant="outlined" onClick={onClose}>
+            Voltar para a lista
+          </Button>
+        }
+      />
       <Box>
         <Stack spacing={2} sx={{ pt: 1 }}>
           {/* Cabeçalho de perfil segue Usuários; exibe somente informações do registro selecionado. */}

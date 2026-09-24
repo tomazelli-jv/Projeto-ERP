@@ -25,7 +25,7 @@ export const appRoutes = [
     description: 'Gerencie os clientes cadastrados neste ambiente.',
     group: 'Cadastros',
     icon: GroupsOutlinedIcon,
-    module: true
+    module: false
   },
   {
     path: '/suppliers',
@@ -125,6 +125,10 @@ export const navigationGroups = [
 export const modulePages = appRoutes.filter((route) => route.module);
 
 export function getRouteMetadata(pathname) {
+  // Subtelas de Clientes mantêm um único título e a hierarquia compacta no breadcrumb.
+  if (pathname === '/customers/new') return { group: 'Clientes', label: 'Novo cliente' };
+  if (/^\/customers\/[^/]+\/edit$/.test(pathname)) return { group: 'Clientes', label: 'Editar cliente' };
+  if (/^\/customers\/[^/]+$/.test(pathname)) return { group: 'Clientes', label: 'Perfil do cliente' };
   // A listagem agrupa as lojas sob a empresa escolhida.
   if (pathname === '/admin/companies') return { group: 'Empresas', label: 'Lojas' };
   // Breadcrumb de subrotas não cria uma segunda seção Funcionários.
@@ -133,3 +137,25 @@ export function getRouteMetadata(pathname) {
   if (/^\/admin\/users\/\d+$/.test(pathname)) return { group: 'Usuários', label: 'Perfil do colaborador' };
   return byPath[pathname];
 }
+
+// Fonte única da navegação superior e do Drawer; todos os destinos reutilizam as rotas registradas.
+export const topNavigationGroups = [
+  { label: 'Dashboard', path: '/dashboard', items: [byPath['/dashboard']] },
+  {
+    label: 'Cadastros',
+    description: 'Gerencie os dados principais do seu negócio.',
+    items: ['/customers', '/suppliers', '/products', '/inventory'].map((path) => byPath[path])
+  },
+  { label: 'Operações', description: 'Acompanhe as operações comerciais.', items: [byPath['/sales']] },
+  { label: 'Financeiro', path: '/financial', items: [byPath['/financial']] },
+  {
+    label: 'Administração',
+    description: 'Gerencie sua empresa e suas unidades.',
+    items: [byPath['/admin/companies']]
+  },
+  {
+    label: 'Configurações',
+    description: 'Preferências e administração de acessos.',
+    items: ['/settings', '/admin/users', '/admin/plan'].map((path) => byPath[path])
+  }
+];
