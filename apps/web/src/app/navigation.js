@@ -34,7 +34,7 @@ export const appRoutes = [
     description: 'Organize os fornecedores e parceiros comerciais.',
     group: 'Cadastros',
     icon: LocalShippingOutlinedIcon,
-    module: true
+    module: false
   },
   {
     path: '/products',
@@ -125,6 +125,10 @@ export const navigationGroups = [
 export const modulePages = appRoutes.filter((route) => route.module);
 
 export function getRouteMetadata(pathname) {
+  if (pathname === '/suppliers/new') return { group: 'Fornecedores', label: 'Novo fornecedor' };
+  if (/^\/suppliers\/[^/]+\/edit$/.test(pathname))
+    return { group: 'Fornecedores', label: 'Editar fornecedor' };
+  if (/^\/suppliers\/[^/]+$/.test(pathname)) return { group: 'Fornecedores', label: 'Perfil do fornecedor' };
   // Subtelas de Clientes mantêm um único título e a hierarquia compacta no breadcrumb.
   if (pathname === '/customers/new') return { group: 'Clientes', label: 'Novo cliente' };
   if (/^\/customers\/[^/]+\/edit$/.test(pathname)) return { group: 'Clientes', label: 'Editar cliente' };
