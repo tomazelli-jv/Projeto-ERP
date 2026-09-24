@@ -1,3 +1,4 @@
+import { CreateButton } from '../components/common/CreateButton.jsx';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
@@ -114,6 +115,7 @@ UserEditorPage.propTypes = { mode: PropTypes.oneOf(['create', 'edit', 'view']).i
 function UserForm({ mode, initial, scope, context, canEdit }) {
   const creating = mode === 'create',
     readonly = mode === 'view';
+  const SubmitButton = creating ? CreateButton : Button;
   const [form, setForm] = useState(() => ({
     nome: initial?.nome ?? '',
     userName: initial?.userName ?? '',
@@ -548,7 +550,7 @@ function UserForm({ mode, initial, scope, context, canEdit }) {
               </Button>
             )
           ) : (
-            <Button
+            <SubmitButton
               type="submit"
               variant="contained"
               disabled={
@@ -563,7 +565,7 @@ function UserForm({ mode, initial, scope, context, canEdit }) {
               }
             >
               {disabled ? 'Salvando...' : creating ? 'Criar usuário' : 'Salvar alterações'}
-            </Button>
+            </SubmitButton>
           )}
         </Stack>
       </Box>

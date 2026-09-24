@@ -1,4 +1,8 @@
-﻿import AddIcon from '@mui/icons-material/Add';
+import { CreateButton } from '../components/common/CreateButton.jsx';
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined';
+import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
@@ -64,15 +68,18 @@ export function UsersPage() {
     retry: false
   });
   const createButton = permission.create && (
-    <Button component={Link} to="/admin/users/new" variant="contained" startIcon={<AddIcon />}>
+    <CreateButton component={Link} to="/admin/users/new">
       Novo usuário
-    </Button>
+    </CreateButton>
   );
   const total = query.data?.total ?? 0;
   const first = total ? (filters.pagina - 1) * filters.tamanhoPagina + 1 : 0;
   return (
     <>
-      <PageHeader title="Usuários" description="Gerencie os usuários do seu sistema." action={createButton} />
+      <PageHeader
+        title="Cadastro de usuários"
+        description="Gerencie os acessos dos usuários da sua empresa."
+      />
       {!permission.view ? (
         <Alert severity="info">Você não possui permissão para visualizar usuários.</Alert>
       ) : !claims?.empresaId ? (
@@ -88,43 +95,80 @@ export function UsersPage() {
               mb: 3
             }}
           >
-            {['Total de usuários', 'Usuários ativos', 'Pendentes', 'Usuários inativos'].map(
-              (label, index) => (
-                <Card key={label}>
-                  <CardContent>
-                    <Typography color="text.secondary" variant="body2">
+            {/* Cores semânticas identificam os indicadores; ausência de contrato nunca vira zero fictício. */}
+            {[
+              ['Total de usuários', GroupsOutlinedIcon, 'info'],
+              ['Usuários ativos', PersonOutlineIcon, 'success'],
+              ['Pendentes', ScheduleOutlinedIcon, 'warning'],
+              ['Usuários inativos', PersonOffOutlinedIcon, 'error']
+            ].map(([label, Icon, tone], index) => (
+              <Card
+                key={label}
+                sx={{ borderRadius: 2, bgcolor: tone + '.soft', borderColor: tone + '.main' }}
+              >
+                <CardContent
+                  sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, '&:last-child': { pb: 2 } }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      p: 1.25,
+                      borderRadius: 1.5,
+                      color: tone + '.main',
+                      bgcolor: 'background.paper'
+                    }}
+                  >
+                    <Icon />
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" fontWeight={650}>
                       {label}
                     </Typography>
-                    <Typography variant="h2" sx={{ my: 1 }}>
+                    <Typography variant="h2" sx={{ mt: 0.5 }}>
                       {index === 0 ? (count.data ?? '—') : '—'}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {index === 0 ? 'Na empresa atual' : 'Indicador indisponível'}
                     </Typography>
-                  </CardContent>
-                </Card>
-              )
-            )}
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
           </Box>
-          <Card>
-            <CardContent>
-              <TextField
-                fullWidth
-                label="Buscar por nome"
-                placeholder="Digite o nome do usuário..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" />
-                      </InputAdornment>
-                    )
-                  }
-                }}
-                sx={{ mb: 2, maxWidth: 600 }}
-              />
+          <Box>
+            <Box>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                gap={2}
+                alignItems={{ sm: 'center' }}
+                sx={{ mb: 3 }}
+              >
+                <TextField
+                  fullWidth
+                  label="Buscar por nome"
+                  placeholder="Digite o nome do usuário..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      )
+                    }
+                  }}
+                  sx={{ flex: 1 }}
+                />
+                <Box
+                  sx={{
+                    flexShrink: 0,
+                    '& .MuiButton-root': { minHeight: 40, width: { xs: '100%', sm: 'auto' } }
+                  }}
+                >
+                  {createButton}
+                </Box>
+              </Stack>
               {query.isPending || isSwitchingStore ? (
                 <Stack role="status" aria-label="Carregando usuários" spacing={1}>
                   {Array.from({ length: 5 }, (_, i) => (
@@ -139,19 +183,40 @@ export function UsersPage() {
                   description="Confira a busca ou cadastre um usuário."
                   action={
                     permission.create ? (
-                      <Button component={Link} to="/admin/users/new">
+                      <CreateButton component={Link} to="/admin/users/new">
                         Cadastrar primeiro usuário
-                      </Button>
+                      </CreateButton>
                     ) : undefined
                   }
                 />
               ) : (
-                <TableContainer>
-                  <Table sx={{ minWidth: 640 }} aria-label="Usuários">
+                <TableContainer
+                  sx={{ border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}
+                >
+                  <Table
+                    size="small"
+                    sx={{
+                      minWidth: 640,
+                      '& th': {
+                        bgcolor: 'primary.main',
+                        color: 'primary.contrastText',
+                        textTransform: 'uppercase',
+                        fontSize: 12,
+                        fontWeight: 750,
+                        py: 2
+                      },
+                      '& td': { py: 1.75, fontSize: 13 },
+                      '& tbody tr:nth-of-type(even)': { bgcolor: 'surface.secondary' },
+                      '& tr:last-child td': { borderBottom: 0 }
+                    }}
+                    aria-label="Usuários"
+                  >
                     <TableHead>
                       <TableRow>
                         {['Usuário', 'E-mail', 'Status', 'Ações'].map((label) => (
-                          <TableCell key={label}>{label}</TableCell>
+                          <TableCell key={label} align={label === 'Ações' ? 'right' : 'left'}>
+                            {label}
+                          </TableCell>
                         ))}
                       </TableRow>
                     </TableHead>
@@ -172,14 +237,18 @@ export function UsersPage() {
                                 {userInitials(user.nome)}
                               </Avatar>
                               <Box>
-                                <Typography fontWeight={600}>{user.nome}</Typography>
+                                <Typography variant="body2" fontWeight={600}>
+                                  {user.nome}
+                                </Typography>
                                 <Typography variant="caption" color="text.secondary">
                                   {user.userName || 'Login indisponível'}
                                 </Typography>
                               </Box>
                             </Stack>
                           </TableCell>
-                          <TableCell>{user.email || '—'}</TableCell>
+                          <TableCell sx={{ overflowWrap: 'anywhere', maxWidth: 300 }}>
+                            {user.email || '—'}
+                          </TableCell>
                           <TableCell>
                             {user.ativo === null ? (
                               <Chip size="small" label="Indisponível" />
@@ -191,7 +260,7 @@ export function UsersPage() {
                               />
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                             <Tooltip title="Visualizar usuário">
                               <IconButton
                                 component={Link}
@@ -262,8 +331,8 @@ export function UsersPage() {
                   </Button>
                 </Stack>
               </Stack>
-            </CardContent>
-          </Card>
+            </Box>
+          </Box>
         </>
       )}
       <Snackbar

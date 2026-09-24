@@ -1,3 +1,4 @@
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
@@ -7,18 +8,28 @@ import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import {
   AppBar,
+  Alert,
+  TextField,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableContainer,
+  Radio,
   Avatar,
   Box,
   Button,
   Chip,
   CircularProgress,
   Divider,
-  FormControl,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   IconButton,
-  InputLabel,
   Menu,
   MenuItem,
-  Select,
   Stack,
   Toolbar,
   Tooltip,
@@ -43,6 +54,11 @@ export function AppShell() {
   const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [storeSearch, setStoreSearch] = useState('');
+  const [storeField, setStoreField] = useState('name');
+  const [storeMatch, setStoreMatch] = useState('contains');
+  const [chosenStore, setChosenStore] = useState('');
+  const [storeDialogOpen, setStoreDialogOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const { user, logout } = useAuth();
   const {
@@ -94,6 +110,151 @@ export function AppShell() {
         onToggle={toggleCollapsed}
         onUserMenu={(event) => setUserMenuAnchor(event.currentTarget)}
       />
+      {/* O menu da conta abre o seletor oficial; a troca continua passando pelo contexto/JWT existente. */}
+      <Dialog
+        open={storeDialogOpen}
+        onClose={() => !isSwitchingStore && setStoreDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        aria-labelledby="switch-store-title"
+      >
+        <DialogTitle id="switch-store-title">Consulta de lojas</DialogTitle>
+        <DialogContent sx={{ pt: '16px !important' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Selecione a loja em que deseja trabalhar.
+          </Typography>
+          {/* Pesquisa local somente nos vínculos retornados pela API; selecionar não troca a sessão. */}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+            <TextField
+              select
+              fullWidth
+              label="Pesquisar por"
+              value={storeField}
+              onChange={(e) => setStoreField(e.target.value)}
+            >
+              <MenuItem value="name">Nome</MenuItem>
+              <MenuItem value="code">Código</MenuItem>
+            </TextField>
+            <TextField
+              select
+              fullWidth
+              label="Correspondência"
+              value={storeMatch}
+              onChange={(e) => setStoreMatch(e.target.value)}
+            >
+              <MenuItem value="contains">Contém</MenuItem>
+              <MenuItem value="starts">Inicia com</MenuItem>
+              <MenuItem value="exact">Igual a</MenuItem>
+            </TextField>
+          </Stack>
+          <TextField
+            fullWidth
+            label="Dados a pesquisar"
+            value={storeSearch}
+            onChange={(e) => setStoreSearch(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          {contextError && (
+            <Alert
+              severity="error"
+              action={<Button onClick={() => retry()}>Tentar novamente</Button>}
+              sx={{ mb: 2 }}
+            >
+              Não foi possível carregar ou trocar a loja. Tente novamente.
+            </Alert>
+          )}
+          {contextLoading ? (
+            <Stack role="status" direction="row" spacing={1}>
+              <CircularProgress size={20} />
+              <Typography>Carregando lojas...</Typography>
+            </Stack>
+          ) : (
+            <TableContainer
+              sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5, minHeight: 220, maxHeight: 360 }}
+            >
+              <Table size="small" stickyHeader aria-label="Lojas disponíveis para troca">
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox" />
+                    <TableCell>Código</TableCell>
+                    <TableCell>Nome</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {stores
+                    .filter((store) => {
+                      const value = String(
+                        storeField === 'code' ? store.id : store.nomeFantasia
+                      ).toLocaleLowerCase('pt-BR');
+                      const term = storeSearch.trim().toLocaleLowerCase('pt-BR');
+                      return (
+                        !term ||
+                        (storeMatch === 'starts'
+                          ? value.startsWith(term)
+                          : storeMatch === 'exact'
+                            ? value === term
+                            : value.includes(term))
+                      );
+                    })
+                    .map((store) => (
+                      <TableRow
+                        key={store.id}
+                        hover
+                        selected={chosenStore === store.id}
+                        onClick={() => !isSwitchingStore && store.ativo && setChosenStore(store.id)}
+                        sx={{ cursor: store.ativo ? 'pointer' : 'default', opacity: store.ativo ? 1 : 0.6 }}
+                      >
+                        <TableCell padding="checkbox">
+                          <Radio
+                            size="small"
+                            name="store-choice"
+                            checked={chosenStore === store.id}
+                            disabled={!store.ativo || isSwitchingStore}
+                            onChange={() => setChosenStore(store.id)}
+                            inputProps={{ 'aria-label': 'Selecionar ' + store.nomeFantasia }}
+                          />
+                        </TableCell>
+                        <TableCell>{store.id}</TableCell>
+                        <TableCell sx={{ overflowWrap: 'anywhere' }}>
+                          {store.nomeFantasia}
+                          {store.id === activeStore?.id ? ' — Atual' : ''}
+                          {!store.ativo ? ' — Inativa' : ''}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+              {stores.length === 0 && (
+                <Typography color="text.secondary" sx={{ p: 2 }}>
+                  Nenhuma loja disponível.
+                </Typography>
+              )}
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={isSwitchingStore} onClick={() => setStoreDialogOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            disabled={
+              isSwitchingStore ||
+              contextLoading ||
+              !stores.some((store) => store.id === chosenStore && store.ativo)
+            }
+            onClick={async () => {
+              if (chosenStore === activeStore?.id) setStoreDialogOpen(false);
+              else if (await setActiveStore(chosenStore)) {
+                // Restauração usa o cookie HttpOnly existente; nenhum token é persistido no navegador.
+                window.location.reload();
+              }
+            }}
+          >
+            {isSwitchingStore ? 'Trocando...' : 'Confirmar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       {/* A coluna flex ocupa todo o restante; header e páginas crescem juntos sem offsets fixos. */}
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <AppBar
@@ -131,61 +292,6 @@ export function AppShell() {
                 )}
               </Box>
               <Stack direction="row" alignItems="center" spacing={{ xs: 0.5, sm: 1.5 }}>
-                {/* Seletor global mostra a empresa derivada do backend e nunca aceita lojas fora da lista atual. */}
-                {contextLoading ? (
-                  <Stack alignItems="center" direction="row" spacing={1} role="status">
-                    <CircularProgress size={20} />
-                    {!compact && <Typography variant="caption">Carregando lojas...</Typography>}
-                  </Stack>
-                ) : contextError ? (
-                  <Button color="error" size="small" onClick={() => retry()}>
-                    {contextError.code === 'BUSINESS_CONTEXT_REQUIRED'
-                      ? 'Empresa não vinculada'
-                      : 'Recarregar contexto'}
-                  </Button>
-                ) : (
-                  <FormControl
-                    size="small"
-                    sx={{ minWidth: { xs: 150, sm: 210 }, maxWidth: { xs: 180, md: 280 } }}
-                  >
-                    <InputLabel id="active-store-label" shrink>
-                      Loja
-                    </InputLabel>
-                    <Select
-                      disabled={isSwitchingStore}
-                      labelId="active-store-label"
-                      label="Loja"
-                      value={activeStore?.id ?? ''}
-                      onChange={(event) => setActiveStore(event.target.value)}
-                      displayEmpty
-                      renderValue={(value) => {
-                        const selected = stores.find((store) => store.id === value);
-                        return isSwitchingStore
-                          ? 'Trocando loja...'
-                          : (selected?.nomeFantasia ??
-                              (stores.some((store) => store.ativo)
-                                ? 'Selecionar loja'
-                                : 'Nenhuma loja disponível'));
-                      }}
-                    >
-                      {stores.map((store) => (
-                        <MenuItem key={store.id} value={store.id} disabled={!store.ativo}>
-                          <Stack>
-                            <Typography variant="body2">
-                              {store.nomeFantasia}
-                              {store.ativo ? '' : ' — Inativa'}
-                            </Typography>
-                            {(store.cidade || store.uf) && (
-                              <Typography color="text.secondary" variant="caption">
-                                {[store.cidade, store.uf].filter(Boolean).join(' / ')}
-                              </Typography>
-                            )}
-                          </Stack>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
                 {!compact && (
                   <Chip label="Ambiente de desenvolvimento" color="warning" size="small" variant="outlined" />
                 )}
@@ -268,6 +374,20 @@ export function AppShell() {
                   <MenuItem disabled={loggingOut} onClick={handleLogout} sx={{ mx: 1, borderRadius: 1.5 }}>
                     <LogoutOutlinedIcon fontSize="small" sx={{ mr: 1.5 }} />
                     {loggingOut ? 'Saindo...' : 'Sair'}
+                  </MenuItem>
+                  <MenuItem
+                    disabled={loggingOut}
+                    onClick={() => {
+                      setUserMenuAnchor(null);
+                      setMobileOpen(false);
+                      setChosenStore(activeStore?.id ?? '');
+                      setStoreSearch('');
+                      setStoreDialogOpen(true);
+                    }}
+                    sx={{ mx: 1, borderRadius: 1.5 }}
+                  >
+                    <StorefrontOutlinedIcon fontSize="small" sx={{ mr: 1.5 }} />
+                    Trocar de loja
                   </MenuItem>
                 </Menu>
               </Stack>

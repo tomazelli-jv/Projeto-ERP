@@ -9,10 +9,11 @@ import {
   ListItemText,
   Menu,
   MenuItem,
-  Tooltip
+  Tooltip,
+  useMediaQuery
 } from '@mui/material';
 import PropTypes from 'prop-types';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { appRoutes } from '../../app/navigation.js';
 
@@ -25,7 +26,20 @@ export function SettingsNavigation({ collapsed, onNavigate }) {
   const active = items.some((item) => pathname === item.path || pathname.startsWith(item.path + '/'));
   const [expanded, setExpanded] = useState(false);
   const [anchor, setAnchor] = useState(null);
+  const submenuRef = useRef(null);
+  const scrollRequested = useRef(false);
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const open = active || expanded;
+  // Rola somente a navegação após a expansão, sem deslocar a página ou o cabeçalho.
+  function revealSubmenu() {
+    if (!scrollRequested.current) return;
+    scrollRequested.current = false;
+    const list = submenuRef.current;
+    const navigation = list?.closest('nav');
+    if (!navigation) return;
+    const overflow = list.getBoundingClientRect().bottom - navigation.getBoundingClientRect().bottom + 8;
+    if (overflow > 0) navigation.scrollBy({ top: overflow, behavior: reducedMotion ? 'instant' : 'smooth' });
+  }
   const close = () => {
     setAnchor(null);
     onNavigate();
@@ -38,7 +52,14 @@ export function SettingsNavigation({ collapsed, onNavigate }) {
           aria-label="Configurações"
           aria-expanded={collapsed ? Boolean(anchor) : open}
           aria-haspopup={collapsed ? 'menu' : undefined}
-          onClick={(event) => (collapsed ? setAnchor(event.currentTarget) : setExpanded((value) => !value))}
+          onClick={(event) => {
+            if (collapsed) return setAnchor(event.currentTarget);
+            scrollRequested.current = true;
+            if (open) {
+              revealSubmenu();
+              setExpanded(false);
+            } else setExpanded(true);
+          }}
           selected={active}
           sx={{
             width: '100%',
@@ -68,8 +89,8 @@ export function SettingsNavigation({ collapsed, onNavigate }) {
         </ListItemButton>
       </Tooltip>
       {!collapsed && (
-        <Collapse in={open}>
-          <List disablePadding sx={{ pl: 2 }}>
+        <Collapse in={open} timeout={reducedMotion ? 0 : 280} onEntered={revealSubmenu}>
+          <List ref={submenuRef} disablePadding sx={{ pl: 2 }}>
             {items.map((item) => (
               <ListItemButton
                 key={item.path}

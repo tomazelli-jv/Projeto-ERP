@@ -1,4 +1,8 @@
-﻿import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import { CreateButton } from '../components/common/CreateButton.jsx';
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
+import SearchIcon from '@mui/icons-material/Search';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import {
@@ -7,6 +11,9 @@ import {
   Box,
   Button,
   Chip,
+  Card,
+  CardContent,
+  InputAdornment,
   MenuItem,
   Skeleton,
   Snackbar,
@@ -27,7 +34,7 @@ import {
 } from '../api/business.js';
 import { useAuth } from '../app/auth/auth-context.js';
 import { useOperationalContext } from '../app/operational-context/operational-context.js';
-import { BusinessDetailDialog } from '../components/business/BusinessDetailDialog.jsx';
+import { BusinessProfile } from '../components/business/BusinessProfile.jsx';
 import { BusinessFormDialog } from '../components/business/BusinessFormDialog.jsx';
 import { LojasTable } from '../components/business/LojasTable.jsx';
 import { businessError, businessScope, canManageBusiness } from '../components/business/business-model.js';
@@ -68,6 +75,7 @@ function CompaniesContent({ claims }) {
   const queryClient = useQueryClient();
   const scope = businessScope(claims);
   const [selected, setSelected] = useState('');
+  const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
   const [error, setError] = useState('');
@@ -101,6 +109,11 @@ function CompaniesContent({ claims }) {
     retry: false
   });
   const rows = (lojas.data ?? []).filter((item) => String(item.empresaId) === companyId);
+  // A busca filtra a lista completa já carregada; os indicadores continuam sendo da empresa inteira.
+  const visibleRows = rows.filter((item) =>
+    (item.nome ?? '').toLocaleLowerCase('pt-BR').includes(search.trim().toLocaleLowerCase('pt-BR'))
+  );
+  const totalsAvailable = matchesContext && lojas.isSuccess;
   const mutation = useMutation({
     mutationFn: ({ kind, record, body }) =>
       kind === 'empresa'
@@ -157,6 +170,17 @@ function CompaniesContent({ claims }) {
         />
       </SectionCard>
     );
+  // Perfil ocupa o conteúdo da página, sem modal ou rolagem interna sobre a listagem.
+  if (dialog?.mode === 'view')
+    return (
+      <BusinessProfile
+        kind={dialog.kind}
+        record={dialog.record}
+        companyName={company.data?.nome}
+        onClose={() => setDialog(null)}
+        onEdit={() => setDialog((previous) => ({ ...previous, mode: 'edit' }))}
+      />
+    );
   return (
     <Stack spacing={2}>
       {empresas.data.length > 1 && (
@@ -166,6 +190,7 @@ function CompaniesContent({ claims }) {
           value={companyId}
           onChange={(event) => {
             setSelected(event.target.value);
+            setSearch('');
             setDialog(null);
             setConfirmation(null);
           }}
@@ -220,6 +245,59 @@ function CompaniesContent({ claims }) {
               </Button>
             </Stack>
           </SectionCard>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(3,minmax(0,1fr))' },
+              gap: 2
+            }}
+          >
+            {[
+              ['Total de lojas', StorefrontOutlinedIcon, 'info', rows.length],
+              [
+                'Lojas ativas',
+                CheckCircleOutlineIcon,
+                'success',
+                rows.filter((item) => item.ativo === true).length
+              ],
+              [
+                'Lojas inativas',
+                BlockOutlinedIcon,
+                'error',
+                rows.filter((item) => item.ativo === false).length
+              ]
+            ].map(([label, Icon, tone, value]) => (
+              <Card
+                key={label}
+                sx={{ borderRadius: 2, bgcolor: tone + '.soft', borderColor: tone + '.main' }}
+              >
+                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      p: 1.25,
+                      borderRadius: 1.5,
+                      color: tone + '.main',
+                      bgcolor: 'background.paper'
+                    }}
+                  >
+                    <Icon />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" fontWeight={650}>
+                      {label}
+                    </Typography>
+                    <Typography variant="h2" sx={{ mt: 0.5 }}>
+                      {totalsAvailable ? value : '—'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {totalsAvailable ? 'Na empresa selecionada' : 'Aguardando consulta das lojas'}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             alignItems={{ xs: 'stretch', sm: 'center' }}
@@ -227,17 +305,27 @@ function CompaniesContent({ claims }) {
             gap={2}
             sx={{ pt: 1 }}
           >
-            <Box>
-              <Typography variant="h2">
-                Lojas{matchesContext && lojas.isSuccess ? ` (${rows.length})` : ''}
-              </Typography>
-              <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                Cadastre e gerencie as lojas desta empresa.
-              </Typography>
-            </Box>
-            <Button variant="contained" startIcon={<AddOutlinedIcon />} onClick={() => open('loja', 'edit')}>
+            <TextField
+              fullWidth
+              label="Buscar loja por nome"
+              placeholder="Digite o nome da loja..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              disabled={!totalsAvailable}
+              sx={{ flex: 1 }}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  )
+                }
+              }}
+            />
+            <CreateButton sx={{ flexShrink: 0 }} onClick={() => open('loja', 'edit')}>
               Nova loja
-            </Button>
+            </CreateButton>
           </Stack>
           {!matchesContext ? (
             <Alert severity="info">
@@ -253,16 +341,18 @@ function CompaniesContent({ claims }) {
               <EmptyState
                 title="Nenhuma loja cadastrada"
                 description="Cadastre a primeira loja desta empresa."
-                action={
-                  <Button variant="outlined" onClick={() => open('loja', 'edit')}>
-                    Nova loja
-                  </Button>
-                }
+                action={<CreateButton onClick={() => open('loja', 'edit')}>Nova loja</CreateButton>}
               />
             </SectionCard>
+          ) : visibleRows.length === 0 ? (
+            <EmptyState
+              title="Nenhuma loja encontrada"
+              description="Tente outro nome ou limpe a busca."
+              action={<Button onClick={() => setSearch('')}>Limpar busca</Button>}
+            />
           ) : (
             <LojasTable
-              lojas={rows}
+              lojas={visibleRows}
               onEdit={(record) => open('loja', 'edit', record)}
               disabled={mutation.isPending}
               onView={(record) => open('loja', 'view', record)}
@@ -270,15 +360,6 @@ function CompaniesContent({ claims }) {
                 setError('');
                 setConfirmation({ kind: 'loja', record, body: { ...record, ativo: !record.ativo } });
               }}
-            />
-          )}
-          {dialog?.mode === 'view' && (
-            <BusinessDetailDialog
-              kind={dialog.kind}
-              record={dialog.record}
-              companyName={company.data.nome}
-              onClose={() => setDialog(null)}
-              onEdit={() => setDialog((previous) => ({ ...previous, mode: 'edit' }))}
             />
           )}
           {dialog?.mode === 'edit' && (

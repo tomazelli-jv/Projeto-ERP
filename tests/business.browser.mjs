@@ -1,4 +1,4 @@
-// Regress?o em navegador isolado via CDP; API simulada, sem credenciais reais.
+﻿// Regress?o em navegador isolado via CDP; API simulada, sem credenciais reais.
 import fs from 'node:fs';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const targets = [await (await fetch('http://localhost:9230/json/new?about:blank', { method: 'PUT' })).json()];
@@ -91,7 +91,13 @@ await send('Emulation.setDeviceMetricsOverride', {
 });
 await go();
 check((await body()).includes('Empresa Real Fixture'), 'empresa real');
-check((await body()).includes('Lojas (2)'), 'quantidade real');
+check(/Total de lojas\s+2/.test(await body()), 'quantidade real');
+await input('Buscar loja por nome', 'nao-existe-fixture');
+await delay(300);
+check((await body()).includes('Nenhuma loja encontrada'), 'busca local mostra vazio');
+check(/Total de lojas\s+2/.test(await body()), 'busca preserva total da empresa');
+await click('Limpar busca');
+check(await evaluate("document.querySelectorAll('tbody tr').length===2"), 'limpar busca restaura lojas');
 check((await body()).includes('12.ABC.345/01DE-35'), 'CNPJ alfanumerico');
 check(await evaluate("document.querySelector('table').innerText.includes('E-MAIL')"), 'tabela compacta');
 check(
@@ -162,7 +168,7 @@ check(
   ),
   'create DTO oficial e alfanumerico'
 );
-check((await body()).includes('Lojas (3)'), 'cache atualiza quantidade');
+check(/Total de lojas\s+3/.test(await body()), 'cache atualiza quantidade');
 check(await evaluate("calls.every(x=>x.method!=='DELETE')"), 'nenhum DELETE');
 check(await evaluate("calls.every(x=>!('X-Loja-Id' in (x.headers||{})))"), 'nenhum X-Loja-Id');
 await evaluate(
@@ -248,7 +254,7 @@ for (const mode of ['light', 'dark']) {
     await delay(200);
     const shot = await send('Page.captureScreenshot', { format: 'png' });
     fs.writeFileSync('tmp/business-' + mode + '-' + screen + '.png', Buffer.from(shot.data, 'base64'));
-    if (screen !== 'list') await click(screen === 'detail' ? 'Fechar' : 'Cancelar');
+    if (screen !== 'list') await click(screen === 'detail' ? 'Voltar para a lista' : 'Cancelar');
   }
   await evaluate('document.querySelector(\'button[aria-label="Recolher menu lateral"]\')?.click()');
   await delay(200);

@@ -36,21 +36,24 @@ export function LojasTable({ lojas, disabled, onView, onEdit, onStatus }) {
         sx={{
           minWidth: 720,
           '& th': {
-            bgcolor: 'surface.secondary',
-            color: 'text.secondary',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
             fontSize: 11,
             fontWeight: 700,
             py: 1.5,
             whiteSpace: 'nowrap'
           },
-          '& td': { fontSize: 12, py: 1 },
+          '& td': { fontSize: 13, py: 1.75 },
+          '& tbody tr:nth-of-type(even)': { bgcolor: 'surface.secondary' },
           '& tr:last-child td': { borderBottom: 0 }
         }}
       >
         <TableHead>
           <TableRow>
             {['NOME', 'CNPJ / CPF', 'E-MAIL', 'TELEFONE', 'STATUS', 'AÇÕES'].map((label) => (
-              <TableCell key={label}>{label}</TableCell>
+              <TableCell key={label} align={label === 'AÇÕES' ? 'right' : 'left'}>
+                {label}
+              </TableCell>
             ))}
           </TableRow>
         </TableHead>
@@ -75,7 +78,7 @@ export function LojasTable({ lojas, disabled, onView, onEdit, onStatus }) {
                 />
               </TableCell>
               <TableCell>
-                <Stack direction="row" spacing={0.75}>
+                <Stack direction="row" spacing={0.75} justifyContent="flex-end">
                   <Tooltip title="Visualizar loja">
                     <IconButton
                       size="small"

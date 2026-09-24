@@ -1,4 +1,5 @@
-﻿import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
+import { CreateButton } from '../common/CreateButton.jsx';
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import ContactMailOutlinedIcon from '@mui/icons-material/ContactMailOutlined';
@@ -35,6 +36,7 @@ import { businessDensitySx, businessCardSx, businessFormSx } from './business-st
 export function BusinessFormDialog({ kind, record, company, loading, apiError, onClose, onSubmit }) {
   const store = kind === 'loja',
     editing = Boolean(record);
+  const SubmitButton = editing ? Button : CreateButton;
   const [form, setForm] = useState(() => ({
     nome: '',
     razaoSocial: '',
@@ -281,9 +283,9 @@ export function BusinessFormDialog({ kind, record, company, loading, apiError, o
         <Button variant="outlined" disabled={loading} onClick={onClose}>
           Cancelar
         </Button>
-        <Button type="submit" form="business-form" variant="contained" disabled={loading}>
+        <SubmitButton type="submit" form="business-form" variant="contained" disabled={loading}>
           {loading ? 'Salvando...' : editing ? 'Salvar alterações' : 'Cadastrar loja'}
-        </Button>
+        </SubmitButton>
       </DialogActions>
     </Dialog>
   );
