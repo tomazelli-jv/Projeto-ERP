@@ -1,56 +1,107 @@
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
-import { Box, Button, Card, CardContent, Divider, Stack, Typography } from '@mui/material';
+﻿import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
+import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import {
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  IconButton,
+  Stack,
+  Tooltip,
+  Typography
+} from '@mui/material';
 import PropTypes from 'prop-types';
-import { StatusChip } from '../common/StatusChip.jsx';
-import { formatCnpj, formatPhone } from './business-formatters.js';
+import { addressLines, documentLabel, documentValue } from './business-model.js';
 
-// Card responsivo apresenta informações operacionais sem expor UUIDs ou recorrer a uma tabela pesada.
-export function LojaCard({ loja, onEdit }) {
-  const location = [loja.cidade, loja.uf].filter(Boolean).join(' / ') || 'Localização não informada';
+// Cards horizontais usam o espaço disponível e empilham endereço/ações em telas estreitas.
+export function LojaCard({ loja, onView, onStatus, disabled }) {
   return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <Stack direction="row" justifyContent="space-between" gap={2}>
-          <Stack direction="row" spacing={1.25} sx={{ minWidth: 0 }}>
-            <Box sx={{ color: 'primary.main', pt: 0.25 }}>
-              <StorefrontOutlinedIcon />
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
-                {loja.nomeFantasia}
+    <Card>
+      <CardContent
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'minmax(0,1fr)', md: 'minmax(0,1.2fr) minmax(0,1fr) auto' },
+          gap: 2,
+          alignItems: 'center',
+          p: 2
+        }}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
+          <Avatar
+            variant="rounded"
+            sx={{ width: 48, height: 48, bgcolor: 'primary.soft', color: 'primary.dark' }}
+          >
+            <StorefrontOutlinedIcon sx={{ fontSize: 28 }} />
+          </Avatar>
+          <Box sx={{ minWidth: 0 }}>
+            <Stack direction="row" gap={1.5} alignItems="center" flexWrap="wrap">
+              <Typography variant="h3" sx={{ overflowWrap: 'anywhere' }}>
+                {loja.nome}
               </Typography>
-              <Typography color="text.secondary" variant="body2">
-                {loja.razaoSocial}
+              <Chip
+                size="small"
+                label={loja.ativo ? 'Ativa' : 'Inativa'}
+                color={loja.ativo ? 'success' : 'error'}
+              />
+            </Stack>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              {documentLabel(loja)}
+            </Typography>
+            <Typography sx={{ overflowWrap: 'anywhere' }}>{documentValue(loja)}</Typography>
+          </Box>
+        </Stack>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          sx={{ borderLeft: { md: 1 }, borderColor: { md: 'divider' }, pl: { md: 2 }, minWidth: 0 }}
+        >
+          <LocationOnOutlinedIcon />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="caption" color="text.secondary">
+              Endereço
+            </Typography>
+            {(addressLines(loja).length ? addressLines(loja) : ['Não informado']).map((line, i) => (
+              <Typography key={i} sx={{ overflowWrap: 'anywhere' }}>
+                {line}
               </Typography>
-            </Box>
-          </Stack>
-          <StatusChip label={loja.ativo ? 'Ativa' : 'Inativa'} status={loja.ativo ? 'active' : 'inactive'} />
+            ))}
+          </Box>
         </Stack>
-        <Divider sx={{ my: 2 }} />
-        <Stack spacing={0.75} sx={{ flexGrow: 1 }}>
-          <Typography variant="body2">
-            <strong>CNPJ:</strong> {formatCnpj(loja.documento)}
-          </Typography>
-          <Typography variant="body2">
-            <strong>Localização:</strong> {location}
-          </Typography>
-          {loja.telefone && (
-            <Typography variant="body2">
-              <strong>Telefone:</strong> {formatPhone(loja.telefone)}
-            </Typography>
-          )}
-          {loja.email && (
-            <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
-              <strong>E-mail:</strong> {loja.email}
-            </Typography>
+        <Stack direction="row" spacing={2} justifyContent={{ xs: 'flex-end', md: 'flex-start' }}>
+          <Tooltip title="Visualizar loja">
+            <IconButton
+              aria-label="Visualizar dados da loja"
+              onClick={() => onView(loja)}
+              sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5 }}
+            >
+              <VisibilityOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+          {onStatus && (
+            <Button
+              disabled={disabled}
+              variant="outlined"
+              color={loja.ativo ? 'error' : 'success'}
+              startIcon={loja.ativo ? <BlockOutlinedIcon /> : <CheckCircleOutlineIcon />}
+              onClick={() => onStatus(loja)}
+            >
+              {loja.ativo ? 'Inativar' : 'Ativar'}
+            </Button>
           )}
         </Stack>
-        <Button onClick={() => onEdit(loja)} sx={{ alignSelf: 'flex-end', mt: 2 }} variant="outlined">
-          Editar
-        </Button>
       </CardContent>
     </Card>
   );
 }
-
-LojaCard.propTypes = { loja: PropTypes.object.isRequired, onEdit: PropTypes.func.isRequired };
+LojaCard.propTypes = {
+  loja: PropTypes.object.isRequired,
+  onView: PropTypes.func.isRequired,
+  onStatus: PropTypes.func,
+  disabled: PropTypes.bool
+};

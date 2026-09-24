@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     # ResetCredential descarta somente a credencial local criptografada e solicita uma nova senha.
     [switch]$ResetCredential,
@@ -14,7 +14,7 @@ else {
     $ProjectRoot.TrimEnd('\', '/')
 }
 $credentialDirectory = Join-Path $env:LOCALAPPDATA 'TomazelliERP'
-$credentialFile = Join-Path $credentialDirectory 'mariadb-password.clixml'
+$credentialFile = Join-Path $credentialDirectory 'postgres-erp-dev-password.clixml'
 
 # Testa IPv4 e IPv6 porque o Vite pode publicar localhost somente como ::1 no Windows.
 function Test-LocalPort {
@@ -47,7 +47,7 @@ function Wait-LocalPort {
     param(
         [Parameter(Mandatory)][int]$Port,
         [Parameter(Mandatory)][string]$ServiceName,
-        [int]$TimeoutSeconds = 45
+        [int]$TimeoutSeconds = 90
     )
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
@@ -58,11 +58,11 @@ function Wait-LocalPort {
         }
         Start-Sleep -Milliseconds 500
     }
-    throw "$ServiceName não respondeu na porta $Port dentro de $TimeoutSeconds segundos. Consulte a janela do serviço."
+    throw "$ServiceName não respondeu na porta $Port dentro de $TimeoutSeconds segundos. Consulte os arquivos em logs/local."
 }
 
 # A senha é persistida pelo DPAPI: somente este usuário do Windows nesta máquina consegue descriptografá-la.
-function Get-MariaDbPassword {
+function Get-PostgresPassword {
     if ($ResetCredential -and (Test-Path -LiteralPath $credentialFile)) {
         Remove-Item -LiteralPath $credentialFile -Force
     }
@@ -77,10 +77,10 @@ function Get-MariaDbPassword {
         }
     }
 
-    Write-Host 'Primeira execução: informe a senha do MariaDB DEV da Hostinger.' -ForegroundColor Cyan
-    $securePassword = Read-Host 'Senha do MariaDB' -AsSecureString
+    Write-Host 'Primeira execução: informe a senha do PostgreSQL local, usuário erp_dev_user.' -ForegroundColor Cyan
+    $securePassword = Read-Host 'Senha do PostgreSQL' -AsSecureString
     if ($securePassword.Length -eq 0) {
-        throw 'A senha do MariaDB não pode ser vazia.'
+        throw 'A senha do PostgreSQL não pode ser vazia.'
     }
     New-Item -ItemType Directory -Path $credentialDirectory -Force | Out-Null
     $securePassword | Export-Clixml -LiteralPath $credentialFile
@@ -89,50 +89,69 @@ function Get-MariaDbPassword {
 
 try {
     Set-Location -LiteralPath $projectRoot
-    $securePassword = Get-MariaDbPassword
-    $credential = [System.Management.Automation.PSCredential]::new('database', $securePassword)
-    $plainPassword = $credential.GetNetworkCredential().Password
-
-    # O builder escapa caracteres especiais da senha sem gravar a connection string em arquivo ou linha de comando.
-    $connection = [System.Data.Common.DbConnectionStringBuilder]::new()
-    $connection['Server'] = 'srv1438.hstgr.io'
-    $connection['Port'] = 3306
-    $connection['Database'] = 'u812470838_ERP'
-    $connection['User ID'] = 'u812470838_DEV_ERP'
-    $connection['Password'] = $plainPassword
-    $connection['SslMode'] = 'Required'
-    $env:ConnectionStrings__MariaDb = $connection.ConnectionString
-    $plainPassword = $null
-
-    # Uma chave efêmera diferente é criada a cada execução e nunca é persistida ou enviada ao Git.
-    $keyBytes = New-Object byte[] 48
-    $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-    try {
-        $random.GetBytes($keyBytes)
+    # Resolve exclusivamente o repositorio irmao oficial; nunca usa ERP\backend legado.
+    $backendRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot '..\backend\ERP'))
+    $apiProject = Join-Path $backendRoot 'ERP.Api\ERP.Api.csproj'
+    if (-not (Test-Path -LiteralPath $apiProject)) {
+        throw 'Projeto ERP.Api do backend oficial nao encontrado em ..\backend\ERP.'
     }
-    finally {
-        $random.Dispose()
+    [xml]$projectXml = Get-Content -Raw -LiteralPath $apiProject
+    if (@($projectXml.Project.PropertyGroup.TargetFramework) -notcontains 'net8.0') {
+        throw 'O backend oficial precisa usar net8.0.'
     }
-    $env:Authentication__Issuer = 'tomazelli-erp'
-    $env:Authentication__Audience = 'tomazelli-erp-web'
-    $env:Authentication__SigningKey = [Convert]::ToBase64String($keyBytes)
+    $logDirectory = Join-Path $projectRoot 'logs\local'
+    New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 
-    # Processos filhos herdam as variáveis apenas em memória; argumentos e títulos não contêm credenciais.
-    if (-not (Test-LocalPort -Port 5001)) {
-        Start-Process PowerShell.exe -WorkingDirectory $projectRoot -ArgumentList '-NoExit', '-NoProfile', '-Command', 'npm.cmd run dev:api' | Out-Null
+    if (-not (Test-LocalPort -Port 5054)) {
+        if (-not (Test-LocalPort -Port 5432)) {
+            throw 'PostgreSQL local nao esta acessivel na porta 5432. Inicie o servico PostgreSQL.'
+        }
+        $securePassword = Get-PostgresPassword
+        $credential = [System.Management.Automation.PSCredential]::new('erp_dev_user', $securePassword)
+        # Destino fixo DEV. O builder preserva caracteres especiais sem imprimir credenciais.
+        $connection = [System.Data.Common.DbConnectionStringBuilder]::new()
+        $connection['Host'] = 'localhost'
+        $connection['Port'] = 5432
+        $connection['Database'] = 'erp_dev'
+        $connection['Username'] = 'erp_dev_user'
+        $connection['Password'] = $credential.GetNetworkCredential().Password
+        $connection['Maximum Pool Size'] = 5
+        $env:ConnectionStrings__DefaultConnection = $connection.ConnectionString
+        $env:ASPNETCORE_ENVIRONMENT = 'Development'
+        $env:DOTNET_ENVIRONMENT = 'Development'
+
+        # Preserva chave informada pelo operador. Caso ausente, usa chave DEV aleatoria
+        # protegida por DPAPI fora do Git e estavel entre reinicios do atalho.
+        if ([string]::IsNullOrWhiteSpace($env:Jwt__SigningKey)) {
+            $keyFile = Join-Path $credentialDirectory 'postgres-erp-dev-jwt.clixml'
+            if (-not (Test-Path -LiteralPath $keyFile)) {
+                $keyBytes = New-Object byte[] 48
+                $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+                try { $random.GetBytes($keyBytes) } finally { $random.Dispose() }
+                $secureKey = ConvertTo-SecureString ([Convert]::ToBase64String($keyBytes)) -AsPlainText -Force
+                New-Item -ItemType Directory -Path $credentialDirectory -Force | Out-Null
+                $secureKey | Export-Clixml -LiteralPath $keyFile
+            }
+            $secureKey = Import-Clixml -LiteralPath $keyFile
+            $env:Jwt__SigningKey = ([System.Management.Automation.PSCredential]::new('jwt', $secureKey)).GetNetworkCredential().Password
+        }
+        # Sem seeds de senha configurados automaticamente; o startup do backend decide os seeds DEV.
+        Write-Host 'Iniciando backend oficial .NET 8: localhost:5054, PostgreSQL localhost/erp_dev.'
+        Start-Process dotnet.exe -WindowStyle Hidden -WorkingDirectory $backendRoot -ArgumentList 'run', '--project', 'ERP.Api', '--no-launch-profile', '--urls', 'http://localhost:5054' -RedirectStandardOutput (Join-Path $logDirectory 'api.out.log') -RedirectStandardError (Join-Path $logDirectory 'api.err.log') | Out-Null
     }
     else {
-        Write-Host 'API já está ativa na porta 5001.' -ForegroundColor Yellow
+        Write-Host 'Porta 5054 ja esta em uso; mantendo o processo existente.' -ForegroundColor Yellow
     }
+    Wait-LocalPort -Port 5054 -ServiceName 'API'
 
+    # Inicia somente Vite; npm run dev tambem acionaria o comando legado de backend.
     if (-not (Test-LocalPort -Port 5173)) {
-        Start-Process PowerShell.exe -WorkingDirectory $projectRoot -ArgumentList '-NoExit', '-NoProfile', '-Command', 'npm.cmd run dev:web' | Out-Null
+        $env:VITE_API_URL = 'http://localhost:5054/api'
+        Start-Process PowerShell.exe -WindowStyle Hidden -WorkingDirectory $projectRoot -ArgumentList '-NoProfile', '-Command', 'npm.cmd run dev --workspace=@tomazelli/web -- --port 5173 --strictPort' -RedirectStandardOutput (Join-Path $logDirectory 'web.out.log') -RedirectStandardError (Join-Path $logDirectory 'web.err.log') | Out-Null
     }
     else {
-        Write-Host 'Frontend já está ativo na porta 5173.' -ForegroundColor Yellow
+        Write-Host 'Frontend ja esta ativo na porta 5173.' -ForegroundColor Yellow
     }
-
-    Wait-LocalPort -Port 5001 -ServiceName 'API'
     Wait-LocalPort -Port 5173 -ServiceName 'Frontend'
 
     # O navegador só é aberto depois que ambos os serviços confirmam disponibilidade local.
@@ -141,7 +160,8 @@ try {
 }
 catch {
     # A mensagem evita imprimir objetos de configuração; detalhes de compilação permanecem nas janelas dos serviços.
-    Write-Error "Não foi possível iniciar o ERP: $($_.Exception.Message)"
+    Write-Host 'Nao foi possivel iniciar o ERP. Verifique PostgreSQL, runtime .NET 8 e logs/local. Para informar novamente a senha, execute start-erp-local.cmd -ResetCredential.' -ForegroundColor Red
+    Read-Host 'Pressione Enter para fechar' | Out-Null
     exit 1
 }
 finally {

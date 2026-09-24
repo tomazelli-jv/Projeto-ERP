@@ -3,18 +3,19 @@ import { Box, Stack, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 
 export function EmptyState({ icon: Icon = InboxOutlinedIcon, title, description, action }) {
+  // Estado compacto reutilizado por módulos e listas; sem simular carregamento de dados inexistentes.
   return (
-    <Box sx={{ py: { xs: 5, md: 7 }, px: 2, textAlign: 'center' }}>
+    <Box sx={{ py: 3, px: 2, textAlign: 'center' }}>
       <Box
         sx={{
           mx: 'auto',
           mb: 2,
           display: 'grid',
           placeItems: 'center',
-          width: 52,
-          height: 52,
-          borderRadius: 3,
-          color: 'primary.main',
+          width: 40,
+          height: 40,
+          borderRadius: 1,
+          color: 'primary.dark',
           backgroundColor: 'primary.light'
         }}
       >

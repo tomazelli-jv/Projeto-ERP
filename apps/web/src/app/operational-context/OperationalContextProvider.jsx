@@ -41,8 +41,11 @@ export function OperationalContextProvider({ children }) {
         acceptAccessToken(result);
         // Limpar todo o cache evita exibir por um instante dados obtidos sob o JWT da loja anterior.
         queryClient.clear();
+        // O chamador só recarrega a página quando a API confirma o novo contexto.
+        return true;
       } catch (error) {
         setSwitchError(error);
+        return false;
       } finally {
         setIsSwitchingStore(false);
       }

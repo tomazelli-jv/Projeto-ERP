@@ -1,3 +1,9 @@
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
+import ScienceOutlinedIcon from '@mui/icons-material/ScienceOutlined';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -5,9 +11,7 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
-  Container,
+  Chip,
   FormControlLabel,
   IconButton,
   InputAdornment,
@@ -85,30 +89,132 @@ export function LoginPage() {
 
   return (
     <Box
-      sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', py: 4, bgcolor: 'background.default' }}
+      sx={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        p: { xs: 2, md: 4 },
+        bgcolor: 'background.default'
+      }}
     >
-      <Container maxWidth="xs">
-        <Stack alignItems="center" spacing={1} sx={{ mb: 3 }}>
-          <Box
-            sx={{
-              display: 'grid',
-              placeItems: 'center',
-              width: 52,
-              height: 52,
-              borderRadius: 3,
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText'
-            }}
-          >
-            <LockOutlinedIcon />
+      {/* A apresentação compartilha os tokens Light/Dark; autenticação e desafio multiloja são preservados. */}
+      <Box
+        sx={{
+          width: '100%',
+          maxWidth: 1480,
+          minHeight: { md: 'calc(100vh - 64px)' },
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 2fr) minmax(0, 3fr)' },
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 3,
+          overflow: 'hidden',
+          bgcolor: 'background.paper'
+        }}
+      >
+        <Stack
+          component="aside"
+          spacing={5}
+          sx={{
+            p: { xs: 3, md: 4, lg: 6 },
+            bgcolor: 'surface.secondary',
+            borderRightWidth: { xs: 0, md: 1 },
+            borderBottomWidth: { xs: 1, md: 0 },
+            borderTopWidth: 0,
+            borderLeftWidth: 0,
+            borderStyle: 'solid',
+            borderColor: 'divider',
+            justifyContent: 'space-between'
+          }}
+        >
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                display: 'grid',
+                placeItems: 'center',
+                borderRadius: 1.5,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                fontSize: 26,
+                fontWeight: 750
+              }}
+            >
+              T
+            </Box>
+            <Box>
+              <Typography variant="h3">Tomazelli</Typography>
+              <Typography variant="body2" color="text.secondary">
+                ERP Comercial
+              </Typography>
+            </Box>
+          </Stack>
+          <Box>
+            <Typography
+              component="h1"
+              sx={{ fontSize: { xs: 28, lg: 40 }, fontWeight: 750, lineHeight: 1.2, maxWidth: 430 }}
+            >
+              Gestão clara para o seu negócio.
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 3, maxWidth: 430, lineHeight: 1.7 }}>
+              Centralize vendas, estoque e financeiro da sua rede de lojas em um único ambiente.
+            </Typography>
+            <Stack spacing={3} sx={{ mt: 5 }}>
+              {[
+                [StorefrontOutlinedIcon, 'Controle multi-loja em um único painel'],
+                [PersonOutlineIcon, 'Permissões configuráveis por perfil e por loja'],
+                [BarChartOutlinedIcon, 'Relatórios financeiros consolidados']
+              ].map(([Icon, text]) => (
+                <Stack key={text} direction="row" spacing={2} alignItems="center">
+                  <Box
+                    sx={{
+                      p: 1.25,
+                      display: 'flex',
+                      borderRadius: '50%',
+                      bgcolor: 'primary.soft',
+                      color: 'primary.dark',
+                      border: 1,
+                      borderColor: 'primary.border'
+                    }}
+                  >
+                    <Icon />
+                  </Box>
+                  <Typography variant="body2">{text}</Typography>
+                </Stack>
+              ))}
+            </Stack>
           </Box>
-          <Typography component="h1" variant="h1">
-            Tomazelli ERP
-          </Typography>
-          <Typography color="text.secondary">Entre para acessar seu ambiente</Typography>
+          <Box component="footer">
+            <Box sx={{ width: 36, borderTop: 2, borderColor: 'primary.main', mb: 1.5 }} />
+            <Typography variant="body2">Tomazelli.Dev</Typography>
+            <Typography variant="caption" color="text.secondary">
+              ERP Comercial
+            </Typography>
+          </Box>
         </Stack>
-        <Card sx={{ borderColor: 'divider' }}>
-          <CardContent sx={{ p: { xs: 3, sm: 4 }, '&:last-child': { pb: { xs: 3, sm: 4 } } }}>
+        <Stack sx={{ p: { xs: 3, md: 4, lg: 5 }, gap: 4, justifyContent: 'space-between', minWidth: 0 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', minHeight: 32 }}>
+            {import.meta.env.DEV && (
+              <Chip
+                icon={<ScienceOutlinedIcon />}
+                label="Ambiente de desenvolvimento"
+                size="small"
+                variant="outlined"
+                color="primary"
+              />
+            )}
+          </Box>
+          <Box sx={{ width: '100%', maxWidth: 480, mx: 'auto', py: { xs: 1, md: 3 } }}>
+            <Typography variant="overline" color="primary.dark" sx={{ letterSpacing: 3 }}>
+              BEM-VINDO DE VOLTA
+            </Typography>
+            <Typography component="h2" sx={{ fontSize: { xs: 28, lg: 36 }, fontWeight: 750, mt: 1 }}>
+              Entrar no sistema
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 1, mb: 4 }}>
+              Acesse com suas credenciais corporativas para continuar.
+            </Typography>
             <Stack
               component="form"
               onSubmit={status === 'selecting-store' ? handleStoreSelection : handleLogin}
@@ -128,21 +234,58 @@ export function LoginPage() {
                 <>
                   {/* O desafio multiloja permanece somente neste estado React e nunca é incluído na URL ou storage. */}
                   <Box>
-                    <Typography component="h2" variant="h5" fontWeight={750}>
+                    <Typography id="store-selection-title" component="h2" variant="h5" fontWeight={750}>
                       Selecione uma loja
                     </Typography>
                     <Typography color="text.secondary">Escolha a loja em que deseja trabalhar.</Typography>
                   </Box>
                   <RadioGroup
+                    aria-labelledby="store-selection-title"
                     value={selectedStoreId}
                     onChange={(event) => setSelectedStoreId(event.target.value)}
+                    sx={{ gap: 1.25, maxHeight: 320, overflowY: 'auto', p: 0.5 }}
                   >
+                    {/* O card inteiro mantém a semântica de radio e a navegação nativa por teclado. */}
                     {storeSelection?.stores.map((store) => (
                       <FormControlLabel
                         key={store.id}
                         value={String(store.id)}
                         control={<Radio />}
-                        label={store.nome}
+                        sx={{
+                          m: 0,
+                          p: 1.25,
+                          minHeight: 72,
+                          border: 1,
+                          borderRadius: 2,
+                          borderColor: selectedStoreId === String(store.id) ? 'primary.main' : 'divider',
+                          bgcolor: selectedStoreId === String(store.id) ? 'primary.soft' : 'background.paper',
+                          '&:hover': { borderColor: 'primary.main' },
+                          '&:focus-within': {
+                            outline: '2px solid',
+                            outlineColor: 'primary.main',
+                            outlineOffset: 2
+                          },
+                          '& .MuiFormControlLabel-label': { flex: 1, minWidth: 0 }
+                        }}
+                        label={
+                          <Stack direction="row" alignItems="center" spacing={1.5}>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                p: 1,
+                                borderRadius: 1.5,
+                                bgcolor: 'surface.secondary',
+                                color:
+                                  selectedStoreId === String(store.id) ? 'primary.dark' : 'text.secondary'
+                              }}
+                            >
+                              <StorefrontOutlinedIcon fontSize="small" />
+                            </Box>
+                            <Typography variant="body2" fontWeight={650} sx={{ overflowWrap: 'anywhere' }}>
+                              {store.nome}
+                            </Typography>
+                          </Stack>
+                        }
                       />
                     ))}
                   </RadioGroup>
@@ -181,6 +324,15 @@ export function LoginPage() {
                     onChange={(event) => setIdentifier(event.target.value)}
                     required
                     type="text"
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PersonOutlineIcon />
+                          </InputAdornment>
+                        )
+                      }
+                    }}
                     value={identifier}
                   />
                   <TextField
@@ -195,6 +347,11 @@ export function LoginPage() {
                     value={password}
                     slotProps={{
                       input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LockOutlinedIcon />
+                          </InputAdornment>
+                        ),
                         endAdornment: (
                           <InputAdornment position="end">
                             <IconButton
@@ -209,15 +366,36 @@ export function LoginPage() {
                       }
                     }}
                   />
-                  <Button disabled={submitting} fullWidth size="large" type="submit" variant="contained">
+                  <Button
+                    disabled={submitting}
+                    fullWidth
+                    size="large"
+                    type="submit"
+                    variant="contained"
+                    endIcon={<ArrowForwardIcon />}
+                  >
                     {submitting ? 'Entrando...' : 'Entrar'}
                   </Button>
                 </>
               )}
             </Stack>
-          </CardContent>
-        </Card>
-      </Container>
+
+            <Stack
+              direction="row"
+              justifyContent="center"
+              alignItems="center"
+              spacing={1}
+              sx={{ mt: 3, color: 'text.secondary' }}
+            >
+              <ShieldOutlinedIcon fontSize="small" />
+              <Typography variant="caption">Conexão segura e criptografada</Typography>
+            </Stack>
+          </Box>
+          <Typography component="footer" variant="caption" color="text.secondary" textAlign="center">
+            © 2026 Tomazelli.Dev — Todos os direitos reservados
+          </Typography>
+        </Stack>
+      </Box>
     </Box>
   );
 }

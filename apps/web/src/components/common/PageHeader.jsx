@@ -2,7 +2,8 @@ import { Box, Stack, Typography } from '@mui/material';
 import PropTypes from 'prop-types';
 import { AppBreadcrumbs } from './AppBreadcrumbs.jsx';
 
-export function PageHeader({ title, description, action }) {
+// Cada tela possui um único título principal; a hierarquia anterior fica no breadcrumb discreto.
+export function PageHeader({ title, description, action, titleBadge, breadcrumbs, titleId }) {
   return (
     <Stack
       direction={{ xs: 'column', sm: 'row' }}
@@ -12,11 +13,14 @@ export function PageHeader({ title, description, action }) {
       sx={{ mb: 3 }}
     >
       <Box sx={{ minWidth: 0 }}>
-        <AppBreadcrumbs />
-        <Typography component="h1" sx={{ overflowWrap: 'anywhere' }} variant="h1">
-          {title}
-        </Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.75, maxWidth: 760 }}>
+        <AppBreadcrumbs items={breadcrumbs} />
+        <Stack direction="row" alignItems="center" gap={1.5} flexWrap="wrap">
+          <Typography id={titleId} component="h1" sx={{ overflowWrap: 'anywhere' }} variant="h1">
+            {title}
+          </Typography>
+          {titleBadge}
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, maxWidth: 760 }}>
           {description}
         </Typography>
       </Box>
@@ -28,5 +32,8 @@ export function PageHeader({ title, description, action }) {
 PageHeader.propTypes = {
   title: PropTypes.string.isRequired,
   description: PropTypes.string.isRequired,
-  action: PropTypes.node
+  action: PropTypes.node,
+  titleBadge: PropTypes.node,
+  breadcrumbs: PropTypes.arrayOf(PropTypes.string),
+  titleId: PropTypes.string
 };

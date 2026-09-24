@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="ERP SaaS comercial da Tomazelli.dev" />
     <title>Tomazelli ERP</title>
+    <script>
+      // Define o esquema nativo antes de carregar o bundle, sem depender da autenticação.
+      try {
+        const preference = localStorage.getItem('erp.themeMode');
+        document.documentElement.style.colorScheme =
+          preference === 'light' || preference === 'dark'
+            ? preference
+            : matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+      } catch {
+        document.documentElement.style.colorScheme = 'light dark';
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

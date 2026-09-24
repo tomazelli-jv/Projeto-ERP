@@ -25,7 +25,7 @@ export const appRoutes = [
     description: 'Gerencie os clientes cadastrados neste ambiente.',
     group: 'Cadastros',
     icon: GroupsOutlinedIcon,
-    module: true
+    module: false
   },
   {
     path: '/suppliers',
@@ -77,33 +77,34 @@ export const appRoutes = [
     description: 'Gerencie sua empresa e os estabelecimentos vinculados.',
     group: 'Administração',
     icon: BusinessOutlinedIcon,
-    module: true
+    module: false
   },
   {
     path: '/admin/users',
     label: 'Usuários',
     title: 'Usuários',
     description: 'Gerencie quem poderá acessar este ambiente.',
-    group: 'Administração',
+    group: 'Configurações',
     icon: ManageAccountsOutlinedIcon,
-    module: true
+    module: false
   },
   {
     path: '/admin/plan',
-    label: 'Plano',
-    title: 'Plano',
-    description: 'Consulte o plano e os limites comerciais do ambiente.',
-    group: 'Administração',
+    label: 'Planos',
+    title: 'Planos',
+    description: 'A gestão de planos ainda não está disponível neste ambiente.',
+    group: 'Configurações',
     icon: ReceiptLongOutlinedIcon,
-    module: true
+    module: false
   },
   {
     path: '/settings',
-    label: 'Configurações',
-    title: 'Configurações',
-    description: 'Centralize preferências institucionais e do sistema.',
+    label: 'Parametrização',
+    title: 'Parametrização',
+    description: 'Personalize o comportamento e a aparência do sistema.',
+    group: 'Configurações',
     icon: SettingsOutlinedIcon,
-    module: true
+    module: false
   },
   { path: '/account', label: 'Minha Conta', title: 'Minha Conta', hidden: true }
 ];
@@ -111,18 +112,50 @@ export const appRoutes = [
 const byPath = Object.fromEntries(appRoutes.map((route) => [route.path, route]));
 
 export const navigationGroups = [
-  { items: [byPath['/dashboard']] },
+  // Agrupamento visual preserva exclusivamente destinos já registrados.
+  { label: 'Visão geral', items: [byPath['/dashboard']] },
   { label: 'Cadastros', items: [byPath['/customers'], byPath['/suppliers'], byPath['/products']] },
   { items: [byPath['/inventory'], byPath['/sales'], byPath['/financial']] },
   {
     label: 'Administração',
-    items: [byPath['/admin/companies'], byPath['/admin/users'], byPath['/admin/plan']]
-  },
-  { items: [byPath['/settings']] }
+    items: [byPath['/admin/companies']]
+  }
 ];
 
 export const modulePages = appRoutes.filter((route) => route.module);
 
 export function getRouteMetadata(pathname) {
+  // Subtelas de Clientes mantêm um único título e a hierarquia compacta no breadcrumb.
+  if (pathname === '/customers/new') return { group: 'Clientes', label: 'Novo cliente' };
+  if (/^\/customers\/[^/]+\/edit$/.test(pathname)) return { group: 'Clientes', label: 'Editar cliente' };
+  if (/^\/customers\/[^/]+$/.test(pathname)) return { group: 'Clientes', label: 'Perfil do cliente' };
+  // A listagem agrupa as lojas sob a empresa escolhida.
+  if (pathname === '/admin/companies') return { group: 'Empresas', label: 'Lojas' };
+  // Breadcrumb de subrotas não cria uma segunda seção Funcionários.
+  if (pathname === '/admin/users/new') return { group: 'Usuários', label: 'Novo usuário' };
+  if (/^\/admin\/users\/\d+\/edit$/.test(pathname)) return { group: 'Usuários', label: 'Editar usuário' };
+  if (/^\/admin\/users\/\d+$/.test(pathname)) return { group: 'Usuários', label: 'Perfil do colaborador' };
   return byPath[pathname];
 }
+
+// Fonte única da navegação superior e do Drawer; todos os destinos reutilizam as rotas registradas.
+export const topNavigationGroups = [
+  { label: 'Dashboard', path: '/dashboard', items: [byPath['/dashboard']] },
+  {
+    label: 'Cadastros',
+    description: 'Gerencie os dados principais do seu negócio.',
+    items: ['/customers', '/suppliers', '/products', '/inventory'].map((path) => byPath[path])
+  },
+  { label: 'Operações', description: 'Acompanhe as operações comerciais.', items: [byPath['/sales']] },
+  { label: 'Financeiro', path: '/financial', items: [byPath['/financial']] },
+  {
+    label: 'Administração',
+    description: 'Gerencie sua empresa e suas unidades.',
+    items: [byPath['/admin/companies']]
+  },
+  {
+    label: 'Configurações',
+    description: 'Preferências e administração de acessos.',
+    items: ['/settings', '/admin/users', '/admin/plan'].map((path) => byPath[path])
+  }
+];
