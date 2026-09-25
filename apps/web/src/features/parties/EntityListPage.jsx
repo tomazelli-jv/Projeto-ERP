@@ -1,4 +1,5 @@
-import { CustomerTypeChoice } from '../customers/CustomerTypeChoice.jsx';
+import { alpha } from '@mui/material/styles';
+import { EntityTypeChoice } from './EntityTypeChoice.jsx';
 import { useEntityModule } from './entity-module.js';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
@@ -34,7 +35,6 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import { PageHeader } from '../../components/common/PageHeader.jsx';
-import { CreateButton } from '../../components/common/CreateButton.jsx';
 import { EmptyState } from '../../components/feedback/EmptyState.jsx';
 import { ErrorState } from '../../components/feedback/ErrorState.jsx';
 import { LoadingState } from '../../components/feedback/LoadingState.jsx';
@@ -64,22 +64,57 @@ export function EntityListPage() {
     setSearch('');
     setFilters(defaults);
   };
-  const create =
-    module.key === 'customers' ? (
-      <CustomerTypeChoice />
-    ) : (
-      <CreateButton
-        component={Link}
-        to={`${module.path}/new`}
-        sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-      >{`Novo ${module.singular}`}</CreateButton>
-    );
+  const create = <EntityTypeChoice />;
   const hasFilters = Boolean(
     filters.search || filters.type || filters.status || filters.city || filters.state
   );
   const page = query.data?.page ?? 1;
   return (
-    <>
+    <Box
+      sx={(theme) =>
+        theme.palette.mode === 'dark'
+          ? {
+              // Clientes e Fornecedores compartilham a mesma paleta Dark; Light mantém seus tokens.
+              '& .MuiTable-root th': {
+                bgcolor: alpha(theme.palette.primary.main, 0.22),
+                color: 'text.primary'
+              },
+              '& .MuiTable-root tbody tr:nth-of-type(even)': {
+                bgcolor: alpha(theme.palette.primary.main, 0.025)
+              },
+              '& .MuiTableContainer-root': { bgcolor: 'background.paper' },
+              '& .MuiAvatar-root': {
+                bgcolor: 'primary.soft',
+                color: 'text.primary',
+                border: '1px solid',
+                borderColor: 'primary.border'
+              },
+              '& .MuiChip-root': {
+                border: '1px solid',
+                borderColor: 'primary.border',
+                bgcolor: 'primary.soft',
+                color: 'text.primary'
+              },
+              '& .MuiChip-colorSuccess': {
+                color: 'success.main',
+                bgcolor: alpha(theme.palette.success.main, 0.14),
+                borderColor: alpha(theme.palette.success.main, 0.25)
+              },
+              '& .MuiChip-colorError': {
+                color: 'error.main',
+                bgcolor: alpha(theme.palette.error.main, 0.14),
+                borderColor: alpha(theme.palette.error.main, 0.25)
+              },
+              '& .MuiAlert-standardInfo': {
+                color: 'text.primary',
+                bgcolor: 'primary.soft',
+                borderColor: 'primary.border',
+                '& .MuiAlert-icon': { color: 'primary.main' }
+              }
+            }
+          : {}
+      }
+    >
       <PageHeader
         title={`${module.Plural}`}
         description={`Gerencie os ${module.plural} cadastrados no sistema.`}
@@ -103,7 +138,28 @@ export function EntityListPage() {
               ['Pessoa Física', 'persons', PersonOutlineIcon, 'warning'],
               ['Pessoa Jurídica', 'companies', BusinessOutlinedIcon, 'primary']
             ].map(([label, key, Icon, tone]) => (
-              <Card key={key} sx={{ bgcolor: tone + '.soft', borderColor: tone + '.main', borderRadius: 2 }}>
+              <Card
+                key={key}
+                sx={(theme) => ({
+                  bgcolor: tone + '.soft',
+                  borderColor: tone + '.main',
+                  borderRadius: 2,
+                  ...(theme.palette.mode === 'dark'
+                    ? {
+                        bgcolor: 'background.paper',
+                        borderColor: 'divider',
+                        borderLeft: '4px solid',
+                        borderLeftColor: tone + '.main',
+                        '& svg': {
+                          boxSizing: 'content-box',
+                          p: 1.5,
+                          borderRadius: 2,
+                          bgcolor: tone + '.soft'
+                        }
+                      }
+                    : {})
+                })}
+              >
                 <CardContent
                   sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, '&:last-child': { pb: 2 } }}
                 >
@@ -158,7 +214,12 @@ export function EntityListPage() {
                 gap: 2
               }}
             >
-              <TextField select label="Tipo" value={filters.type} onChange={change('type')}>
+              <TextField
+                select
+                label={module.commercial ? 'Pessoa' : 'Tipo'}
+                value={filters.type}
+                onChange={change('type')}
+              >
                 <MenuItem value="">Todos</MenuItem>
                 <MenuItem value="PERSON">Pessoa Física</MenuItem>
                 <MenuItem value="COMPANY">Pessoa Jurídica</MenuItem>
@@ -273,7 +334,14 @@ export function EntityListPage() {
                           {[customer.address.city, customer.address.state].filter(Boolean).join(' / ') || '—'}
                         </TableCell>
                         <TableCell>
-                          <Chip size="small" label={typeLabel(customer.type)} />
+                          <Chip
+                            size="small"
+                            label={
+                              module.commercial
+                                ? customer.supplierType || 'Não informado'
+                                : typeLabel(customer.type)
+                            }
+                          />
                         </TableCell>
                         <TableCell>
                           <EntityStatus status={customer.status} />
@@ -370,6 +438,6 @@ export function EntityListPage() {
           </Snackbar>
         </>
       )}
-    </>
+    </Box>
   );
 }

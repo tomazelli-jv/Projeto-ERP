@@ -1,29 +1,29 @@
 // Paletas compartilham nomes semânticos; componentes e overrides não precisam duplicar estilos por modo.
 export const darkPalette = {
   mode: 'dark',
-  background: { default: '#141414', paper: '#1B1B1A' },
-  surface: { secondary: '#222220', hover: '#292825' },
-  divider: '#33312D',
-  text: { primary: '#ECE8E1', secondary: '#A8A198', disabled: '#706D66' },
+  background: { default: '#0B1210', paper: '#111C18' },
+  surface: { secondary: '#182820', hover: '#20362B' },
+  divider: '#2C4237',
+  text: { primary: '#EDF3EF', secondary: '#A5B4AC', disabled: '#73877B' },
   primary: {
-    main: '#B99A52',
-    dark: '#B99A52',
-    light: 'rgba(185,154,82,0.10)',
-    contrastText: '#141414',
-    hover: '#C6A85F',
-    soft: 'rgba(185,154,82,0.10)',
-    border: 'rgba(185,154,82,0.24)'
+    main: '#96CEA4',
+    dark: '#96CEA4',
+    light: 'rgba(150,206,164,0.10)',
+    contrastText: '#0B1210',
+    hover: '#ACDDB7',
+    soft: 'rgba(150,206,164,0.10)',
+    border: 'rgba(150,206,164,0.24)'
   },
-  secondary: { main: '#A8A198' },
-  success: { main: '#91B19A' },
-  warning: { main: '#BEA078' },
-  error: { main: '#C58D87' },
-  info: { main: '#94ABB6' },
+  secondary: { main: '#A5B4AC' },
+  success: { main: '#82C99C' },
+  warning: { main: '#D0B575' },
+  error: { main: '#DE9690' },
+  info: { main: '#90BFC4' },
   action: {
-    hover: '#292825',
-    selected: 'rgba(185,154,82,0.10)',
-    disabled: '#706D66',
-    disabledBackground: '#292825'
+    hover: '#20362B',
+    selected: 'rgba(150,206,164,0.10)',
+    disabled: '#73877B',
+    disabledBackground: '#20362B'
   }
 };
 
