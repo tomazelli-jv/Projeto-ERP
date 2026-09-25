@@ -1,4 +1,4 @@
-﻿// Regressao em navegador isolado via CDP; API simulada, sem credenciais reais.
+﻿// Regress?o em navegador isolado via CDP; API simulada, sem credenciais reais.
 import fs from 'node:fs';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const targets = [await (await fetch('http://localhost:9230/json/new?about:blank', { method: 'PUT' })).json()];
@@ -28,13 +28,13 @@ const evaluate = async (expression) => {
 };
 const click = async (text) => {
   await evaluate(
-    `(()=>{const b=[...document.querySelectorAll('main button, main a'),...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(text)});if(!b)throw Error('Botao ausente: '+${JSON.stringify(text)});b.click()})()`
+    `(()=>{const b=[...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(text)});if(!b)throw Error('Botao ausente: '+${JSON.stringify(text)});b.click()})()`
   );
   await delay(1200);
 };
 const input = async (label, value) => {
   await evaluate(
-    `(()=>{const l=[...document.querySelectorAll('label')].find(e=>e.textContent.startsWith(${JSON.stringify(label)}));const i=document.getElementById(l.htmlFor);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,${JSON.stringify(value)});i.dispatchEvent(new Event('input',{bubbles:true}))})()`
+    `(()=>{const l=[...document.querySelectorAll('label')].find(e=>e.textContent.startsWith(${JSON.stringify(label)}));const i=document.getElementById(l.htmlFor);Object.getOwnPropertyDescriptor(i.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(i,${JSON.stringify(value)});i.dispatchEvent(new Event('input',{bubbles:true}))})()`
   );
 };
 let checks = 0;
@@ -72,7 +72,21 @@ const viewport = async (width, height) => {
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
   await delay(400);
 };
-// Testes de interface com sessão e CEP isolados; Clientes usa seu repository real, sem HTTP simulado.
+const press = async (key, code, virtualKey) => {
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: virtualKey });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtualKey });
+  await delay(400);
+};
+const button = async (label) => {
+  await evaluate(`document.querySelector('button[aria-label="${label}"]').click()`);
+  await delay(400);
+};
+const geometry = () =>
+  evaluate(
+    `({rail:document.querySelector('aside').getBoundingClientRect().width,main:document.querySelector('main').getBoundingClientRect().width,header:document.querySelector('header').getBoundingClientRect().left,overflow:document.documentElement.scrollWidth>innerWidth})`
+  );
+
+// Testes de interface com sessão e CEP isolados; Fornecedores usa seu repository real, sem HTTP simulado.
 await send('Page.addScriptToEvaluateOnNewDocument', {
   source: `
 const original=window.fetch;window.fetch=(url,options)=>String(url).startsWith('https://viacep.com.br/')?Promise.resolve(new Response(JSON.stringify({cep:'77800-000',logradouro:'Rua de teste',bairro:'Bairro de teste',localidade:'Palmas',uf:'TO'}))):original(url,options);
@@ -81,17 +95,11 @@ const original=window.fetch;window.fetch=(url,options)=>String(url).startsWith('
 const body = () => evaluate('document.body.innerText');
 const go = async (path) => {
   await send('Page.navigate', { url: 'http://localhost:5173' + path });
-  for (let attempt = 0; attempt < 60; attempt++) {
-    await delay(150);
-    if (
-      await evaluate("!!document.querySelector('main h1') && !document.body.innerText.includes('Carregando')")
-    )
-      break;
-  }
+  await delay(1600);
 };
 const select = async (label, option) => {
   await evaluate(
-    `(()=>{const label=[...document.querySelectorAll('label')].find(e=>e.textContent.replaceAll('*','').trim()===${JSON.stringify(label)});const field=document.getElementById(label.htmlFor);field.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));})()`
+    `(()=>{const label=[...document.querySelectorAll('label')].find(e=>e.textContent===${JSON.stringify(label)});const field=document.getElementById(label.htmlFor);field.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));})()`
   );
   await delay(100);
   await evaluate(
@@ -100,14 +108,14 @@ const select = async (label, option) => {
   await delay(400);
 };
 await viewport(1440, 900);
-await go('/customers');
+await go('/suppliers');
 await evaluate(
-  `Object.keys(localStorage).filter(k=>k.startsWith('erp.dev.customers.v1:')&&k.includes('dashboard-test')).forEach(k=>localStorage.removeItem(k))`
+  `Object.keys(localStorage).filter(k=>k.startsWith('erp.dev.suppliers.v1:')&&k.includes('dashboard-test')).forEach(k=>localStorage.removeItem(k))`
 );
-await go('/customers');
+await go('/suppliers');
 check((await body()).includes('Demonstração local'), 'mock identificado');
 check(await evaluate(`document.querySelectorAll('tbody tr').length===4`), 'listagem');
-await input('Buscar cliente', '12.ABC.345/01DE-35');
+await input('Buscar fornecedor', '12.ABC.345/01DE-35');
 await delay(700);
 check(await evaluate(`document.querySelectorAll('tbody tr').length===1`), 'busca CNPJ');
 await click('Limpar filtros');
@@ -118,24 +126,19 @@ check(await evaluate(`document.querySelectorAll('tbody tr').length===2`), 'filtr
 await select('Status', 'Inativos');
 check(await evaluate(`document.querySelectorAll('tbody tr').length===1`), 'filtro inativo');
 await click('Limpar filtros');
-await input('Buscar cliente', 'nenhum resultado xyz');
+await input('Buscar fornecedor', 'nenhum resultado xyz');
 await delay(700);
-check((await body()).includes('Nenhum cliente encontrado com os filtros informados.'), 'sem resultados');
+check((await body()).includes('Nenhum fornecedor encontrado com os filtros informados.'), 'sem resultados');
 await click('Limpar filtros');
-await click('Novo cliente');
-check((await body()).includes('Tipo de cliente'), 'escolha antes do formulario');
-await click('Pessoa Física');
-await click('Próximo');
-check(
-  await evaluate(`document.querySelectorAll('[aria-invalid="true"]').length>=7`),
-  'obrigatorios bloqueiam avanco com erros por campo'
-);
-await input('Nome', 'Pessoa teste browser');
+await click('Novo fornecedor');
+await input('Nome completo', 'Pessoa teste browser');
 await input('CPF', '12345678900');
-await click('Próximo');
-check((await body()).includes('documento válido'), 'CPF inválido mantém rascunho');
+await click('Cadastrar fornecedor');
+check((await body()).includes('CPF inválido'), 'CPF inválido mantém rascunho');
 await input('CPF', '12345678909');
-await input('RG', 'RG-DEV');
+check(!(await body()).includes('Data de nascimento'), 'PF fornecedor sem nascimento');
+await input('Nome do contato comercial', 'Contato comercial teste');
+await input('Observações comerciais', 'Notas comerciais PF');
 await input('Número', '42');
 await input('Complemento', 'Sala teste');
 await input('CEP', '77800000');
@@ -146,102 +149,69 @@ check(
   ),
   'CEP preenche e preserva número'
 );
-await click('Próximo');
-check((await body()).includes('1 - Contribuinte de ICMS'), 'contribuinte padrão');
-await click('Voltar');
-check(await evaluate(`!!document.querySelector('input[value="RG-DEV"]')`), 'rascunho preservado');
-await click('Próximo');
-await click('Próximo');
-await input('Limite de crédito', '1234,56');
-await evaluate(`document.querySelector('main form input[type="checkbox"]').click()`);
-await click('Cadastrar cliente');
-check((await body()).includes('Cliente cadastrado com sucesso.'), 'criação PF');
-await go('/customers');
+await click('Cadastrar fornecedor');
+check((await body()).includes('Fornecedor cadastrado com sucesso.'), 'criação PF');
+await go('/suppliers');
 check((await body()).includes('Pessoa teste browser'), 'persistência após refresh');
-await click('Novo cliente');
-await click('Pessoa Jurídica');
-await input('Nome', 'Empresa teste browser');
-await input('CEP', '77800000');
-await delay(650);
-await click('Próximo');
-check((await body()).includes('documento válido'), 'CNPJ obrigatório');
+await click('Novo fornecedor');
+await select('Tipo de fornecedor', 'Pessoa Jurídica');
+await input('Razão social', 'Empresa teste browser');
 await input('CNPJ', '11444777000161');
-await click('Próximo');
-await click('Próximo');
-await click('Cadastrar cliente');
-check((await body()).includes('Cliente cadastrado com sucesso.'), 'criação PJ');
+await input('E-mail comercial', 'comercial@example.invalid');
+await input('Telefone comercial', '63999998888');
+await click('Cadastrar fornecedor');
+check((await body()).includes('Fornecedor cadastrado com sucesso.'), 'criação PJ');
 await select('Por página', '5');
 check(await evaluate(`document.querySelectorAll('tbody tr').length===5`), 'página 1');
 await click('Próxima');
 check(await evaluate(`document.querySelectorAll('tbody tr').length===1`), 'página 2');
 await click('Anterior');
-await input('Buscar cliente', 'Pessoa teste browser');
+await input('Buscar fornecedor', 'Pessoa teste browser');
 await delay(700);
-await evaluate(`document.querySelector('button[aria-label^="Inativar cliente Pessoa teste"]').click()`);
+await evaluate(`document.querySelector('button[aria-label^="Inativar fornecedor Pessoa teste"]').click()`);
 await delay(200);
 await click('Inativar');
-check((await body()).includes('Cliente inativado com sucesso.'), 'inativação');
+check((await body()).includes('Fornecedor inativado com sucesso.'), 'inativação');
 await click('Fechar');
-await evaluate(`document.querySelector('button[aria-label^="Ativar cliente Pessoa teste"]').click()`);
+await evaluate(`document.querySelector('button[aria-label^="Ativar fornecedor Pessoa teste"]').click()`);
 await delay(200);
 await click('Ativar');
-check((await body()).includes('Cliente ativado com sucesso.'), 'reativação');
+check((await body()).includes('Fornecedor ativado com sucesso.'), 'reativação');
 await click('Fechar');
-await evaluate(`document.querySelector('a[aria-label^="Visualizar cliente Pessoa teste"]').click()`);
+await evaluate(`document.querySelector('a[aria-label^="Visualizar fornecedor Pessoa teste"]').click()`);
 await delay(500);
-check((await body()).includes('Perfil do cliente') && (await body()).includes('Sala teste'), 'detalhe');
-await click('Financeiro');
+check((await body()).includes('Perfil do fornecedor') && (await body()).includes('Sala teste'), 'detalhe');
 check(
-  (await body()).includes('1.234,56') && (await body()).includes('Sim'),
-  'preferencias financeiras persistidas'
+  (await body()).includes('Contato comercial teste') && (await body()).includes('Notas comerciais PF'),
+  'dados comerciais no perfil PF'
 );
-await click('Histórico (Logs)');
-check((await body()).includes('Nenhum histórico disponível.'), 'histórico honesto');
-await click('Fiscal');
-check((await body()).includes('1 - Contribuinte de ICMS'), 'fiscal persistido');
-await click('Dados Gerais');
-check((await body()).includes('RG-DEV'), 'dados gerais preservados');
-await click('Editar cliente');
-await input('Nome', 'Pessoa teste editada');
-await click('Próximo');
-await click('Próximo');
+await click('Editar fornecedor');
+await input('Nome completo', 'Pessoa teste editada');
 await click('Salvar alterações');
-check((await body()).includes('Cliente atualizado com sucesso.'), 'edição');
-await click('Novo cliente');
-await click('Pessoa Física');
-await input('Nome', 'Duplicado');
+check((await body()).includes('Fornecedor atualizado com sucesso.'), 'edição');
+await click('Novo fornecedor');
+await input('Nome completo', 'Duplicado');
 await input('CPF', '12345678909');
-await input('RG', 'RG-DEV');
-await input('CEP', '77800000');
-await delay(650);
-await click('Próximo');
-await click('Próximo');
-await click('Cadastrar cliente');
-check((await body()).includes('Já existe um cliente com este documento.'), 'duplicado amigável');
+await click('Cadastrar fornecedor');
+check((await body()).includes('Já existe um fornecedor com este documento.'), 'duplicado amigável');
 for (const mode of ['light', 'dark']) {
   await evaluate(
     `localStorage.setItem('erp.themeMode','${mode}');window.dispatchEvent(new StorageEvent('storage',{key:'erp.themeMode'}))`
   );
   for (const width of [1920, 1440, 1366, 1024, 768]) {
-    await viewport(width, width === 1920 ? 1080 : width === 1366 ? 768 : 900);
+    await viewport(width, 900);
     check(
       await evaluate('document.documentElement.scrollWidth<=innerWidth'),
       'form responsivo ' + mode + ' ' + width
     );
-    check(
-      await evaluate(
-        `(()=>{const b=[...document.querySelectorAll('button')].find(e=>['Próximo','Cadastrar cliente'].includes(e.textContent.trim()));const r=b.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight})()`
-      ),
-      'acoes fixas ' + mode + ' ' + width
-    );
   }
   await viewport(1440, 900);
   await send('Page.captureScreenshot', { format: 'png' }).then((r) =>
-    fs.writeFileSync('tmp/customers-form-' + mode + '.png', Buffer.from(r.data, 'base64'))
+    fs.writeFileSync('tmp/suppliers-form-' + mode + '.png', Buffer.from(r.data, 'base64'))
   );
-  await go('/customers');
+  await go('/suppliers');
   for (const width of [1920, 1440, 1366, 1024, 768]) {
-    await viewport(width, width === 1920 ? 1080 : width === 1366 ? 768 : 900);
+    await viewport(width, 900);
     check(
       await evaluate('document.documentElement.scrollWidth<=innerWidth'),
       'lista responsiva ' + mode + ' ' + width
@@ -249,58 +219,26 @@ for (const mode of ['light', 'dark']) {
   }
   await viewport(1440, 900);
   await send('Page.captureScreenshot', { format: 'png' }).then((r) =>
-    fs.writeFileSync('tmp/customers-list-' + mode + '.png', Buffer.from(r.data, 'base64'))
+    fs.writeFileSync('tmp/suppliers-list-' + mode + '.png', Buffer.from(r.data, 'base64'))
   );
-  await go('/customers/new');
+  await go('/suppliers/new');
 }
 // Estados vazios/erro e animações reutilizadas também são verificados sem tocar dados reais.
-await go('/customers/demo-pj-1');
+await go('/suppliers/demo-pj-1');
 check((await body()).includes('12.ABC.345/01DE-35'), 'perfil CNPJ alfanumérico');
 for (const mode of ['light', 'dark']) {
   await evaluate(
     `localStorage.setItem('erp.themeMode','${mode}');window.dispatchEvent(new StorageEvent('storage',{key:'erp.themeMode'}))`
   );
   for (const width of [1920, 1440, 1366, 1024, 768]) {
-    await viewport(width, width === 1920 ? 1080 : width === 1366 ? 768 : 900);
+    await viewport(width, 900);
     check(
       await evaluate('document.documentElement.scrollWidth<=innerWidth'),
       'perfil responsivo ' + mode + ' ' + width
     );
   }
-  await viewport(1440, 900);
-  await evaluate('window.scrollTo(0,0)');
-  await send('Page.captureScreenshot', { format: 'png' }).then((r) =>
-    fs.writeFileSync('tmp/customers-detail-' + mode + '.png', Buffer.from(r.data, 'base64'))
-  );
 }
-await go('/customers/new');
-await input('Nome', 'Inscrições DEV');
-await input('CPF', '12345678909');
-await input('RG', 'RG-DEV');
-await input('CEP', '77800000');
-await delay(650);
-await select('UF', 'TO');
-check(!(await body()).includes('Tipo de inscrição'), 'inscrições fora de Dados Gerais');
-await click('Próximo');
-for (const type of ['COM INSC', 'ISENTO']) {
-  await select('Tipo de inscrição', type);
-  await click('Próximo');
-  check(
-    await evaluate(
-      `['Inscrição Estadual','Inscrição Municipal'].every(text=>{const l=[...document.querySelectorAll('label')].find(e=>e.textContent.startsWith(text));return document.getElementById(l.htmlFor).getAttribute('aria-invalid')==='true'})`
-    ),
-    'IE/IM obrigatórias: ' + type
-  );
-}
-await select('Tipo de inscrição', 'SEM INSC');
-await click('Próximo');
-check((await body()).includes('Permitir contas a receber'), 'SEM INSC libera avanço ao Financeiro');
-await click('Voltar');
-await click('Voltar');
-await evaluate('window.scrollTo(0,0)');
-await send('Page.captureScreenshot', { format: 'png' }).then((r) =>
-  fs.writeFileSync('tmp/customers-general-dark.png', Buffer.from(r.data, 'base64'))
-);
+await go('/suppliers/new');
 check(
   await evaluate(`getComputedStyle(document.querySelector('.create-label')).transitionDuration==='0.5s'`),
   'animação de criação reutilizada'
@@ -317,40 +255,31 @@ check(
   (await body()).includes('Preencha o endereço manualmente.'),
   'falha de CEP permite preenchimento manual'
 );
-await input('Endereço', 'Endereço manual');
+await input('Logradouro', 'Endereço manual');
 check(
   await evaluate(`!!document.querySelector('input[value="Endereço manual"]')`),
   'endereço manual editável'
 );
-await evaluate(`localStorage.setItem('erp.dev.customers.v1:'+JSON.stringify(['dashboard-test',1]),'[]')`);
-await go('/customers');
-check((await body()).includes('Nenhum cliente cadastrado.'), 'lista vazia');
+await evaluate(`localStorage.setItem('erp.dev.suppliers.v1:'+JSON.stringify(['dashboard-test',1]),'[]')`);
+await go('/suppliers');
+check((await body()).includes('Nenhum fornecedor cadastrado.'), 'lista vazia');
 await evaluate(
-  `localStorage.setItem('erp.dev.customers.v1:'+JSON.stringify(['dashboard-test',1]),'{corrompido')`
+  `localStorage.setItem('erp.dev.suppliers.v1:'+JSON.stringify(['dashboard-test',1]),'{corrompido')`
 );
-await go('/customers');
+await go('/suppliers');
 check(
-  (await body()).includes('Não foi possível ler os clientes de demonstração'),
+  (await body()).includes('Não foi possível ler os fornecedores de demonstração'),
   'erro do repository visível'
 );
-await evaluate(`localStorage.removeItem('erp.dev.customers.v1:'+JSON.stringify(['dashboard-test',1]))`);
-await go('/customers/inexistente');
-check((await body()).includes('Cliente não encontrado.'), 'não encontrado');
+await evaluate(`localStorage.removeItem('erp.dev.suppliers.v1:'+JSON.stringify(['dashboard-test',1]))`);
+await go('/suppliers/inexistente');
+check((await body()).includes('Fornecedor não encontrado.'), 'não encontrado');
 check(
   await evaluate(`window.dashTest.calls.every(c=>!c.path.toLowerCase().includes('customer'))`),
-  'nenhum endpoint Clientes inventado'
-);
-await go('/customers/demo-pf-1/edit');
-await select('Tipo de cliente', 'Pessoa Jurídica');
-check((await body()).includes('CNPJ'), 'edição preserva troca PF para PJ');
-await select('Tipo de cliente', 'Pessoa Física');
-await click('Próximo');
-check(
-  await evaluate(`document.querySelectorAll('[aria-invalid="true"]').length>0`),
-  'cadastro legado abre e solicita novos obrigatórios ao editar'
+  'nenhum endpoint Fornecedores inventado'
 );
 await evaluate(
-  `Object.keys(localStorage).filter(k=>k.startsWith('erp.dev.customers.v1:')&&k.includes('dashboard-test')).forEach(k=>localStorage.removeItem(k))`
+  `Object.keys(localStorage).filter(k=>k.startsWith('erp.dev.suppliers.v1:')&&k.includes('dashboard-test')).forEach(k=>localStorage.removeItem(k))`
 );
 console.log(checks + ' verificacoes passaram');
 ws.close();

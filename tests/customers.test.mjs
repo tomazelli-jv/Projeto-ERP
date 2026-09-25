@@ -6,13 +6,31 @@ import {
   normalizeCustomer,
   validateCustomer
 } from '../apps/web/src/features/customers/customer-model.js';
+import {
+  hydrateCustomer,
+  customerErrors,
+  validateCustomerRecord
+} from '../apps/web/src/features/customers/customer-schema.js';
 import { validateCpf } from '../apps/web/src/components/business/cpf.js';
 import { mergeCepAddress } from '../apps/web/src/api/cep.js';
 
 // Repository testado sem React, rede ou dados pessoais reais; documentos são fixtures matemáticas.
-const person = () => ({ ...emptyCustomer(), name: 'Pessoa Teste', document: '529.982.247-25' });
+const person = () => ({
+  ...hydrateCustomer(),
+  name: 'Pessoa Teste',
+  rg: 'RG-TESTE',
+  document: '529.982.247-25',
+  address: {
+    ...emptyCustomer().address,
+    street: 'Rua DEV',
+    neighborhood: 'Centro DEV',
+    city: 'Cidade DEV',
+    state: 'TO'
+  }
+});
 const company = () => ({
-  ...emptyCustomer(),
+  ...person(),
+  tradeName: 'Empresa Teste',
   type: 'COMPANY',
   legalName: 'Empresa Teste',
   document: '12.ABC.345/01DE-35'
@@ -54,7 +72,7 @@ test('criar PF/PJ, duplicidade, editar, detalhe, status e persistência DEV', as
   assert.equal(pj.document, '12ABC34501DE35');
   assert.equal((await repo.list({ search: '63999999999' })).total, 1);
   await assert.rejects(repo.create(person()), /Já existe/);
-  await assert.rejects(repo.update(pj.id, { ...company(), document: 'invalid' }), /CNPJ/);
+  await assert.rejects(repo.update(pj.id, { ...company(), document: 'invalid' }), /documento/);
   const updated = await repo.update(pf.id, { ...person(), name: 'Pessoa Atualizada' });
   assert.equal(updated.createdAt, pf.createdAt);
   assert.equal((await repo.getById(pf.id)).name, 'Pessoa Atualizada');
@@ -120,4 +138,50 @@ test('CEP preenche endereço sem substituir número e complemento', () => {
   assert.equal(result.complement, 'Sala teste');
   assert.equal(result.street, 'Rua Teste');
   assert.equal(result.neighborhood, 'Bairro teste');
+});
+
+test('novos campos, etapas, inscrição e preferências financeiras', () => {
+  assert.equal(validateCustomerRecord(person()), '');
+  assert.equal(hydrateCustomer().taxpayerType, '1');
+  for (const key of ['name', 'rg', 'document']) assert.ok(customerErrors({ ...person(), [key]: '' }, 0)[key]);
+  for (const key of ['street', 'neighborhood', 'city', 'state'])
+    assert.ok(
+      customerErrors({ ...person(), address: { ...person().address, [key]: '' } }, 0)[`address.${key}`]
+    );
+  for (const registrationType of ['COM INSC', 'ISENTO']) {
+    const errors = customerErrors({ ...person(), registrationType }, 1);
+    assert.ok(errors.stateRegistration && errors.municipalRegistration);
+  }
+  assert.deepEqual(customerErrors({ ...person(), registrationType: 'SEM INSC' }, 1), {});
+  assert.equal(validateCustomerRecord({ ...company(), legalName: '' }), '');
+  assert.ok(customerErrors({ ...person(), taxpayerType: '3' }, 1).taxpayerType);
+  for (const creditLimit of [-1, 1.1, NaN, null])
+    assert.ok(
+      customerErrors({ ...person(), financial: { allowReceivables: true, creditLimit } }, 2).creditLimit
+    );
+  assert.deepEqual(
+    customerErrors({ ...person(), financial: { allowReceivables: true, creditLimit: 123456 } }, 2),
+    {}
+  );
+});
+test('mocks anteriores são hidratados sem perder dados ou exigir RG na leitura', async () => {
+  const storage = memoryStorage();
+  const old = {
+    ...emptyCustomer(),
+    id: 'legacy',
+    name: 'Cadastro anterior DEV',
+    document: '52998224725',
+    createdAt: '2026-01-01'
+  };
+  storage.setItem('erp.dev.customers.v1', JSON.stringify([old]));
+  const repo = createMockCustomersRepository({ storage });
+  const record = await repo.getById('legacy');
+  assert.equal(record.name, old.name);
+  assert.equal(record.rg, '');
+  assert.equal(record.taxpayerType, '1');
+  assert.deepEqual(record.financial, { allowReceivables: false, creditLimit: 0 });
+  assert.equal(JSON.parse(storage.getItem('erp.dev.customers.v1'))[0].rg, undefined);
+  await repo.setActive('legacy', false);
+  assert.equal((await repo.getById('legacy')).createdAt, old.createdAt);
+  await assert.rejects(repo.update('legacy', record), /obrigatório/);
 });
