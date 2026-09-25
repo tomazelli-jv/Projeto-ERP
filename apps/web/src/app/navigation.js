@@ -43,7 +43,7 @@ export const appRoutes = [
     description: 'Consulte o catálogo de produtos e serviços.',
     group: 'Cadastros',
     icon: Inventory2OutlinedIcon,
-    module: true
+    module: false
   },
   {
     path: '/inventory',
@@ -125,6 +125,9 @@ export const navigationGroups = [
 export const modulePages = appRoutes.filter((route) => route.module);
 
 export function getRouteMetadata(pathname) {
+  if (pathname === '/products/new') return { group: 'Produtos', label: 'Novo item' };
+  if (/^\/products\/[^/]+\/edit$/.test(pathname)) return { group: 'Produtos', label: 'Editar item' };
+  if (/^\/products\/[^/]+$/.test(pathname)) return { group: 'Produtos', label: 'Detalhes do item' };
   if (pathname === '/suppliers/new') return { group: 'Fornecedores', label: 'Novo fornecedor' };
   if (/^\/suppliers\/[^/]+\/edit$/.test(pathname))
     return { group: 'Fornecedores', label: 'Editar fornecedor' };

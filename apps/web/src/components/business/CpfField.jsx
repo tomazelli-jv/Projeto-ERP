@@ -3,9 +3,11 @@ import PropTypes from 'prop-types';
 import { formatCpf } from './business-formatters.js';
 
 // Componente reutilizável: 11 dígitos lógicos, 14 posições visuais e zeros preservados.
-export function CpfField({ value, onChange, required = false }) {
+export function CpfField({ value, onChange, required = false, error = false, helperText }) {
   return (
     <TextField
+      error={error}
+      helperText={helperText}
       fullWidth
       required={required}
       label="CPF"
@@ -20,5 +22,7 @@ export function CpfField({ value, onChange, required = false }) {
 CpfField.propTypes = {
   value: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
+  error: PropTypes.bool,
+  helperText: PropTypes.string,
   required: PropTypes.bool
 };

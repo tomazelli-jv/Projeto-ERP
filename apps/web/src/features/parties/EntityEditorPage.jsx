@@ -1,3 +1,5 @@
+import { CustomerStepForm } from '../customers/CustomerStepForm.jsx';
+import { CustomerDetail } from '../customers/CustomerDetail.jsx';
 import { useEntityModule } from './entity-module.js';
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -72,7 +74,13 @@ export function EntityEditorPage({ mode }) {
               }
             />
           ) : mode === 'view' ? (
-            <EntityProfile customer={query.data} />
+            module.key === 'customers' ? (
+              <CustomerDetail key={id} customer={query.data} />
+            ) : (
+              <EntityProfile customer={query.data} />
+            )
+          ) : module.key === 'customers' ? (
+            <CustomerStepForm key={id ?? 'new'} initial={mode === 'create' ? null : query.data} />
           ) : (
             <EntityForm key={id ?? 'new'} initial={mode === 'create' ? null : query.data} />
           )}

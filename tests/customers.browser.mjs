@@ -1,4 +1,4 @@
-﻿// Regress?o em navegador isolado via CDP; API simulada, sem credenciais reais.
+﻿// Regressao em navegador isolado via CDP; API simulada, sem credenciais reais.
 import fs from 'node:fs';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const targets = [await (await fetch('http://localhost:9230/json/new?about:blank', { method: 'PUT' })).json()];
@@ -28,7 +28,7 @@ const evaluate = async (expression) => {
 };
 const click = async (text) => {
   await evaluate(
-    `(()=>{const b=[...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(text)});if(!b)throw Error('Botao ausente: '+${JSON.stringify(text)});b.click()})()`
+    `(()=>{const b=[...document.querySelectorAll('main button, main a'),...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(text)});if(!b)throw Error('Botao ausente: '+${JSON.stringify(text)});b.click()})()`
   );
   await delay(1200);
 };
@@ -72,20 +72,6 @@ const viewport = async (width, height) => {
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
   await delay(400);
 };
-const press = async (key, code, virtualKey) => {
-  await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: virtualKey });
-  await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtualKey });
-  await delay(400);
-};
-const button = async (label) => {
-  await evaluate(`document.querySelector('button[aria-label="${label}"]').click()`);
-  await delay(400);
-};
-const geometry = () =>
-  evaluate(
-    `({rail:document.querySelector('aside').getBoundingClientRect().width,main:document.querySelector('main').getBoundingClientRect().width,header:document.querySelector('header').getBoundingClientRect().left,overflow:document.documentElement.scrollWidth>innerWidth})`
-  );
-
 // Testes de interface com sessão e CEP isolados; Clientes usa seu repository real, sem HTTP simulado.
 await send('Page.addScriptToEvaluateOnNewDocument', {
   source: `
@@ -95,11 +81,17 @@ const original=window.fetch;window.fetch=(url,options)=>String(url).startsWith('
 const body = () => evaluate('document.body.innerText');
 const go = async (path) => {
   await send('Page.navigate', { url: 'http://localhost:5173' + path });
-  await delay(1600);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    await delay(150);
+    if (
+      await evaluate("!!document.querySelector('main h1') && !document.body.innerText.includes('Carregando')")
+    )
+      break;
+  }
 };
 const select = async (label, option) => {
   await evaluate(
-    `(()=>{const label=[...document.querySelectorAll('label')].find(e=>e.textContent===${JSON.stringify(label)});const field=document.getElementById(label.htmlFor);field.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));})()`
+    `(()=>{const label=[...document.querySelectorAll('label')].find(e=>e.textContent.replaceAll('*','').trim()===${JSON.stringify(label)});const field=document.getElementById(label.htmlFor);field.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));})()`
   );
   await delay(100);
   await evaluate(
@@ -131,11 +123,19 @@ await delay(700);
 check((await body()).includes('Nenhum cliente encontrado com os filtros informados.'), 'sem resultados');
 await click('Limpar filtros');
 await click('Novo cliente');
-await input('Nome completo', 'Pessoa teste browser');
+check((await body()).includes('Tipo de cliente'), 'escolha antes do formulario');
+await click('Pessoa Física');
+await click('Próximo');
+check(
+  await evaluate(`document.querySelectorAll('[aria-invalid="true"]').length>=7`),
+  'obrigatorios bloqueiam avanco com erros por campo'
+);
+await input('Nome', 'Pessoa teste browser');
 await input('CPF', '12345678900');
-await click('Cadastrar cliente');
-check((await body()).includes('CPF inválido'), 'CPF inválido mantém rascunho');
+await click('Próximo');
+check((await body()).includes('documento válido'), 'CPF inválido mantém rascunho');
 await input('CPF', '12345678909');
+await input('RG', 'RG-DEV');
 await input('Número', '42');
 await input('Complemento', 'Sala teste');
 await input('CEP', '77800000');
@@ -146,14 +146,28 @@ check(
   ),
   'CEP preenche e preserva número'
 );
+await click('Próximo');
+check((await body()).includes('1 - Contribuinte de ICMS'), 'contribuinte padrão');
+await click('Voltar');
+check(await evaluate(`!!document.querySelector('input[value="RG-DEV"]')`), 'rascunho preservado');
+await click('Próximo');
+await click('Próximo');
+await input('Limite de crédito', '1234,56');
+await evaluate(`document.querySelector('main form input[type="checkbox"]').click()`);
 await click('Cadastrar cliente');
 check((await body()).includes('Cliente cadastrado com sucesso.'), 'criação PF');
 await go('/customers');
 check((await body()).includes('Pessoa teste browser'), 'persistência após refresh');
 await click('Novo cliente');
-await select('Tipo de cliente', 'Pessoa Jurídica');
-await input('Razão social', 'Empresa teste browser');
+await click('Pessoa Jurídica');
+await input('Nome', 'Empresa teste browser');
+await input('CEP', '77800000');
+await delay(650);
+await click('Próximo');
+check((await body()).includes('documento válido'), 'CNPJ obrigatório');
 await input('CNPJ', '11444777000161');
+await click('Próximo');
+await click('Próximo');
 await click('Cadastrar cliente');
 check((await body()).includes('Cliente cadastrado com sucesso.'), 'criação PJ');
 await select('Por página', '5');
@@ -176,13 +190,32 @@ await click('Fechar');
 await evaluate(`document.querySelector('a[aria-label^="Visualizar cliente Pessoa teste"]').click()`);
 await delay(500);
 check((await body()).includes('Perfil do cliente') && (await body()).includes('Sala teste'), 'detalhe');
+await click('Financeiro');
+check(
+  (await body()).includes('1.234,56') && (await body()).includes('Sim'),
+  'preferencias financeiras persistidas'
+);
+await click('Histórico (Logs)');
+check((await body()).includes('Nenhum histórico disponível.'), 'histórico honesto');
+await click('Fiscal');
+check((await body()).includes('1 - Contribuinte de ICMS'), 'fiscal persistido');
+await click('Dados Gerais');
+check((await body()).includes('RG-DEV'), 'dados gerais preservados');
 await click('Editar cliente');
-await input('Nome completo', 'Pessoa teste editada');
+await input('Nome', 'Pessoa teste editada');
+await click('Próximo');
+await click('Próximo');
 await click('Salvar alterações');
 check((await body()).includes('Cliente atualizado com sucesso.'), 'edição');
 await click('Novo cliente');
-await input('Nome completo', 'Duplicado');
+await click('Pessoa Física');
+await input('Nome', 'Duplicado');
 await input('CPF', '12345678909');
+await input('RG', 'RG-DEV');
+await input('CEP', '77800000');
+await delay(650);
+await click('Próximo');
+await click('Próximo');
 await click('Cadastrar cliente');
 check((await body()).includes('Já existe um cliente com este documento.'), 'duplicado amigável');
 for (const mode of ['light', 'dark']) {
@@ -190,10 +223,16 @@ for (const mode of ['light', 'dark']) {
     `localStorage.setItem('erp.themeMode','${mode}');window.dispatchEvent(new StorageEvent('storage',{key:'erp.themeMode'}))`
   );
   for (const width of [1920, 1440, 1366, 1024, 768]) {
-    await viewport(width, 900);
+    await viewport(width, width === 1920 ? 1080 : width === 1366 ? 768 : 900);
     check(
       await evaluate('document.documentElement.scrollWidth<=innerWidth'),
       'form responsivo ' + mode + ' ' + width
+    );
+    check(
+      await evaluate(
+        `(()=>{const b=[...document.querySelectorAll('button')].find(e=>['Próximo','Cadastrar cliente'].includes(e.textContent.trim()));const r=b.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight})()`
+      ),
+      'acoes fixas ' + mode + ' ' + width
     );
   }
   await viewport(1440, 900);
@@ -202,7 +241,7 @@ for (const mode of ['light', 'dark']) {
   );
   await go('/customers');
   for (const width of [1920, 1440, 1366, 1024, 768]) {
-    await viewport(width, 900);
+    await viewport(width, width === 1920 ? 1080 : width === 1366 ? 768 : 900);
     check(
       await evaluate('document.documentElement.scrollWidth<=innerWidth'),
       'lista responsiva ' + mode + ' ' + width
@@ -222,14 +261,46 @@ for (const mode of ['light', 'dark']) {
     `localStorage.setItem('erp.themeMode','${mode}');window.dispatchEvent(new StorageEvent('storage',{key:'erp.themeMode'}))`
   );
   for (const width of [1920, 1440, 1366, 1024, 768]) {
-    await viewport(width, 900);
+    await viewport(width, width === 1920 ? 1080 : width === 1366 ? 768 : 900);
     check(
       await evaluate('document.documentElement.scrollWidth<=innerWidth'),
       'perfil responsivo ' + mode + ' ' + width
     );
   }
+  await viewport(1440, 900);
+  await evaluate('window.scrollTo(0,0)');
+  await send('Page.captureScreenshot', { format: 'png' }).then((r) =>
+    fs.writeFileSync('tmp/customers-detail-' + mode + '.png', Buffer.from(r.data, 'base64'))
+  );
 }
 await go('/customers/new');
+await input('Nome', 'Inscrições DEV');
+await input('CPF', '12345678909');
+await input('RG', 'RG-DEV');
+await input('CEP', '77800000');
+await delay(650);
+await select('UF', 'TO');
+check(!(await body()).includes('Tipo de inscrição'), 'inscrições fora de Dados Gerais');
+await click('Próximo');
+for (const type of ['COM INSC', 'ISENTO']) {
+  await select('Tipo de inscrição', type);
+  await click('Próximo');
+  check(
+    await evaluate(
+      `['Inscrição Estadual','Inscrição Municipal'].every(text=>{const l=[...document.querySelectorAll('label')].find(e=>e.textContent.startsWith(text));return document.getElementById(l.htmlFor).getAttribute('aria-invalid')==='true'})`
+    ),
+    'IE/IM obrigatórias: ' + type
+  );
+}
+await select('Tipo de inscrição', 'SEM INSC');
+await click('Próximo');
+check((await body()).includes('Permitir contas a receber'), 'SEM INSC libera avanço ao Financeiro');
+await click('Voltar');
+await click('Voltar');
+await evaluate('window.scrollTo(0,0)');
+await send('Page.captureScreenshot', { format: 'png' }).then((r) =>
+  fs.writeFileSync('tmp/customers-general-dark.png', Buffer.from(r.data, 'base64'))
+);
 check(
   await evaluate(`getComputedStyle(document.querySelector('.create-label')).transitionDuration==='0.5s'`),
   'animação de criação reutilizada'
@@ -246,7 +317,7 @@ check(
   (await body()).includes('Preencha o endereço manualmente.'),
   'falha de CEP permite preenchimento manual'
 );
-await input('Logradouro', 'Endereço manual');
+await input('Endereço', 'Endereço manual');
 check(
   await evaluate(`!!document.querySelector('input[value="Endereço manual"]')`),
   'endereço manual editável'
@@ -268,6 +339,15 @@ check((await body()).includes('Cliente não encontrado.'), 'não encontrado');
 check(
   await evaluate(`window.dashTest.calls.every(c=>!c.path.toLowerCase().includes('customer'))`),
   'nenhum endpoint Clientes inventado'
+);
+await go('/customers/demo-pf-1/edit');
+await select('Tipo de cliente', 'Pessoa Jurídica');
+check((await body()).includes('CNPJ'), 'edição preserva troca PF para PJ');
+await select('Tipo de cliente', 'Pessoa Física');
+await click('Próximo');
+check(
+  await evaluate(`document.querySelectorAll('[aria-invalid="true"]').length>0`),
+  'cadastro legado abre e solicita novos obrigatórios ao editar'
 );
 await evaluate(
   `Object.keys(localStorage).filter(k=>k.startsWith('erp.dev.customers.v1:')&&k.includes('dashboard-test')).forEach(k=>localStorage.removeItem(k))`

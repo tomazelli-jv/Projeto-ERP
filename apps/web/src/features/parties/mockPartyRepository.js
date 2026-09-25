@@ -7,6 +7,7 @@ const fold = (value) =>
 const compact = (value) => fold(value).replace(/[.\s/()+-]/g, '');
 /** DEV repository sem HTTP. Storage injetável permite testes e substituição por API.
  * Normalização e validação são injetadas pelo módulo, sem misturar seus registros.
+ * A hidratação de leitura permite evoluir os campos sem exigir retroativamente novas obrigatoriedades.
  */
 export function createMockPartyRepository({
   storage,
@@ -14,6 +15,8 @@ export function createMockPartyRepository({
   seed,
   validate,
   normalize,
+  hydrate = (record) => record,
+  validateStored = validate,
   singular,
   plural,
   now = () => new Date().toISOString(),
@@ -27,12 +30,12 @@ export function createMockPartyRepository({
         const records = JSON.parse(saved);
         if (
           !Array.isArray(records) ||
-          records.some((r) => !r || typeof r.id !== 'string' || !r.address || validate(r))
+          records.some((r) => !r || typeof r.id !== 'string' || !r.address || validateStored(r))
         )
           throw Error();
-        return records;
+        return records.map(hydrate);
       }
-      return structuredClone(memory ?? seed());
+      return structuredClone(memory ?? seed()).map(hydrate);
     } catch {
       throw Error(`Não foi possível ler os ${plural} de demonstração armazenados neste navegador.`);
     }

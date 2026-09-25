@@ -1,15 +1,11 @@
-import { CustomerTypeChoice } from '../customers/CustomerTypeChoice.jsx';
-import { useEntityModule } from './entity-module.js';
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import {
   Alert,
-  Avatar,
   Box,
   Button,
   Card,
   CardContent,
-  Chip,
   IconButton,
   InputAdornment,
   MenuItem,
@@ -25,67 +21,66 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import HandymanOutlinedIcon from '@mui/icons-material/HandymanOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
-import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
-import { PageHeader } from '../../components/common/PageHeader.jsx';
-import { CreateButton } from '../../components/common/CreateButton.jsx';
-import { EmptyState } from '../../components/feedback/EmptyState.jsx';
-import { ErrorState } from '../../components/feedback/ErrorState.jsx';
-import { LoadingState } from '../../components/feedback/LoadingState.jsx';
-import { formatPhone } from '../../components/business/business-formatters.js';
-import { useEntityList, useEntitySummary } from './entity-queries.js';
-import { customerName, customerDocument, initials, states, typeLabel } from '../customers/customer-model.js';
-import { EntityDemoNotice, EntityStatus } from './EntityShared.jsx';
-import { EntityStatusAction } from './EntityStatusAction.jsx';
+import { PageHeader } from '../components/common/PageHeader.jsx';
+import { CreateButton } from '../components/common/CreateButton.jsx';
+import { EmptyState } from '../components/feedback/EmptyState.jsx';
+import { ErrorState } from '../components/feedback/ErrorState.jsx';
+import { LoadingState } from '../components/feedback/LoadingState.jsx';
+import { EntityModuleContext } from '../features/parties/entity-module.js';
+import { useEntityList, useEntitySummary } from '../features/parties/entity-queries.js';
+import { EntityDemoNotice, EntityStatus } from '../features/parties/EntityShared.jsx';
+import { EntityStatusAction } from '../features/parties/EntityStatusAction.jsx';
+import { productModule } from '../features/products/product-module.js';
+import { productCategories, units, itemTypeLabel } from '../features/products/product-options.js';
+import { formatMoney } from '../components/business/money.js';
 
-const defaults = { search: '', type: '', status: '', city: '', state: '', page: 1, pageSize: 10 };
-// Mesmo padrão da listagem de Usuários: query para dados, busca debounced e tabela com ações acessíveis.
-export function EntityListPage() {
-  const module = useEntityModule();
+// Mesmo padrão de listagem dos cadastros, com dados específicos do catálogo único.
+export function ProductsPage() {
+  return (
+    <EntityModuleContext.Provider value={productModule}>
+      <ProductList />
+    </EntityModuleContext.Provider>
+  );
+}
+const defaults = { search: '', type: '', status: '', category: '', unit: '', page: 1, pageSize: 10 };
+function ProductList() {
   const [filters, setFilters] = useState(defaults);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const location = useLocation();
-  const [feedback, setFeedback] = useState(location.state?.customerFeedback ?? '');
+  const [feedback, setFeedback] = useState(location.state?.productFeedback ?? '');
   useEffect(() => {
     const timer = setTimeout(() => setFilters((old) => ({ ...old, search, page: 1 })), 300);
     return () => clearTimeout(timer);
   }, [search]);
   const query = useEntityList(filters);
   const summary = useEntitySummary();
-  const change = (key) => (event) => setFilters((old) => ({ ...old, [key]: event.target.value, page: 1 }));
   const clear = () => {
     setSearch('');
     setFilters(defaults);
   };
-  const create =
-    module.key === 'customers' ? (
-      <CustomerTypeChoice />
-    ) : (
-      <CreateButton
-        component={Link}
-        to={`${module.path}/new`}
-        sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-      >{`Novo ${module.singular}`}</CreateButton>
-    );
-  const hasFilters = Boolean(
-    filters.search || filters.type || filters.status || filters.city || filters.state
+  const change = (key) => (event) => setFilters((old) => ({ ...old, [key]: event.target.value, page: 1 }));
+  const create = (
+    <CreateButton component={Link} to="/products/new" sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
+      Novo item
+    </CreateButton>
+  );
+  const filtered = Boolean(
+    filters.search || filters.type || filters.status || filters.category || filters.unit
   );
   const page = query.data?.page ?? 1;
   return (
     <>
-      <PageHeader
-        title={`${module.Plural}`}
-        description={`Gerencie os ${module.plural} cadastrados no sistema.`}
-      />
+      <PageHeader title="Produtos e Serviços" description="Gerencie os itens comercializados pela empresa." />
       {!import.meta.env.DEV ? (
-        <Alert severity="info">{`${module.Plural} aguarda integração com o backend.`}</Alert>
+        <Alert severity="info">Catálogo aguarda integração com o backend.</Alert>
       ) : (
         <>
           <EntityDemoNotice />
@@ -98,10 +93,10 @@ export function EntityListPage() {
             }}
           >
             {[
-              [`Total de ${module.plural}`, 'total', GroupsOutlinedIcon, 'info'],
-              [`${module.Plural} ativos`, 'active', CheckCircleOutlineIcon, 'success'],
-              ['Pessoa Física', 'persons', PersonOutlineIcon, 'warning'],
-              ['Pessoa Jurídica', 'companies', BusinessOutlinedIcon, 'primary']
+              ['Total de itens', 'total', Inventory2OutlinedIcon, 'info'],
+              ['Produtos', 'products', Inventory2OutlinedIcon, 'primary'],
+              ['Serviços', 'services', HandymanOutlinedIcon, 'warning'],
+              ['Itens ativos', 'active', CheckCircleOutlineIcon, 'success']
             ].map(([label, key, Icon, tone]) => (
               <Card key={key} sx={{ bgcolor: tone + '.soft', borderColor: tone + '.main', borderRadius: 2 }}>
                 <CardContent
@@ -131,10 +126,10 @@ export function EntityListPage() {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
                 fullWidth
-                label={`Buscar ${module.singular}`}
-                placeholder="Nome, documento, e-mail ou telefone"
+                label="Buscar item"
+                placeholder="Nome, código, GTIN ou categoria"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -160,45 +155,59 @@ export function EntityListPage() {
             >
               <TextField select label="Tipo" value={filters.type} onChange={change('type')}>
                 <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="PERSON">Pessoa Física</MenuItem>
-                <MenuItem value="COMPANY">Pessoa Jurídica</MenuItem>
+                <MenuItem value="PRODUCT">Produtos</MenuItem>
+                <MenuItem value="SERVICE">Serviços</MenuItem>
               </TextField>
               <TextField select label="Status" value={filters.status} onChange={change('status')}>
                 <MenuItem value="">Todos</MenuItem>
                 <MenuItem value="ACTIVE">Ativos</MenuItem>
                 <MenuItem value="INACTIVE">Inativos</MenuItem>
               </TextField>
-              <TextField label="Cidade" value={filters.city} onChange={change('city')} />
-              <TextField select label="UF" value={filters.state} onChange={change('state')}>
+              <TextField select label="Categoria" value={filters.category} onChange={change('category')}>
                 <MenuItem value="">Todas</MenuItem>
-                {states.map((state) => (
-                  <MenuItem key={state} value={state}>
-                    {state}
+                {productCategories.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
                   </MenuItem>
                 ))}
               </TextField>
+              <TextField
+                label="Unidade"
+                value={filters.unit}
+                onChange={(event) =>
+                  setFilters((old) => ({ ...old, unit: event.target.value.toUpperCase(), page: 1 }))
+                }
+                slotProps={{ htmlInput: { list: 'product-filter-units', maxLength: 10 } }}
+              />
+              <datalist id="product-filter-units">
+                {units.map(([code, label]) => (
+                  <option key={code} value={code}>
+                    {label}
+                  </option>
+                ))}
+              </datalist>
               <Button variant="outlined" onClick={clear}>
                 Limpar filtros
               </Button>
             </Box>
           </Stack>
           {query.isPending ? (
-            <LoadingState message={`Carregando ${module.plural}...`} />
+            <LoadingState message="Carregando itens..." />
           ) : query.isError ? (
             <ErrorState description={query.error.message} onRetry={() => query.refetch()} />
           ) : !query.data.total ? (
             <EmptyState
               title={
-                hasFilters
-                  ? `Nenhum ${module.singular} encontrado com os filtros informados.`
-                  : `Nenhum ${module.singular} cadastrado.`
+                filtered
+                  ? 'Nenhum item encontrado com os filtros informados.'
+                  : 'Nenhum produto ou serviço cadastrado.'
               }
               description={
-                hasFilters
-                  ? `Revise os filtros para consultar outros ${module.plural}.`
-                  : `Cadastre seu primeiro ${module.singular} para começar.`
+                filtered
+                  ? 'Revise os filtros para consultar outros itens.'
+                  : 'Cadastre seu primeiro item para começar.'
               }
-              action={hasFilters ? <Button onClick={clear}>Limpar filtros</Button> : create}
+              action={filtered ? <Button onClick={clear}>Limpar filtros</Button> : create}
             />
           ) : (
             <>
@@ -206,9 +215,9 @@ export function EntityListPage() {
                 sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflowX: 'auto' }}
               >
                 <Table
-                  aria-label={`${module.Plural}`}
+                  aria-label="Produtos e Serviços"
                   sx={{
-                    minWidth: 900,
+                    minWidth: 950,
                     '& th': {
                       bgcolor: 'primary.main',
                       color: 'primary.contrastText',
@@ -224,89 +233,84 @@ export function EntityListPage() {
                 >
                   <TableHead>
                     <TableRow>
-                      {[
-                        `${module.Singular}`,
-                        'Documento',
-                        'Contato',
-                        'Cidade / UF',
-                        'Tipo',
-                        'Status',
-                        'Ações'
-                      ].map((label) => (
-                        <TableCell key={label} align={label === 'Ações' ? 'right' : 'left'}>
-                          {label}
-                        </TableCell>
-                      ))}
+                      {['Item', 'Código', 'Categoria', 'Tipo', 'Preço', 'Unidade', 'Status', 'Ações'].map(
+                        (label) => (
+                          <TableCell key={label} align={label === 'Ações' ? 'right' : 'left'}>
+                            {label}
+                          </TableCell>
+                        )
+                      )}
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {query.data.items.map((customer) => (
-                      <TableRow hover key={customer.id}>
+                    {query.data.items.map((item) => (
+                      <TableRow hover key={item.id}>
                         <TableCell>
                           <Stack direction="row" spacing={1.5} alignItems="center">
-                            <Avatar
-                              sx={{
-                                width: 36,
-                                height: 36,
-                                bgcolor: 'surface.secondary',
-                                color: 'text.secondary',
-                                fontSize: 13
-                              }}
-                            >
-                              {initials(customerName(customer))}
-                            </Avatar>
-                            <Typography variant="body2" fontWeight={600}>
-                              {customerName(customer)}
-                            </Typography>
+                            {item.type === 'PRODUCT' ? (
+                              <Inventory2OutlinedIcon color="action" />
+                            ) : (
+                              <HandymanOutlinedIcon color="action" />
+                            )}
+                            <Box sx={{ maxWidth: 280 }}>
+                              <Typography variant="body2" fontWeight={600}>
+                                {item.name}
+                              </Typography>
+                              {item.description && (
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{
+                                    display: 'block',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  {item.description}
+                                </Typography>
+                              )}
+                            </Box>
                           </Stack>
                         </TableCell>
-                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{customerDocument(customer)}</TableCell>
-                        <TableCell sx={{ overflowWrap: 'anywhere', maxWidth: 240 }}>
-                          <Typography variant="body2">
-                            {formatPhone(customer.phone || customer.mobile) || '—'}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {customer.email || '—'}
-                          </Typography>
-                        </TableCell>
                         <TableCell>
-                          {[customer.address.city, customer.address.state].filter(Boolean).join(' / ') || '—'}
+                          <Typography variant="body2">{item.code}</Typography>
+                          {item.type === 'PRODUCT' && item.gtin && (
+                            <Typography variant="caption" color="text.secondary">
+                              {item.gtin}
+                            </Typography>
+                          )}
                         </TableCell>
+                        <TableCell>{item.category || '—'}</TableCell>
+                        <TableCell>{itemTypeLabel(item.type)}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatMoney(item.priceCents)}</TableCell>
+                        <TableCell>{item.unit || '—'}</TableCell>
                         <TableCell>
-                          <Chip size="small" label={typeLabel(customer.type)} />
-                        </TableCell>
-                        <TableCell>
-                          <EntityStatus status={customer.status} />
+                          <EntityStatus status={item.status} />
                         </TableCell>
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                          <Tooltip title={`Visualizar ${module.singular}`}>
+                          <Tooltip title="Visualizar item">
                             <IconButton
                               component={Link}
-                              to={`${module.path}/${customer.id}`}
-                              aria-label={`Visualizar ${module.singular} ${customerName(customer)}`}
+                              to={`/products/${item.id}`}
+                              aria-label={`Visualizar item ${item.name}`}
                             >
                               <VisibilityIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title={`Editar ${module.singular}`}>
+                          <Tooltip title="Editar item">
                             <IconButton
                               component={Link}
-                              to={`${module.path}/${customer.id}/edit`}
-                              aria-label={`Editar ${module.singular} ${customerName(customer)}`}
+                              to={`/products/${item.id}/edit`}
+                              aria-label={`Editar item ${item.name}`}
                             >
                               <EditIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip
-                            title={
-                              customer.status === 'ACTIVE'
-                                ? `Inativar ${module.singular}`
-                                : `Ativar ${module.singular}`
-                            }
-                          >
+                          <Tooltip title={item.status === 'ACTIVE' ? 'Inativar item' : 'Ativar item'}>
                             <IconButton
-                              onClick={() => setSelected(customer)}
-                              aria-label={`${customer.status === 'ACTIVE' ? 'Inativar' : 'Ativar'} ${module.singular} ${customerName(customer)}`}
+                              onClick={() => setSelected(item)}
+                              aria-label={`${item.status === 'ACTIVE' ? 'Inativar' : 'Ativar'} item ${item.name}`}
                             >
                               <BlockIcon fontSize="small" />
                             </IconButton>
@@ -332,8 +336,8 @@ export function EntityListPage() {
                     select
                     label="Por página"
                     value={filters.pageSize}
-                    onChange={(e) =>
-                      setFilters((old) => ({ ...old, page: 1, pageSize: Number(e.target.value) }))
+                    onChange={(event) =>
+                      setFilters((old) => ({ ...old, page: 1, pageSize: Number(event.target.value) }))
                     }
                     sx={{ minWidth: 95 }}
                   >
@@ -360,9 +364,7 @@ export function EntityListPage() {
               </Stack>
             </>
           )}
-          {selected && (
-            <EntityStatusAction key={selected.id} customer={selected} onClose={() => setSelected(null)} />
-          )}
+          {selected && <EntityStatusAction customer={selected} onClose={() => setSelected(null)} />}
           <Snackbar open={Boolean(feedback)} autoHideDuration={5000} onClose={() => setFeedback('')}>
             <Alert severity="success" onClose={() => setFeedback('')}>
               {feedback}

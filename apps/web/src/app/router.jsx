@@ -7,6 +7,8 @@ import { CompaniesPage } from '../pages/CompaniesPage.jsx';
 import { UsersPage } from '../pages/UsersPage.jsx';
 import { CustomersPage } from '../pages/CustomersPage.jsx';
 import { SuppliersPage } from '../pages/SuppliersPage.jsx';
+import { ProductsPage } from '../pages/ProductsPage.jsx';
+import { ProductEditorPage } from '../pages/ProductEditorPage.jsx';
 import { SupplierEditorPage } from '../pages/SupplierEditorPage.jsx';
 import { CustomerEditorPage } from '../pages/CustomerEditorPage.jsx';
 import { UserEditorPage } from '../pages/UserEditorPage.jsx';
@@ -50,6 +52,11 @@ export const router = createBrowserRouter([
       { path: 'suppliers/new', element: <SupplierEditorPage mode="create" /> },
       { path: 'suppliers/:id', element: <SupplierEditorPage mode="view" /> },
       { path: 'suppliers/:id/edit', element: <SupplierEditorPage mode="edit" /> },
+      // Produto e Serviço compartilham catálogo e repository, sem contratos HTTP fictícios.
+      { path: 'products', element: <ProductsPage /> },
+      { path: 'products/new', element: <ProductEditorPage mode="create" /> },
+      { path: 'products/:id', element: <ProductEditorPage mode="view" /> },
+      { path: 'products/:id/edit', element: <ProductEditorPage mode="edit" /> },
       // MÃ³dulos permanecem navegÃ¡veis, mas nÃ£o disparam contratos do backend antigo durante a migraÃ§Ã£o.
       ...modulePages.map((page) => ({ path: page.path.slice(1), element: <ModulePage {...page} /> }))
     ]

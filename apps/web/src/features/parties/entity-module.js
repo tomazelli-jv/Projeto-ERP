@@ -1,6 +1,6 @@
 ﻿import { createContext, useContext } from 'react';
 import { createMockCustomersRepository } from '../customers/mockCustomersRepository.js';
-import { emptyCustomer, validateCustomer } from '../customers/customer-model.js';
+import { hydrateCustomer, validateCustomerRecord } from '../customers/customer-schema.js';
 
 // Configuração sem estado: as telas compartilhadas recebem vocabulário, modelo e fonte do módulo.
 export const customerModule = {
@@ -11,8 +11,8 @@ export const customerModule = {
   Singular: 'Cliente',
   Plural: 'Clientes',
   commercial: false,
-  empty: emptyCustomer,
-  validate: validateCustomer,
+  empty: hydrateCustomer,
+  validate: validateCustomerRecord,
   repository: createMockCustomersRepository
 };
 export const EntityModuleContext = createContext(customerModule);

@@ -1,5 +1,6 @@
+import { hydrateCustomer, normalizeCustomerRecord, validateCustomerRecord } from './customer-schema.js';
 import { createMockPartyRepository } from '../parties/mockPartyRepository.js';
-import { emptyCustomer, normalizeCustomer, validateCustomer } from './customer-model.js';
+import { emptyCustomer } from './customer-model.js';
 
 // Fixtures exclusivamente demonstrativas, sem pessoas reais. Datas/documentos são exemplos de teste.
 export function customerFixtures() {
@@ -55,8 +56,14 @@ export function createMockCustomersRepository(options = {}) {
   return createMockPartyRepository({
     key: 'erp.dev.customers.v1',
     seed: customerFixtures,
-    validate: validateCustomer,
-    normalize: normalizeCustomer,
+    validate: validateCustomerRecord,
+    hydrate: hydrateCustomer,
+    // Leitura tolera campos novos ausentes, preservando os cadastros anteriores.
+    validateStored: (r) =>
+      !['PERSON', 'COMPANY'].includes(r.type) ||
+      !['ACTIVE', 'INACTIVE'].includes(r.status) ||
+      typeof r.document !== 'string',
+    normalize: normalizeCustomerRecord,
     singular: 'cliente',
     plural: 'clientes',
     ...options
