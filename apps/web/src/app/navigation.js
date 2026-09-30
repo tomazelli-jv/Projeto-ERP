@@ -70,6 +70,15 @@ export const appRoutes = [
     module: true
   },
   {
+    path: '/financial/receivables',
+    label: 'Contas a Receber',
+    title: 'Contas a Receber',
+    description: 'Acompanhe os valores a receber dos clientes.',
+    group: 'Financeiro',
+    icon: ReceiptLongOutlinedIcon,
+    module: false
+  },
+  {
     // A URL histórica é preservada, mas toda nomenclatura apresentada ao usuário segue o modelo Empresa/Loja.
     path: '/admin/companies',
     label: 'Empresas e lojas',
@@ -115,7 +124,7 @@ export const navigationGroups = [
   // Agrupamento visual preserva exclusivamente destinos já registrados.
   { label: 'Visão geral', items: [byPath['/dashboard']] },
   { label: 'Cadastros', items: [byPath['/customers'], byPath['/suppliers'], byPath['/products']] },
-  { items: [byPath['/inventory'], byPath['/sales'], byPath['/financial']] },
+  { items: [byPath['/inventory'], byPath['/sales'], byPath['/financial'], byPath['/financial/receivables']] },
   {
     label: 'Administração',
     items: [byPath['/admin/companies']]
@@ -154,7 +163,11 @@ export const topNavigationGroups = [
     items: ['/customers', '/suppliers', '/products', '/inventory'].map((path) => byPath[path])
   },
   { label: 'Operações', description: 'Acompanhe as operações comerciais.', items: [byPath['/sales']] },
-  { label: 'Financeiro', path: '/financial', items: [byPath['/financial']] },
+  {
+    label: 'Financeiro',
+    description: 'Gerencie os recebimentos dos clientes.',
+    items: [byPath['/financial/receivables']]
+  },
   {
     label: 'Administração',
     description: 'Gerencie sua empresa e suas unidades.',

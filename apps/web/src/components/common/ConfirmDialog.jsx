@@ -1,3 +1,4 @@
+// sx opcional aplica o refinamento visual no portal, preservando os demais dialogs.
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 import PropTypes from 'prop-types';
 
@@ -9,10 +10,12 @@ export function ConfirmDialog({
   cancelLabel = 'Cancelar',
   loading = false,
   onConfirm,
-  onClose
+  onClose,
+  sx
 }) {
   return (
     <Dialog
+      sx={sx}
       aria-labelledby="confirm-dialog-title"
       fullWidth
       maxWidth="xs"
@@ -43,5 +46,6 @@ ConfirmDialog.propTypes = {
   cancelLabel: PropTypes.string,
   loading: PropTypes.bool,
   onConfirm: PropTypes.func.isRequired,
+  sx: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
   onClose: PropTypes.func.isRequired
 };
