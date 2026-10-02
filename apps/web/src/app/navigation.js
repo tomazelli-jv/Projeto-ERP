@@ -11,6 +11,7 @@ import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
 export const appRoutes = [
+  { path: '/notifications', label: 'Notificações', title: 'Notificações', hidden: true },
   {
     path: '/dashboard',
     label: 'Dashboard',

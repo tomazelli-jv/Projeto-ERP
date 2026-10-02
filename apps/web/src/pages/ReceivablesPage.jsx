@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
@@ -80,7 +81,17 @@ const defaults = () => ({
 });
 // Tela financeira própria: filtros locais não recarregam a página e queries mantêm o escopo da sessão.
 export function ReceivablesPage() {
-  const [filters, setFilters] = useState(defaults);
+  const [params] = useSearchParams();
+  const linkedStatus = params.get('status');
+  const [filters, setFilters] = useState(() => ({
+    ...defaults(),
+    status: Object.hasOwn(statusLabels, linkedStatus) ? linkedStatus : ''
+  }));
+  // Deep link aplica somente os status ja suportados, sem inventar filtros de negocio.
+  useEffect(() => {
+    if (Object.hasOwn(statusLabels, linkedStatus))
+      setFilters((old) => ({ ...old, status: linkedStatus, page: 1 }));
+  }, [linkedStatus]);
   const [search, setSearch] = useState('');
   const [filterKind, setFilterKind] = useState('name');
   const [selected, setSelected] = useState(null);

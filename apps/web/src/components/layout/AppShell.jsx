@@ -1,4 +1,5 @@
-﻿import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+import { NotificationsBell } from '../../features/notifications/NotificationsBell.jsx';
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
@@ -314,6 +315,7 @@ export function AppShell() {
                   />
                 )}
                 <ThemeToggle />
+                <NotificationsBell />
                 <Button
                   aria-controls={userMenuAnchor ? 'user-menu' : undefined}
                   aria-haspopup="true"
