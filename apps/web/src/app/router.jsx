@@ -1,3 +1,5 @@
+import { NotificationsPage } from '../pages/NotificationsPage.jsx';
+import { ReceivablesPage } from '../pages/ReceivablesPage.jsx';
 import { Navigate, createBrowserRouter } from 'react-router';
 import { AppShell } from '../components/layout/AppShell.jsx';
 import { AccountPage } from '../pages/AccountPage.jsx';
@@ -30,7 +32,11 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Navigate replace to="/dashboard" /> },
+      // Central usa apenas a capacidade de notificacoes fornecida pelo adapter.
+      { path: 'notifications', element: <NotificationsPage /> },
       { path: 'dashboard', element: <DashboardPage /> },
+      // Financeiro frontend-first, sem endpoints presumidos.
+      { path: 'financial/receivables', element: <ReceivablesPage /> },
       { path: 'account', element: <AccountPage /> },
       // URLs históricas agora apontam para páginas dedicadas de Configurações.
       { path: 'settings', element: <SettingsPage /> },

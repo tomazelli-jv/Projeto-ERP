@@ -60,7 +60,12 @@ export function EntitySummary({ customer }) {
           ['Tipo', typeLabel(customer.type)],
           ['Nome / Razão social', customer.type === 'PERSON' ? customer.name : customer.legalName],
           ['Documento', customerDocument(customer)],
-          ...(module.commercial ? [['Contato', customer.contactName || customer.commercialContact]] : []),
+          ...(module.commercial
+            ? [
+                ['Tipo do fornecedor', customer.supplierType],
+                ['Pessoa de contato', customer.commercialContact || customer.contactName]
+              ]
+            : []),
           ['E-mail', customer.email],
           ['Telefone', formatPhone(customer.phone || customer.mobile)],
           ['Cidade / UF', [customer.address.city, customer.address.state].filter(Boolean).join(' / ')]

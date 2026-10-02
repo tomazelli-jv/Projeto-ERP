@@ -1,4 +1,4 @@
-﻿// Regress?o em navegador isolado via CDP; API simulada, sem credenciais reais.
+﻿// Regressao em navegador isolado via CDP; API simulada, sem credenciais reais.
 import fs from 'node:fs';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const targets = [await (await fetch('http://localhost:9230/json/new?about:blank', { method: 'PUT' })).json()];
@@ -28,7 +28,7 @@ const evaluate = async (expression) => {
 };
 const click = async (text) => {
   await evaluate(
-    `(()=>{const b=[...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(text)});if(!b)throw Error('Botao ausente: '+${JSON.stringify(text)});b.click()})()`
+    `(()=>{const b=[...document.querySelectorAll('main button, main a'),...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(text)});if(!b)throw Error('Botao ausente: '+${JSON.stringify(text)});b.click()})()`
   );
   await delay(1200);
 };
@@ -72,21 +72,7 @@ const viewport = async (width, height) => {
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
   await delay(400);
 };
-const press = async (key, code, virtualKey) => {
-  await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: virtualKey });
-  await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: virtualKey });
-  await delay(400);
-};
-const button = async (label) => {
-  await evaluate(`document.querySelector('button[aria-label="${label}"]').click()`);
-  await delay(400);
-};
-const geometry = () =>
-  evaluate(
-    `({rail:document.querySelector('aside').getBoundingClientRect().width,main:document.querySelector('main').getBoundingClientRect().width,header:document.querySelector('header').getBoundingClientRect().left,overflow:document.documentElement.scrollWidth>innerWidth})`
-  );
-
-// Testes de interface com sessão e CEP isolados; Fornecedores usa seu repository real, sem HTTP simulado.
+// Testes de interface com sessão e CEP isolados; Clientes usa seu repository real, sem HTTP simulado.
 await send('Page.addScriptToEvaluateOnNewDocument', {
   source: `
 const original=window.fetch;window.fetch=(url,options)=>String(url).startsWith('https://viacep.com.br/')?Promise.resolve(new Response(JSON.stringify({cep:'77800-000',logradouro:'Rua de teste',bairro:'Bairro de teste',localidade:'Palmas',uf:'TO'}))):original(url,options);
@@ -95,11 +81,17 @@ const original=window.fetch;window.fetch=(url,options)=>String(url).startsWith('
 const body = () => evaluate('document.body.innerText');
 const go = async (path) => {
   await send('Page.navigate', { url: 'http://localhost:5173' + path });
-  await delay(1600);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    await delay(150);
+    if (
+      await evaluate("!!document.querySelector('main h1') && !document.body.innerText.includes('Carregando')")
+    )
+      break;
+  }
 };
 const select = async (label, option) => {
   await evaluate(
-    `(()=>{const label=[...document.querySelectorAll('label')].find(e=>e.textContent===${JSON.stringify(label)});const field=document.getElementById(label.htmlFor);field.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));})()`
+    `(()=>{const label=[...document.querySelectorAll('label')].find(e=>e.textContent.replaceAll('*','').trim()===${JSON.stringify(label)});const field=document.getElementById(label.htmlFor);field.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));})()`
   );
   await delay(100);
   await evaluate(
@@ -114,14 +106,18 @@ await evaluate(
 );
 await go('/suppliers');
 check((await body()).includes('Demonstração local'), 'mock identificado');
+await click('Novo fornecedor');
+await click('Pessoa Física');
+await click('Cancelar');
+check(await evaluate(`location.pathname==='/suppliers'`), 'cancelar retorna para Fornecedores');
 check(await evaluate(`document.querySelectorAll('tbody tr').length===4`), 'listagem');
 await input('Buscar fornecedor', '12.ABC.345/01DE-35');
 await delay(700);
 check(await evaluate(`document.querySelectorAll('tbody tr').length===1`), 'busca CNPJ');
 await click('Limpar filtros');
-await select('Tipo', 'Pessoa Física');
+await select('Pessoa', 'Pessoa Física');
 check(await evaluate(`document.querySelectorAll('tbody tr').length===2`), 'filtro PF');
-await select('Tipo', 'Pessoa Jurídica');
+await select('Pessoa', 'Pessoa Jurídica');
 check(await evaluate(`document.querySelectorAll('tbody tr').length===2`), 'filtro PJ');
 await select('Status', 'Inativos');
 check(await evaluate(`document.querySelectorAll('tbody tr').length===1`), 'filtro inativo');
@@ -131,13 +127,17 @@ await delay(700);
 check((await body()).includes('Nenhum fornecedor encontrado com os filtros informados.'), 'sem resultados');
 await click('Limpar filtros');
 await click('Novo fornecedor');
-await input('Nome completo', 'Pessoa teste browser');
+check((await body()).includes('Tipo de fornecedor'), 'escolha PF/PJ antes do formulário');
+await click('Pessoa Física');
+await input('Nome', 'Pessoa teste browser');
 await input('CPF', '12345678900');
-await click('Cadastrar fornecedor');
+await click('Próximo');
 check((await body()).includes('CPF inválido'), 'CPF inválido mantém rascunho');
 await input('CPF', '12345678909');
 check(!(await body()).includes('Data de nascimento'), 'PF fornecedor sem nascimento');
-await input('Nome do contato comercial', 'Contato comercial teste');
+await click('Próximo');
+await input('Pessoa de contato', 'Contato comercial teste');
+await select('Tipo do fornecedor', 'Fabricante');
 await input('Observações comerciais', 'Notas comerciais PF');
 await input('Número', '42');
 await input('Complemento', 'Sala teste');
@@ -149,16 +149,49 @@ check(
   ),
   'CEP preenche e preserva número'
 );
+await click('Próximo');
+check((await body()).includes('Tipo de inscrição'), 'terceira etapa fiscal');
+await select('Tipo de inscrição', 'COM INSC');
+await click('Próximo');
+check((await body()).includes('Informe a inscrição estadual.'), 'COM INSC exige IE');
+await input('Inscrição Estadual', '123');
+await input('Inscrição Municipal', '456');
+await click('Próximo');
+await input('Frete', '-1');
+await input('Frequência de visita', '0');
+await input('Prazo de pagamento', '-1');
+await click('Cadastrar fornecedor');
+check(
+  await evaluate(`document.querySelectorAll('[aria-invalid="true"]').length===3`),
+  'financeiro inválido bloqueia cadastro'
+);
+await input('Frete', '2,50');
+await input('Última visita', '2026-01-10');
+await input('Próxima visita', '2026-10-20');
+await select('Dia de visita', 'Segunda-feira');
+await input('Frequência de visita', '15');
+await input('Prazo de pagamento', '30');
+await click('Voltar');
+await click('Voltar');
+check((await body()).includes('Fabricante'), 'rascunho comercial preservado');
+await click('Próximo');
+await click('Próximo');
+check(await evaluate(`!!document.querySelector('input[value="30"]')`), 'rascunho financeiro preservado');
 await click('Cadastrar fornecedor');
 check((await body()).includes('Fornecedor cadastrado com sucesso.'), 'criação PF');
 await go('/suppliers');
 check((await body()).includes('Pessoa teste browser'), 'persistência após refresh');
 await click('Novo fornecedor');
-await select('Tipo de fornecedor', 'Pessoa Jurídica');
-await input('Razão social', 'Empresa teste browser');
+await click('Pessoa Jurídica');
+await input('Nome', 'Empresa teste browser');
+
 await input('CNPJ', '11444777000161');
+await click('Próximo');
+await select('Tipo do fornecedor', 'Distribuidor');
 await input('E-mail comercial', 'comercial@example.invalid');
 await input('Telefone comercial', '63999998888');
+await click('Próximo');
+await click('Próximo');
 await click('Cadastrar fornecedor');
 check((await body()).includes('Fornecedor cadastrado com sucesso.'), 'criação PJ');
 await select('Por página', '5');
@@ -185,13 +218,40 @@ check(
   (await body()).includes('Contato comercial teste') && (await body()).includes('Notas comerciais PF'),
   'dados comerciais no perfil PF'
 );
+await click('Financeiro');
+check(
+  (await body()).includes('2,50 %') &&
+    (await body()).includes('15 dias') &&
+    (await body()).includes('30 dias') &&
+    (await body()).includes('Segunda-feira'),
+  'financeiro no perfil'
+);
+check(
+  await evaluate(`document.querySelector('main button[aria-pressed="true"]').textContent==='Financeiro'`),
+  'card financeiro selecionado'
+);
+await click('Histórico');
+check((await body()).includes('Nenhum histórico disponível.'), 'histórico sem eventos inventados');
+await click('Dados Gerais');
 await click('Editar fornecedor');
-await input('Nome completo', 'Pessoa teste editada');
+await input('Nome', 'Pessoa teste editada');
+await click('Próximo');
+await click('Próximo');
+await click('Próximo');
+check(
+  await evaluate(`!!document.querySelector('input[value="2,50"]')`),
+  'frete carregado com vírgula na edição'
+);
 await click('Salvar alterações');
 check((await body()).includes('Fornecedor atualizado com sucesso.'), 'edição');
 await click('Novo fornecedor');
-await input('Nome completo', 'Duplicado');
+await click('Pessoa Física');
+await input('Nome', 'Duplicado');
+
 await input('CPF', '12345678909');
+await click('Próximo');
+await click('Próximo');
+await click('Próximo');
 await click('Cadastrar fornecedor');
 check((await body()).includes('Já existe um fornecedor com este documento.'), 'duplicado amigável');
 for (const mode of ['light', 'dark']) {
@@ -199,10 +259,16 @@ for (const mode of ['light', 'dark']) {
     `localStorage.setItem('erp.themeMode','${mode}');window.dispatchEvent(new StorageEvent('storage',{key:'erp.themeMode'}))`
   );
   for (const width of [1920, 1440, 1366, 1024, 768]) {
-    await viewport(width, 900);
+    await viewport(width, width === 1920 ? 1080 : width === 1366 ? 768 : 900);
     check(
       await evaluate('document.documentElement.scrollWidth<=innerWidth'),
       'form responsivo ' + mode + ' ' + width
+    );
+    check(
+      await evaluate(
+        `(()=>{const b=[...document.querySelectorAll('main button')].find(e=>['Próximo','Cadastrar fornecedor'].includes(e.textContent.trim()));const r=b.getBoundingClientRect();return r.top>=0 && r.bottom<=innerHeight})()`
+      ),
+      'ações fixas ' + mode + ' ' + width
     );
   }
   await viewport(1440, 900);
@@ -211,7 +277,7 @@ for (const mode of ['light', 'dark']) {
   );
   await go('/suppliers');
   for (const width of [1920, 1440, 1366, 1024, 768]) {
-    await viewport(width, 900);
+    await viewport(width, width === 1920 ? 1080 : width === 1366 ? 768 : 900);
     check(
       await evaluate('document.documentElement.scrollWidth<=innerWidth'),
       'lista responsiva ' + mode + ' ' + width
@@ -231,12 +297,16 @@ for (const mode of ['light', 'dark']) {
     `localStorage.setItem('erp.themeMode','${mode}');window.dispatchEvent(new StorageEvent('storage',{key:'erp.themeMode'}))`
   );
   for (const width of [1920, 1440, 1366, 1024, 768]) {
-    await viewport(width, 900);
+    await viewport(width, width === 1920 ? 1080 : width === 1366 ? 768 : 900);
     check(
       await evaluate('document.documentElement.scrollWidth<=innerWidth'),
       'perfil responsivo ' + mode + ' ' + width
     );
   }
+  await viewport(1440, 900);
+  await send('Page.captureScreenshot', { format: 'png' }).then((r) =>
+    fs.writeFileSync('tmp/suppliers-profile-' + mode + '.png', Buffer.from(r.data, 'base64'))
+  );
 }
 await go('/suppliers/new');
 check(
@@ -249,13 +319,16 @@ check(
   'movimento reduzido'
 );
 await evaluate(`window.fetch=()=>Promise.reject(new Error('Falha de CEP simulada'))`);
+await input('Nome', 'Teste CEP');
+await input('CPF', '12345678909');
+await click('Próximo');
 await input('CEP', '01001000');
 await delay(700);
 check(
   (await body()).includes('Preencha o endereço manualmente.'),
   'falha de CEP permite preenchimento manual'
 );
-await input('Logradouro', 'Endereço manual');
+await input('Endereço', 'Endereço manual');
 check(
   await evaluate(`!!document.querySelector('input[value="Endereço manual"]')`),
   'endereço manual editável'

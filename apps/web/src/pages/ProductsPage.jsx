@@ -1,4 +1,7 @@
-﻿import { useEffect, useState } from 'react';
+import { unitModule } from '../features/units/unit-module.js';
+import { useLookupList } from '../features/catalog-lookups/lookup-queries.js';
+import { groupModule } from '../features/product-groups/group-module.js';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import {
   Alert,
@@ -38,7 +41,7 @@ import { useEntityList, useEntitySummary } from '../features/parties/entity-quer
 import { EntityDemoNotice, EntityStatus } from '../features/parties/EntityShared.jsx';
 import { EntityStatusAction } from '../features/parties/EntityStatusAction.jsx';
 import { productModule } from '../features/products/product-module.js';
-import { productCategories, units, itemTypeLabel } from '../features/products/product-options.js';
+import { itemTypeLabel } from '../features/products/product-options.js';
 import { formatMoney } from '../components/business/money.js';
 
 // Mesmo padrão de listagem dos cadastros, com dados específicos do catálogo único.
@@ -51,6 +54,8 @@ export function ProductsPage() {
 }
 const defaults = { search: '', type: '', status: '', category: '', unit: '', page: 1, pageSize: 10 };
 function ProductList() {
+  const unitsQuery = useLookupList(unitModule);
+  const groups = useLookupList(groupModule);
   const [filters, setFilters] = useState(defaults);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
@@ -163,14 +168,17 @@ function ProductList() {
                 <MenuItem value="ACTIVE">Ativos</MenuItem>
                 <MenuItem value="INACTIVE">Inativos</MenuItem>
               </TextField>
-              <TextField select label="Categoria" value={filters.category} onChange={change('category')}>
-                <MenuItem value="">Todas</MenuItem>
-                {productCategories.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
-                  </MenuItem>
+              <TextField
+                label="Grupo"
+                value={filters.category}
+                onChange={change('category')}
+                slotProps={{ htmlInput: { list: 'product-group-filter' } }}
+              />
+              <datalist id="product-group-filter">
+                {(groups.data?.items ?? []).map((group) => (
+                  <option key={group.id} value={group.name} />
                 ))}
-              </TextField>
+              </datalist>
               <TextField
                 label="Unidade"
                 value={filters.unit}
@@ -180,8 +188,8 @@ function ProductList() {
                 slotProps={{ htmlInput: { list: 'product-filter-units', maxLength: 10 } }}
               />
               <datalist id="product-filter-units">
-                {units.map(([code, label]) => (
-                  <option key={code} value={code}>
+                {(unitsQuery.data?.items ?? []).map(({ id, abbreviation: code, description: label }) => (
+                  <option key={id} value={code}>
                     {label}
                   </option>
                 ))}
@@ -233,7 +241,7 @@ function ProductList() {
                 >
                   <TableHead>
                     <TableRow>
-                      {['Item', 'Código', 'Categoria', 'Tipo', 'Preço', 'Unidade', 'Status', 'Ações'].map(
+                      {['Item', 'Código', 'Grupo', 'Tipo', 'Preço', 'Unidade', 'Status', 'Ações'].map(
                         (label) => (
                           <TableCell key={label} align={label === 'Ações' ? 'right' : 'left'}>
                             {label}

@@ -1,4 +1,13 @@
-﻿import { useRef, useState } from 'react';
+import { NcmField } from '../features/ncm/NcmField.jsx';
+import { ncmModule } from '../features/ncm/ncm-module.js';
+import { resolveProductNcm } from '../features/ncm/mockNcmRepository.js';
+import { UnitField } from '../features/units/UnitField.jsx';
+import { unitModule } from '../features/units/unit-module.js';
+import { resolveProductUnit } from '../features/units/mockUnitsRepository.js';
+import { GroupField } from '../features/product-groups/GroupField.jsx';
+import { groupModule } from '../features/product-groups/group-module.js';
+import { useLookupSource } from '../features/catalog-lookups/lookup-queries.js';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import PropTypes from 'prop-types';
 import { Alert, Box, Button, FormControlLabel, MenuItem, Stack, Switch, TextField } from '@mui/material';
@@ -19,8 +28,10 @@ import { EntityDemoNotice } from '../features/parties/EntityShared.jsx';
 import { useEntityDetail, useEntityMutation } from '../features/parties/entity-queries.js';
 import { productModule } from '../features/products/product-module.js';
 import { emptyProduct, validateProduct } from '../features/products/product-model.js';
-import { units, productCategories, itemTypeLabel } from '../features/products/product-options.js';
+import { itemTypeLabel } from '../features/products/product-options.js';
 import { ProductProfile, ProductSummary } from '../features/products/ProductShared.jsx';
+import { BrandField } from '../features/brands/BrandField.jsx';
+import { useBrandsSource } from '../features/brands/brands-queries.js';
 
 // Catálogo único: o formulário muda somente as seções do tipo, mantendo preço/código em ambos.
 export function ProductEditorPage({ mode }) {
@@ -86,6 +97,10 @@ function Editor({ mode }) {
 }
 Editor.propTypes = ProductEditorPage.propTypes;
 function ProductForm({ initial }) {
+  const { repository: ncmRepository } = useLookupSource(ncmModule);
+  const { repository: unitsRepository } = useLookupSource(unitModule);
+  const { repository: groupsRepository } = useLookupSource(groupModule);
+  const { repository: brandsRepository } = useBrandsSource();
   const [form, setForm] = useState(() => ({ ...emptyProduct(), ...initial }));
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState(false);
@@ -111,14 +126,13 @@ function ProductForm({ initial }) {
     />
   );
   const unitField = (
-    <TextField
-      fullWidth
-      required={product}
-      label={product ? 'Unidade de medida' : 'Unidade de cobrança'}
+    <UnitField
       value={form.unit}
-      onChange={(event) => change('unit', event.target.value.toUpperCase())}
-      helperText="Selecione uma sugestão ou informe uma unidade."
-      slotProps={{ htmlInput: { list: 'catalog-units', maxLength: 10 } }}
+      unitId={form.unitId}
+      initialUnit={initial?.unit}
+      initialId={initial?.unitId}
+      required={product}
+      onChange={(unit) => setForm((old) => ({ ...old, ...unit }))}
     />
   );
   function submit(event) {
@@ -141,7 +155,22 @@ function ProductForm({ initial }) {
     lock.current = true;
     setError('');
     try {
-      await mutation.mutateAsync({ operation: initial ? 'update' : 'create', id: initial?.id, data: form });
+      let data = await resolveProductUnit(unitsRepository, form, initial);
+      data = await resolveProductNcm(ncmRepository, data, initial);
+      // Reconfere a escolha ao salvar, pois outra aba pode ter inativado a marca.
+      if (product && form.brandId) {
+        const brand = await brandsRepository.getById(form.brandId);
+        if ((!brand || !brand.active) && form.brandId !== initial?.brandId)
+          throw Error('Selecione uma marca ativa para o novo vínculo.');
+        if (brand) data = { ...data, brand: brand.name };
+      }
+      if (form.groupId) {
+        const group = await groupsRepository.getById(form.groupId);
+        if ((!group || !group.active) && form.groupId !== initial?.groupId)
+          throw Error('Selecione um grupo ativo para o novo vínculo.');
+        if (group) data = { ...data, category: group.name };
+      }
+      await mutation.mutateAsync({ operation: initial ? 'update' : 'create', id: initial?.id, data });
       navigate('/products', {
         state: { productFeedback: initial ? 'Item atualizado com sucesso.' : 'Item cadastrado com sucesso.' }
       });
@@ -170,13 +199,7 @@ function ProductForm({ initial }) {
           {error}
         </Alert>
       )}
-      <datalist id="catalog-units">
-        {units.map(([code, label]) => (
-          <option value={code} key={code}>
-            {label}
-          </option>
-        ))}
-      </datalist>
+
       <Box
         component="fieldset"
         disabled={mutation.isPending}
@@ -218,19 +241,12 @@ function ProductForm({ initial }) {
               />
               {field('name', 'Nome', true)}
               {field('code', 'Código interno', true, 60)}
-              <TextField
-                select
-                label="Categoria"
+              <GroupField
                 value={form.category}
-                onChange={(event) => change('category', event.target.value)}
-              >
-                <MenuItem value="">Não informada</MenuItem>
-                {productCategories.map((category) => (
-                  <MenuItem key={category} value={category}>
-                    {category}
-                  </MenuItem>
-                ))}
-              </TextField>
+                groupId={form.groupId}
+                initialId={initial?.groupId}
+                onChange={(group) => setForm((old) => ({ ...old, ...group }))}
+              />
               <TextField
                 fullWidth
                 multiline
@@ -247,8 +263,20 @@ function ProductForm({ initial }) {
               <Box sx={grid}>
                 {field('gtin', 'Código de barras / GTIN', false, 14)}
                 {unitField}
-                {field('ncm', 'NCM', false, 8)}
-                {field('brand', 'Marca')}
+                <NcmField
+                  value={form.ncm}
+                  ncmId={form.ncmId}
+                  initialNcm={initial?.ncm}
+                  initialId={initial?.ncmId}
+                  onChange={(ncm) => setForm((old) => ({ ...old, ...ncm }))}
+                />
+                <BrandField
+                  value={form.brand}
+                  brandId={form.brandId}
+                  initialName={initial?.brand}
+                  initialId={initial?.brandId}
+                  onChange={(brand) => setForm((old) => ({ ...old, ...brand }))}
+                />
                 {field('manufacturerReference', 'Referência do fabricante')}
               </Box>
             </SectionCard>

@@ -6,12 +6,16 @@ export const emptyProduct = () => ({
   name: '',
   code: '',
   category: '',
+  groupId: '',
   description: '',
   priceCents: null,
   unit: 'UN',
+  unitId: '',
   gtin: '',
   ncm: '',
+  ncmId: '',
   brand: '',
+  brandId: '',
   manufacturerReference: '',
   costCents: null,
   trackStock: false,
@@ -21,11 +25,12 @@ export const emptyProduct = () => ({
 });
 export function normalizeProduct(input) {
   const item = { type: input.type, status: input.status, priceCents: input.priceCents };
-  for (const key of ['name', 'code', 'category', 'description', 'unit'])
+  for (const key of ['name', 'code', 'category', 'groupId', 'description', 'unit', 'unitId'])
     item[key] = String(input[key] ?? '').trim();
   item.unit = item.unit.toUpperCase();
   if (item.type === 'PRODUCT') {
-    for (const key of ['gtin', 'ncm', 'brand', 'manufacturerReference'])
+    // brand preserva a descrição histórica; brandId vincula novos cadastros sem migrar dados legados.
+    for (const key of ['gtin', 'ncm', 'ncmId', 'brand', 'brandId', 'manufacturerReference'])
       item[key] = String(input[key] ?? '').trim();
     item.costCents = input.costCents ?? null;
     item.trackStock = Boolean(input.trackStock);

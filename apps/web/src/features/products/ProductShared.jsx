@@ -31,7 +31,7 @@ export function ProductSummary({ item }) {
         items={[
           ['Tipo', itemTypeLabel(item.type)],
           ['Código', item.code],
-          ['Categoria', item.category],
+          ['Grupo', item.category],
           ['Preço', formatMoney(item.priceCents)],
           ['Unidade', item.unit],
           ...(item.type === 'PRODUCT' ? [['Controle de estoque', item.trackStock ? 'Sim' : 'Não']] : [])
@@ -90,7 +90,7 @@ export function ProductProfile({ item }) {
               items={[
                 ['Nome', item.name],
                 ['Código interno', item.code],
-                ['Categoria', item.category],
+                ['Grupo', item.category],
                 ['Unidade', item.unit],
                 ['Descrição', item.description]
               ]}

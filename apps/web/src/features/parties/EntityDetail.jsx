@@ -9,20 +9,27 @@ import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import { SectionCard } from '../../components/common/SectionCard.jsx';
 import { EntitySummary, EntityInfo } from '../parties/EntityShared.jsx';
 import { EntityStatusAction } from '../parties/EntityStatusAction.jsx';
-import { customerName, customerDocument, typeLabel } from './customer-model.js';
-import { hydrateCustomer, taxpayerTypes } from './customer-schema.js';
+import { customerName, customerDocument, typeLabel } from '../customers/customer-model.js';
+import { taxpayerTypes } from '../customers/customer-schema.js';
+import { useEntityModule } from './entity-module.js';
+import { SupplierFinancialSummary } from '../suppliers/SupplierFinancialSummary.jsx';
 import { formatPhone, formatCep, formatDate } from '../../components/business/business-formatters.js';
 import { formatMoney } from '../../components/business/money.js';
 
-const sections = [
+const customerSections = [
   ['Dados Gerais', PersonOutline],
   ['Financeiro', AccountBalanceWalletOutlined],
   ['Histórico (Logs)', HistoryOutlined],
   ['Fiscal', DescriptionOutlined]
 ];
-// Navegação local não troca cliente nem refaz consultas; os painéis exibem apenas dados persistidos.
-export function CustomerDetail({ customer }) {
-  const c = hydrateCustomer(customer);
+// Navegação local preserva o registro e a consulta; painéis exibem apenas dados persistidos.
+export function EntityDetail({ customer }) {
+  const module = useEntityModule();
+  const supplier = module.key === 'suppliers';
+  const c = module.empty(customer);
+  const sections = supplier
+    ? [customerSections[0], customerSections[1], ['Histórico', HistoryOutlined]]
+    : customerSections;
   const [section, setSection] = useState(0);
   const [statusOpen, setStatusOpen] = useState(false);
   const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
@@ -43,24 +50,27 @@ export function CustomerDetail({ customer }) {
     >
       <Stack spacing={2}>
         <EntitySummary customer={c} />
-        <Button component={Link} to={`/customers/${c.id}/edit`} variant="contained">
-          Editar cliente
+        <Button component={Link} to={`${module.path}/${c.id}/edit`} variant="contained">
+          {`Editar ${module.singular}`}
         </Button>
         <Button
           variant="outlined"
           color={c.status === 'ACTIVE' ? 'error' : 'success'}
           onClick={() => setStatusOpen(true)}
         >
-          {c.status === 'ACTIVE' ? 'Inativar cliente' : 'Ativar cliente'}
+          {c.status === 'ACTIVE' ? `Inativar ${module.singular}` : `Ativar ${module.singular}`}
         </Button>
       </Stack>
       <Stack spacing={3} sx={{ minWidth: 0 }}>
         <Box
           role="group"
-          aria-label="Seções do cliente"
+          aria-label={`Seções do ${module.singular}`}
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: 'repeat(2,minmax(0,1fr))', md: 'repeat(4,minmax(0,1fr))' },
+            gridTemplateColumns: {
+              xs: 'repeat(2,minmax(0,1fr))',
+              md: `repeat(${sections.length},minmax(0,1fr))`
+            },
             gap: 1.5
           }}
         >
@@ -114,13 +124,25 @@ export function CustomerDetail({ customer }) {
                     ...(c.type === 'PERSON'
                       ? [
                           ['RG', c.rg],
-                          ['Data de nascimento', formatDate(c.birthDate)]
+                          ...(!supplier ? [['Data de nascimento', formatDate(c.birthDate)]] : [])
                         ]
                       : [
-                          ['Data de inscrição', formatDate(c.registrationDate)],
+                          ...(!supplier ? [['Data de inscrição', formatDate(c.registrationDate)]] : []),
                           ['Nome do contato', c.contactName]
                         ]),
-                    ...fiscal.slice(1),
+                    ...(supplier
+                      ? [
+                          ['Tipo do fornecedor', c.supplierType],
+                          ['Tipo de inscrição', c.registrationType],
+                          ['Pessoa de contato', c.commercialContact],
+                          ['Data de inscrição', formatDate(c.registrationDate)],
+                          ['Inscrição Estadual', c.stateRegistration],
+                          ['Inscrição Municipal', c.municipalRegistration],
+                          ['E-mail comercial', c.commercialEmail],
+                          ['Telefone comercial', formatPhone(c.commercialPhone)],
+                          ['Observações comerciais', c.commercialNotes]
+                        ]
+                      : fiscal.slice(1)),
                     ['Status', c.status === 'ACTIVE' ? 'Ativo' : 'Inativo'],
                     ['Observações', c.notes]
                   ]}
@@ -143,7 +165,7 @@ export function CustomerDetail({ customer }) {
                 />
               </Box>
             )}
-            {section === 1 && (
+            {!supplier && section === 1 && (
               <Stack spacing={3}>
                 <EntityInfo
                   items={[
@@ -156,6 +178,7 @@ export function CustomerDetail({ customer }) {
                 </Alert>
               </Stack>
             )}
+            {supplier && section === 1 && <SupplierFinancialSummary financial={c.financial} />}
             {section === 2 && <Alert severity="info">Nenhum histórico disponível.</Alert>}
             {section === 3 && <EntityInfo items={fiscal} />}
           </SectionCard>
@@ -165,4 +188,4 @@ export function CustomerDetail({ customer }) {
     </Box>
   );
 }
-CustomerDetail.propTypes = { customer: PropTypes.object.isRequired };
+EntityDetail.propTypes = { customer: PropTypes.object.isRequired };

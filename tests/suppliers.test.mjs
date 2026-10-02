@@ -4,6 +4,8 @@ import { createMockSuppliersRepository } from '../apps/web/src/features/supplier
 import {
   emptySupplier,
   normalizeSupplier,
+  hydrateSupplier,
+  supplierErrors,
   validateSupplier
 } from '../apps/web/src/features/suppliers/supplier-model.js';
 import { validateCpf } from '../apps/web/src/components/business/cpf.js';
@@ -14,6 +16,7 @@ const person = () => ({ ...emptySupplier(), name: 'Pessoa Teste', document: '529
 const company = () => ({
   ...emptySupplier(),
   type: 'COMPANY',
+  tradeName: 'Empresa Teste',
   legalName: 'Empresa Teste',
   document: '12.ABC.345/01DE-35'
 });
@@ -145,6 +148,98 @@ test('campos comerciais e isolamento entre repositories', async () => {
     commercialEmail: 'nao-aplica'
   });
   assert.equal(pf.commercialNotes, 'Anotações PF');
-  assert.equal(pf.commercialEmail, '');
+  assert.equal(pf.commercialEmail, 'nao-aplica');
   assert.ok(!('birthDate' in pf));
+});
+
+test('classificação, inscrições PF e financeiro persistem na criação e edição', async () => {
+  const repo = createMockSuppliersRepository({ seed: () => [] });
+  const input = {
+    ...person(),
+    supplierType: 'Fabricante',
+    rg: 'RG DEV',
+    stateRegistration: 'IE DEV',
+    municipalRegistration: 'IM DEV',
+    registrationDate: '2025-01-20',
+    commercialContact: 'Contato DEV',
+    financial: {
+      freightPercent: '2,50',
+      lastVisit: '2026-01-10',
+      nextVisit: '2026-10-20',
+      visitWeekDay: 'Segunda-feira',
+      visitFrequencyDays: '15',
+      paymentTermDays: '30'
+    }
+  };
+  const saved = await repo.create(input);
+  assert.equal(saved.financial.freightPercent, 2.5);
+  assert.equal(saved.financial.paymentTermDays, 30);
+  assert.equal(saved.stateRegistration, 'IE DEV');
+  assert.equal(saved.municipalRegistration, 'IM DEV');
+  assert.equal(saved.rg, 'RG DEV');
+  assert.equal(saved.commercialContact, 'Contato DEV');
+  const edited = await repo.update(saved.id, { ...saved, supplierType: 'Distribuidor' });
+  assert.equal(edited.supplierType, 'Distribuidor');
+  assert.deepEqual(edited.financial, saved.financial);
+  assert.equal(validateSupplier({ ...company(), legalName: '' }), '');
+  assert.ok(supplierErrors({ ...company(), tradeName: '' }, 0).tradeName);
+});
+test('validação de financeiro é local à quarta etapa e permite datas vazias', () => {
+  for (const financial of [
+    { freightPercent: '-1' },
+    { freightPercent: 'abc' },
+    { freightPercent: '1,234' },
+    { visitFrequencyDays: 0 },
+    { visitFrequencyDays: '1.5' },
+    { paymentTermDays: -1 },
+    { paymentTermDays: 'abc' },
+    { lastVisit: '2026-02-30' },
+    { nextVisit: 'inválida' },
+    { visitWeekDay: 'Feriado' }
+  ]) {
+    const input = { ...person(), financial };
+    assert.deepEqual(supplierErrors(input, 0), {});
+    assert.ok(Object.keys(supplierErrors(input, 3)).length);
+  }
+  assert.deepEqual(supplierErrors(person(), 3), {});
+  assert.ok(supplierErrors({ ...person(), supplierType: 'Outro' }, 1).supplierType);
+});
+test('leitura de mocks legados mantém IDs, campos comerciais e datas sem gravar defaults', async () => {
+  const storage = memoryStorage();
+  const old = {
+    ...company(),
+    id: 'legacy',
+    createdAt: '2025-01-01',
+    commercialContact: 'Contato anterior',
+    commercialNotes: 'Nota anterior'
+  };
+  delete old.financial;
+  delete old.supplierType;
+  delete old.rg;
+  storage.setItem('erp.dev.suppliers.v1', JSON.stringify([old]));
+  const repo = createMockSuppliersRepository({ storage });
+  const read = await repo.getById('legacy');
+  assert.deepEqual(read.financial, hydrateSupplier().financial);
+  assert.equal(read.supplierType, '');
+  assert.equal(read.commercialNotes, old.commercialNotes);
+  assert.equal(read.createdAt, old.createdAt);
+  assert.equal(JSON.parse(storage.getItem('erp.dev.suppliers.v1'))[0].financial, undefined);
+  await repo.update('legacy', { ...read, supplierType: 'Fabricante' });
+  assert.equal((await repo.getById('legacy')).commercialContact, old.commercialContact);
+});
+
+// Navegar não deve validar etapas ainda não exibidas nem perder inscrições.
+test('fiscal e endereço possuem validações independentes', () => {
+  const data = { ...person(), registrationType: 'COM INSC', address: { ...person().address, cep: '12' } };
+  assert.deepEqual(supplierErrors(data, 0), {});
+  assert.ok(supplierErrors(data, 1)['address.cep']);
+  assert.ok(supplierErrors(data, 2).stateRegistration);
+  assert.deepEqual(supplierErrors({ ...data, registrationType: 'ISENTO' }, 2), {});
+  assert.deepEqual(supplierErrors({ ...data, registrationType: 'SEM INSC' }, 2), {});
+  assert.deepEqual(supplierErrors({ ...data, stateRegistration: '123' }, 2), {});
+  assert.equal(
+    normalizeSupplier({ ...data, stateRegistration: '123', municipalRegistration: '456' })
+      .municipalRegistration,
+    '456'
+  );
 });

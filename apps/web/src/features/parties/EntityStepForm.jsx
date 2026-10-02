@@ -27,14 +27,19 @@ import { useCepLookup } from '../../app/useCepLookup.js';
 import { mergeCepAddress } from '../../api/cep.js';
 import { useEntityMutation } from '../parties/entity-queries.js';
 import { EntitySummary } from '../parties/EntityShared.jsx';
-import { states, typeLabel } from './customer-model.js';
-import { hydrateCustomer, customerErrors, registrationTypes, taxpayerTypes } from './customer-schema.js';
+import { states, typeLabel } from '../customers/customer-model.js';
+import { registrationTypes, taxpayerTypes } from '../customers/customer-schema.js';
+import { useEntityModule } from './entity-module.js';
+import { SupplierGeneralFields, SupplierFinancialFields } from '../suppliers/SupplierFields.jsx';
 
 // Um rascunho único mantém os dados ao navegar entre etapas; só a confirmação final persiste.
-export function CustomerStepForm({ initial }) {
+export function EntityStepForm({ initial }) {
+  const module = useEntityModule();
+  const supplier = module.key === 'suppliers';
+  const lastStep = module.steps.length - 1;
   const [params] = useSearchParams();
   const [form, setForm] = useState(() =>
-    hydrateCustomer(initial || { type: params.get('type') === 'COMPANY' ? 'COMPANY' : 'PERSON' })
+    module.empty(initial || { type: params.get('type') === 'COMPANY' ? 'COMPANY' : 'PERSON' })
   );
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState({});
@@ -86,9 +91,11 @@ export function CustomerStepForm({ initial }) {
     locked.current = true;
     try {
       await mutation.mutateAsync({ operation: initial ? 'update' : 'create', id: initial?.id, data: form });
-      navigate('/customers', {
+      navigate(module.path, {
         state: {
-          customerFeedback: initial ? 'Cliente atualizado com sucesso.' : 'Cliente cadastrado com sucesso.'
+          customerFeedback: initial
+            ? `${module.Singular} atualizado com sucesso.`
+            : `${module.Singular} cadastrado com sucesso.`
         }
       });
     } catch (error) {
@@ -101,13 +108,13 @@ export function CustomerStepForm({ initial }) {
   function submit(event) {
     event.preventDefault();
     if (locked.current) return;
-    const nextErrors = customerErrors(form, step < 2 ? step : undefined);
+    const nextErrors = module.errors(form, step < lastStep ? step : undefined);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       requestAnimationFrame(() => root.current?.querySelector('[aria-invalid="true"]')?.focus());
       return;
     }
-    if (step < 2) go(step + 1);
+    if (step < lastStep) go(step + 1);
     else if (initial && initial.status !== form.status) setConfirm(true);
     else save();
   }
@@ -121,7 +128,7 @@ export function CustomerStepForm({ initial }) {
       sx={{ ...businessFormSx, scrollMarginTop: 90 }}
     >
       <Stepper activeStep={step} alternativeLabel sx={{ mb: 3 }}>
-        {['Dados Gerais', 'Fiscal', 'Financeiro'].map((label) => (
+        {module.steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
           </Step>
@@ -162,7 +169,7 @@ export function CustomerStepForm({ initial }) {
                   {initial && (
                     <TextField
                       select
-                      label="Tipo de cliente"
+                      label={`Tipo de ${module.singular}`}
                       value={form.type}
                       onChange={(event) =>
                         setForm((old) => ({ ...old, type: event.target.value, document: '' }))
@@ -179,15 +186,15 @@ export function CustomerStepForm({ initial }) {
                     onChange={(value) => change('document', value)}
                     {...feedback('document')}
                   />
-                  {form.type === 'PERSON' ? field('rg', 'RG', true) : field('legalName', 'Razão Social')}
+                  {form.type === 'PERSON' ? field('rg', 'RG', !supplier) : field('legalName', 'Razão Social')}
                   {field(
-                    form.type === 'PERSON' ? 'birthDate' : 'registrationDate',
-                    form.type === 'PERSON' ? 'Data de nascimento' : 'Data de inscrição',
+                    !supplier && form.type === 'PERSON' ? 'birthDate' : 'registrationDate',
+                    !supplier && form.type === 'PERSON' ? 'Data de nascimento' : 'Data de inscrição',
                     false,
                     'date'
                   )}
                   <FormControlLabel
-                    label="Cliente ativo"
+                    label={`${module.Singular} ativo`}
                     control={
                       <Switch
                         checked={form.status === 'ACTIVE'}
@@ -213,6 +220,10 @@ export function CustomerStepForm({ initial }) {
                   {form.type === 'COMPANY' && field('contactName', 'Nome do contato')}
                 </Box>
               </SectionCard>
+            </>
+          )}
+          {step === (supplier ? 1 : 0) && (
+            <>
               <SectionCard title="Endereço" sx={businessCardSx}>
                 <Box sx={grid}>
                   <ContactField
@@ -235,7 +246,7 @@ export function CustomerStepForm({ initial }) {
                     <TextField
                       key={key}
                       label={label}
-                      required={Boolean(required)}
+                      required={!supplier && Boolean(required)}
                       value={form.address[key]}
                       onChange={(e) => addressChange(key, e.target.value)}
                       {...feedback(`address.${key}`)}
@@ -245,7 +256,7 @@ export function CustomerStepForm({ initial }) {
                   <TextField
                     select
                     label="UF"
-                    required
+                    required={!supplier}
                     value={form.address.state}
                     onChange={(e) => addressChange('state', e.target.value)}
                     {...feedback('address.state')}
@@ -259,6 +270,7 @@ export function CustomerStepForm({ initial }) {
                   </TextField>
                 </Box>
               </SectionCard>
+              {supplier && <SupplierGeneralFields form={form} change={change} errors={errors} />}
               <SectionCard title="Observações" sx={businessCardSx}>
                 <TextField
                   fullWidth
@@ -272,24 +284,26 @@ export function CustomerStepForm({ initial }) {
               </SectionCard>
             </>
           )}
-          {step === 1 && (
+          {step === (supplier ? 2 : 1) && (
             <>
-              <SectionCard title="Fiscal" sx={businessCardSx}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Tipo de Contribuinte"
-                  value={form.taxpayerType}
-                  onChange={(e) => change('taxpayerType', e.target.value)}
-                  {...feedback('taxpayerType')}
-                >
-                  {Object.entries(taxpayerTypes).map(([value, label]) => (
-                    <MenuItem key={value} value={value} sx={{ whiteSpace: 'normal' }}>
-                      {label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </SectionCard>
+              {!supplier && (
+                <SectionCard title="Fiscal" sx={businessCardSx}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Tipo de Contribuinte"
+                    value={form.taxpayerType}
+                    onChange={(e) => change('taxpayerType', e.target.value)}
+                    {...feedback('taxpayerType')}
+                  >
+                    {Object.entries(taxpayerTypes).map(([value, label]) => (
+                      <MenuItem key={value} value={value} sx={{ whiteSpace: 'normal' }}>
+                        {label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </SectionCard>
+              )}
               <SectionCard title="Inscrições" sx={businessCardSx}>
                 <Box sx={grid}>
                   <TextField
@@ -305,17 +319,21 @@ export function CustomerStepForm({ initial }) {
                       </MenuItem>
                     ))}
                   </TextField>
-                  {field('stateRegistration', 'Inscrição Estadual', form.registrationType !== 'SEM INSC')}
+                  {field(
+                    'stateRegistration',
+                    'Inscrição Estadual',
+                    supplier ? form.registrationType === 'COM INSC' : form.registrationType !== 'SEM INSC'
+                  )}
                   {field(
                     'municipalRegistration',
                     'Inscrição Municipal',
-                    form.registrationType !== 'SEM INSC'
+                    !supplier && form.registrationType !== 'SEM INSC'
                   )}
                 </Box>
               </SectionCard>
             </>
           )}
-          {step === 2 && (
+          {!supplier && step === 2 && (
             <SectionCard
               title="Financeiro"
               subtitle="Preferências do cliente. Não gera contas ou movimentações."
@@ -345,6 +363,13 @@ export function CustomerStepForm({ initial }) {
               </Stack>
             </SectionCard>
           )}
+          {supplier && step === 3 && (
+            <SupplierFinancialFields
+              financial={form.financial}
+              onChange={(value) => change('financial', value)}
+              errors={errors}
+            />
+          )}
         </Stack>
         <EntitySummary customer={form} />
       </Box>
@@ -352,23 +377,23 @@ export function CustomerStepForm({ initial }) {
         <Button
           variant="outlined"
           disabled={mutation.isPending}
-          onClick={() => (step ? go(step - 1) : navigate('/customers'))}
+          onClick={() => (step ? go(step - 1) : navigate(module.path))}
         >
           {step ? 'Voltar' : 'Cancelar'}
         </Button>
         <CreateButton type="submit" disabled={mutation.isPending}>
           {mutation.isPending
             ? 'Salvando...'
-            : step < 2
+            : step < lastStep
               ? 'Próximo'
               : initial
                 ? 'Salvar alterações'
-                : 'Cadastrar cliente'}
+                : `Cadastrar ${module.singular}`}
         </CreateButton>
       </StickyFormActions>
       <ConfirmDialog
         open={confirm}
-        title="Alterar status do cliente?"
+        title={`Alterar status do ${module.singular}?`}
         description="A alteração de status será salva junto com o cadastro."
         confirmLabel="Salvar alterações"
         loading={mutation.isPending}
@@ -378,4 +403,4 @@ export function CustomerStepForm({ initial }) {
     </Box>
   );
 }
-CustomerStepForm.propTypes = { initial: PropTypes.object };
+EntityStepForm.propTypes = { initial: PropTypes.object };

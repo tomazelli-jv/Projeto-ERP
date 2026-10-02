@@ -119,7 +119,8 @@ check(await evaluate(`document.querySelectorAll('tbody tr').length===2`), 'filtr
 await select('Status', 'Inativos');
 check(await evaluate(`document.querySelectorAll('tbody tr').length===1`), 'filtro status');
 await click('Limpar filtros');
-await select('Categoria', 'Bebidas');
+await input('Grupo', 'Bebidas');
+await delay(400);
 check(await evaluate(`document.querySelectorAll('tbody tr').length===1`), 'filtro categoria');
 await click('Limpar filtros');
 await input('Unidade', 'H');
@@ -139,7 +140,7 @@ check((await body()).includes('Informe um preço de venda válido'), 'preço neg
 await input('Preço de venda', '123,45');
 await input('Preço de custo', '10,10');
 await input('Código de barras / GTIN', '00012345678905');
-await input('NCM', '01010101');
+await select('NCM', '00000001 — Demonstração técnica — código com zero inicial');
 await evaluate(
   `Array.from(document.querySelectorAll('label')).find(e=>e.textContent==='Controla estoque').click()`
 );
@@ -155,7 +156,7 @@ check((await body()).includes('Produto teste browser'), 'persistência');
 await evaluate(`document.querySelector('a[aria-label="Visualizar item Produto teste browser"]').click()`);
 await delay(500);
 check(
-  (await body()).includes('01010101') && (await body()).includes('123,45') && (await body()).includes('2,5'),
+  (await body()).includes('00000001') && (await body()).includes('123,45') && (await body()).includes('2,5'),
   'detalhe produto'
 );
 await click('Editar produto');
@@ -172,7 +173,7 @@ check(
 );
 await input('Nome', 'Serviço teste browser');
 await input('Código interno', 'S009');
-await input('Unidade de cobrança', 'H');
+await select('Unidade de cobrança', 'H — Hora');
 await input('Duração estimada (minutos)', '-1');
 await input('Preço de venda', '99,99');
 await click('Cadastrar item');
