@@ -44,6 +44,10 @@ import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../../app/auth/auth-context.js';
 import { useOperationalContext } from '../../app/operational-context/operational-context.js';
 import { TopNavigation } from '../navigation/TopNavigation.jsx';
+import { BrandsDialog } from '../../features/brands/BrandsDialog.jsx';
+import { GroupsDialog } from '../../features/product-groups/GroupsDialog.jsx';
+import { UnitsDialog } from '../../features/units/UnitsDialog.jsx';
+import { NcmDialog } from '../../features/ncm/NcmDialog.jsx';
 
 import { layout } from '../../app/layout-tokens.js';
 import { useSidebarPreference } from '../../app/useSidebarPreference.js';
@@ -55,6 +59,10 @@ export function AppShell() {
   const { collapsed, setCollapsed } = useSidebarPreference();
   const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [brandsOpen, setBrandsOpen] = useState(false);
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  const [unitsOpen, setUnitsOpen] = useState(false);
+  const [ncmOpen, setNcmOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [storeSearch, setStoreSearch] = useState('');
   const [storeField, setStoreField] = useState('name');
@@ -284,7 +292,17 @@ export function AppShell() {
                   </Typography>
                 )}
               </Box>
-              <TopNavigation compact={compact} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+              <TopNavigation
+                compact={compact}
+                mobileOpen={mobileOpen}
+                onClose={() => setMobileOpen(false)}
+                onAction={(action) => {
+                  if (action === 'brands') setBrandsOpen(true);
+                  if (action === 'groups') setGroupsOpen(true);
+                  if (action === 'units') setUnitsOpen(true);
+                  if (action === 'ncm') setNcmOpen(true);
+                }}
+              />
               <Stack direction="row" alignItems="center" spacing={0.5} sx={{ flexShrink: 0 }}>
                 {!compact && (
                   <Tooltip title={activeStore?.nomeFantasia ?? 'Trocar de loja'}>
@@ -410,6 +428,10 @@ export function AppShell() {
           <Box sx={{ p: { xs: 2, sm: 2.5, lg: 3 } }}>
             {/* Compartilha a preferência desktop; o Drawer mantém seu estado independente. */}
             <Outlet context={{ collapsed, setCollapsed, topNavigation: true }} />
+            <BrandsDialog open={brandsOpen} onClose={() => setBrandsOpen(false)} />
+            <GroupsDialog open={groupsOpen} onClose={() => setGroupsOpen(false)} />
+            <UnitsDialog open={unitsOpen} onClose={() => setUnitsOpen(false)} />
+            <NcmDialog open={ncmOpen} onClose={() => setNcmOpen(false)} />
           </Box>
         </Box>
       </Box>

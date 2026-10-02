@@ -3,8 +3,8 @@
  * @typedef {'ACTIVE'|'INACTIVE'} ProductStatus
  * @typedef {string} UnitOfMeasure
  * @typedef {string} ProductCategory
- * @typedef {{name:string,code:string,category:ProductCategory,description:string,priceCents:number,status:ProductStatus,unit:UnitOfMeasure}} CatalogBase
- * @typedef {CatalogBase & {type:'PRODUCT',gtin:string,ncm:string,brand:string,manufacturerReference:string,costCents:number|null,trackStock:boolean,minimumStock:string}} Product
+ * @typedef {{name:string,code:string,category:ProductCategory,groupId?:string,description:string,priceCents:number,status:ProductStatus,unit:UnitOfMeasure,unitId?:string}} CatalogBase
+ * @typedef {CatalogBase & {type:'PRODUCT',gtin:string,ncm:string,ncmId?:string,brand:string,brandId?:string,manufacturerReference:string,costCents:number|null,trackStock:boolean,minimumStock:string}} Product
  * @typedef {CatalogBase & {type:'SERVICE',durationMinutes:string,serviceDescription:string}} Service
  * @typedef {Product|Service} CreateCatalogItemInput
  * @typedef {CreateCatalogItemInput} UpdateCatalogItemInput

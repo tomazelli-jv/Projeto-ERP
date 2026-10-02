@@ -42,7 +42,7 @@ export const appRoutes = [
     label: 'Produtos',
     title: 'Produtos',
     description: 'Consulte o catálogo de produtos e serviços.',
-    group: 'Cadastros',
+    group: 'Produtos',
     icon: Inventory2OutlinedIcon,
     module: false
   },
@@ -85,7 +85,7 @@ export const appRoutes = [
     label: 'Empresas e lojas',
     title: 'Empresas e lojas',
     description: 'Gerencie sua empresa e os estabelecimentos vinculados.',
-    group: 'Administração',
+    group: 'Configurações',
     icon: BusinessOutlinedIcon,
     module: false
   },
@@ -161,7 +161,45 @@ export const topNavigationGroups = [
   {
     label: 'Cadastros',
     description: 'Gerencie os dados principais do seu negócio.',
-    items: ['/customers', '/suppliers', '/products', '/inventory'].map((path) => byPath[path])
+    items: ['/customers', '/suppliers', '/inventory'].map((path) => byPath[path])
+  },
+  {
+    label: 'Produtos',
+    description: 'Consulte o catálogo e seus cadastros auxiliares.',
+    // Cadastros em modal usam ações; auxiliares ausentes não inventam rotas.
+    items: [
+      { ...byPath['/products'], label: 'Consulta' },
+      {
+        label: 'Cadastros',
+        icon: Inventory2OutlinedIcon,
+        children: ['Marcas', 'Grupos', 'Unidades de Medida', 'NCM'].map((label) => ({
+          label,
+          icon: Inventory2OutlinedIcon,
+          action:
+            label === 'Marcas'
+              ? 'brands'
+              : label === 'Grupos'
+                ? 'groups'
+                : label === 'Unidades de Medida'
+                  ? 'units'
+                  : 'ncm',
+          description:
+            label === 'Marcas'
+              ? 'Consulte e gerencie as marcas.'
+              : label === 'Grupos'
+                ? 'Organize os grupos de produtos.'
+                : label === 'Unidades de Medida'
+                  ? 'Consulte e gerencie unidades.'
+                  : 'Consulte e gerencie códigos NCM.'
+        }))
+      },
+      ...['Remarcação', 'Etiquetas'].map((label) => ({
+        label,
+        icon: Inventory2OutlinedIcon,
+        disabled: true,
+        description: 'Indisponível nesta versão.'
+      }))
+    ]
   },
   { label: 'Operações', description: 'Acompanhe as operações comerciais.', items: [byPath['/sales']] },
   {
@@ -170,13 +208,13 @@ export const topNavigationGroups = [
     items: [byPath['/financial/receivables']]
   },
   {
-    label: 'Administração',
-    description: 'Gerencie sua empresa e suas unidades.',
-    items: [byPath['/admin/companies']]
-  },
-  {
     label: 'Configurações',
     description: 'Preferências e administração de acessos.',
-    items: ['/settings', '/admin/users', '/admin/plan'].map((path) => byPath[path])
+    items: ['/admin/companies', '/settings', '/admin/users', '/admin/plan'].map((path) => byPath[path])
   }
 ];
+
+// Recursão mantém pais ativos sem pressupor URLs para módulos ainda indisponíveis.
+export const isNavigationActive = (item, pathname) =>
+  Boolean(item.path && (pathname === item.path || pathname.startsWith(item.path + '/'))) ||
+  Boolean(item.children?.some((child) => isNavigationActive(child, pathname)));
