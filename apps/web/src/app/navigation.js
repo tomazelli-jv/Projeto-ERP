@@ -135,6 +135,7 @@ export const navigationGroups = [
 export const modulePages = appRoutes.filter((route) => route.module);
 
 export function getRouteMetadata(pathname) {
+  if (pathname === '/products/repricing') return { group: 'Produtos', label: 'Remarcação' };
   if (pathname === '/products/new') return { group: 'Produtos', label: 'Novo item' };
   if (/^\/products\/[^/]+\/edit$/.test(pathname)) return { group: 'Produtos', label: 'Editar item' };
   if (/^\/products\/[^/]+$/.test(pathname)) return { group: 'Produtos', label: 'Detalhes do item' };
@@ -193,12 +194,18 @@ export const topNavigationGroups = [
                   : 'Consulte e gerencie códigos NCM.'
         }))
       },
-      ...['Remarcação', 'Etiquetas'].map((label) => ({
-        label,
+      {
+        label: 'Remarcação',
+        path: '/products/repricing',
         icon: Inventory2OutlinedIcon,
-        disabled: true,
-        description: 'Indisponível nesta versão.'
-      }))
+        description: 'Revise e atualize os preços de venda.'
+      },
+      {
+        label: 'Etiquetas',
+        icon: Inventory2OutlinedIcon,
+        action: 'labels',
+        description: 'Selecione produtos e prepare etiquetas para impressão.'
+      }
     ]
   },
   { label: 'Operações', description: 'Acompanhe as operações comerciais.', items: [byPath['/sales']] },

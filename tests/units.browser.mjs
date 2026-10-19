@@ -138,30 +138,30 @@ await delay(200);
 check((await dialogText()).includes('Metro quadrado'), 'busca descrição');
 await input('Dados a pesquisar', '');
 await delay(200);
-await click('Novo');
-await click('Cadastrar unidade');
+await click('Nova unidade de medida');
+await click('Salvar');
 check((await dialogText()).includes('Informe a sigla'), 'sigla obrigatória');
 await input('Sigla', 'zz');
-await click('Cadastrar unidade');
+await click('Salvar');
 check((await dialogText()).includes('Informe a descrição'), 'descrição obrigatória');
 check(
   await evaluate(`document.querySelector('[aria-labelledby="units-title"] input').value==='ZZ'`),
   'uppercase'
 );
 await input('Descrição', 'Unidade teste');
-await click('Cadastrar unidade');
+await click('Salvar');
 check((await dialogText()).includes('Unidade salva com sucesso'), 'cria unidade');
-await click('Novo');
+await click('Nova unidade de medida');
 await input('Sigla', 'un');
 await input('Descrição', 'Duplicada');
-await click('Cadastrar unidade');
+await click('Salvar');
 check((await dialogText()).includes('Já existe uma unidade'), 'duplicidade');
 await click('Voltar');
 check((await dialogText()).includes('Consulta de unidades'), 'voltar');
 await evaluate(`document.querySelector('button[aria-label="Editar UN"]').click()`);
 await delay(150);
 await input('Descrição', 'Unidade editada');
-await click('Salvar alterações');
+await click('Salvar');
 check((await dialogText()).includes('Unidade editada'), 'edição');
 await evaluate(`document.querySelector('button[aria-label="Inativar UN"]').click()`);
 await delay(180);
@@ -202,12 +202,12 @@ await delay(400);
 await input('Nome', 'Rascunho');
 await evaluate(`document.querySelector('button[aria-label="Cadastrar unidade"]').click()`);
 await delay(250);
-await click('Novo');
+await click('Nova unidade de medida');
 await input('Sigla', 'LT');
 await evaluate(
   `(()=>{const d=document.querySelector('[aria-labelledby="units-title"]');const l=[...d.querySelectorAll('label')].find(e=>e.textContent.startsWith('Descrição'));const i=document.getElementById(l.htmlFor);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'Lata teste');i.dispatchEvent(new Event('input',{bubbles:true}));})()`
 );
-await click('Cadastrar unidade');
+await click('Salvar');
 await click('Cancelar');
 await select('Unidade de medida', 'LT — Lata teste');
 check((await body()).includes('LT — Lata teste'), 'cadastro rápido atualiza seletor');

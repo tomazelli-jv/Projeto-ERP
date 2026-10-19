@@ -1,3 +1,4 @@
+import { CancelButton } from '../components/common/CancelButton';
 import { NcmField } from '../features/ncm/NcmField.jsx';
 import { ncmModule } from '../features/ncm/ncm-module.js';
 import { resolveProductNcm } from '../features/ncm/mockNcmRepository.js';
@@ -349,9 +350,9 @@ function ProductForm({ initial }) {
         </Stack>
         <ProductSummary item={form} />
         <Stack direction="row" justifyContent="flex-end" spacing={2} sx={{ gridColumn: '1 / -1' }}>
-          <Button component={Link} to="/products" variant="outlined" disabled={mutation.isPending}>
+          <CancelButton component={Link} to="/products" variant="outlined" disabled={mutation.isPending}>
             Cancelar
-          </Button>
+          </CancelButton>
           <Submit type="submit" variant="contained" disabled={mutation.isPending}>
             {mutation.isPending ? 'Salvando...' : initial ? 'Salvar alterações' : 'Cadastrar item'}
           </Submit>

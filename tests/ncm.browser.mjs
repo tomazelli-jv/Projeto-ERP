@@ -142,8 +142,8 @@ await delay(200);
 check((await dialogText()).includes('00000001'), 'busca descrição');
 await input('Dados a pesquisar', '');
 await delay(200);
-await click('Novo');
-await click('Cadastrar NCM');
+await click('Novo NCM');
+await click('Salvar');
 check((await dialogText()).includes('Informe o código'), 'código obrigatório');
 await input('Código NCM', 'abc');
 check(
@@ -151,26 +151,26 @@ check(
   'rejeita letras'
 );
 await input('Código NCM', '123');
-await click('Cadastrar NCM');
+await click('Salvar');
 check((await dialogText()).includes('exatamente 8 dígitos'), 'oito dígitos');
 await input('Código NCM', '00000012');
-await click('Cadastrar NCM');
+await click('Salvar');
 check((await dialogText()).includes('Informe a descrição'), 'descrição obrigatória');
 await input('Descrição', 'Teste com zero');
-await click('Cadastrar NCM');
+await click('Salvar');
 check((await dialogText()).includes('00000012'), 'preserva zero e cria');
 check((await dialogText()).includes('Ativo'), 'ativo por padrão');
-await click('Novo');
+await click('Novo NCM');
 await input('Código NCM', '00000012');
 await input('Descrição', 'Duplicado');
-await click('Cadastrar NCM');
+await click('Salvar');
 check((await dialogText()).includes('Já existe um cadastro'), 'duplicidade');
 await click('Voltar');
 check((await dialogText()).includes('Consulta de NCM'), 'volta');
 await evaluate(`document.querySelector('button[aria-label="Editar 00000012"]').click()`);
 await delay(200);
 await input('Descrição', 'Descrição editada');
-await click('Salvar alterações');
+await click('Salvar');
 check((await dialogText()).includes('Descrição editada'), 'edita');
 await evaluate(`document.querySelector('button[aria-label="Inativar 33051000"]').click()`);
 await delay(200);
@@ -215,12 +215,12 @@ await delay(400);
 await input('Nome', 'Rascunho NCM');
 await evaluate(`document.querySelector('button[aria-label="Cadastrar NCM"]').click()`);
 await delay(200);
-await click('Novo');
+await click('Novo NCM');
 await input('Código NCM', '00000099');
 await evaluate(
   `(()=>{const d=document.querySelector('[aria-labelledby="ncm-title"]');const l=[...d.querySelectorAll('label')].find(e=>e.textContent.startsWith('Descrição'));const i=document.getElementById(l.htmlFor);Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(i,'Cadastro rápido');i.dispatchEvent(new Event('input',{bubbles:true}));})()`
 );
-await click('Cadastrar NCM');
+await click('Salvar');
 await click('Cancelar');
 await select('NCM', '00000099 — Cadastro rápido');
 check((await body()).includes('00000099 — Cadastro rápido'), 'cadastro rápido selecionável');

@@ -1,10 +1,10 @@
-﻿import { useRef, useState } from 'react';
+import { CancelButton } from '../../components/common/CancelButton';
+import { useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import PropTypes from 'prop-types';
 import {
   Alert,
   Box,
-  Button,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -374,13 +374,14 @@ export function EntityStepForm({ initial }) {
         <EntitySummary customer={form} />
       </Box>
       <StickyFormActions>
-        <Button
+        <CancelButton
+          active={!step}
           variant="outlined"
           disabled={mutation.isPending}
           onClick={() => (step ? go(step - 1) : navigate(module.path))}
         >
           {step ? 'Voltar' : 'Cancelar'}
-        </Button>
+        </CancelButton>
         <CreateButton type="submit" disabled={mutation.isPending}>
           {mutation.isPending
             ? 'Salvando...'

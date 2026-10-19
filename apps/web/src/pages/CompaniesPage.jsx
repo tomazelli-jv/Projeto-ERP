@@ -1,3 +1,4 @@
+import { TotalCard } from '../components/common/TotalCard.jsx';
 import { CreateButton } from '../components/common/CreateButton.jsx';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -11,7 +12,6 @@ import {
   Box,
   Button,
   Chip,
-  Card,
   CardContent,
   InputAdornment,
   MenuItem,
@@ -293,7 +293,7 @@ function CompaniesContent({ claims }) {
                   rows.filter((item) => item.ativo === false).length
                 ]
               ].map(([label, Icon, tone, value]) => (
-                <Card
+                <TotalCard
                   key={label}
                   sx={{ borderRadius: 2, bgcolor: tone + '.soft', borderColor: tone + '.main' }}
                 >
@@ -321,7 +321,7 @@ function CompaniesContent({ claims }) {
                       </Typography>
                     </Box>
                   </CardContent>
-                </Card>
+                </TotalCard>
               ))}
             </Box>
             <Stack

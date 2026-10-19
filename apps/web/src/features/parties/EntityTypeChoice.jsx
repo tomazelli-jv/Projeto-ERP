@@ -1,3 +1,4 @@
+import { CancelButton } from '../../components/common/CancelButton';
 import { useEntityModule } from './entity-module.js';
 import { useState } from 'react';
 import { Link } from 'react-router';
@@ -44,7 +45,7 @@ export function EntityTypeChoice() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancelar</Button>
+          <CancelButton onClick={() => setOpen(false)}>Cancelar</CancelButton>
         </DialogActions>
       </Dialog>
     </>

@@ -1,3 +1,4 @@
+import { CancelButton } from '../common/CancelButton';
 import { CreateButton } from '../common/CreateButton.jsx';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
@@ -282,10 +283,10 @@ export function BusinessFormDialog({ kind, record, company, loading, apiError, o
           </Box>
         </Box>
       </DialogContent>
-      <DialogActions sx={{ p: 2, gap: 1, '& .MuiButton-root': { minHeight: 36, px: 2 } }}>
-        <Button variant="outlined" disabled={loading} onClick={onClose}>
+      <DialogActions sx={{ p: 2, gap: 1 }}>
+        <CancelButton variant="outlined" disabled={loading} onClick={onClose}>
           Cancelar
-        </Button>
+        </CancelButton>
         <SubmitButton type="submit" form="business-form" variant="contained" disabled={loading}>
           {loading ? 'Salvando...' : editing ? 'Salvar alterações' : 'Cadastrar loja'}
         </SubmitButton>

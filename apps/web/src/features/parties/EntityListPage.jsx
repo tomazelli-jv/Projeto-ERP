@@ -1,3 +1,4 @@
+import { TotalCard } from '../../components/common/TotalCard.jsx';
 import { alpha } from '@mui/material/styles';
 import { EntityTypeChoice } from './EntityTypeChoice.jsx';
 import { useEntityModule } from './entity-module.js';
@@ -8,7 +9,6 @@ import {
   Avatar,
   Box,
   Button,
-  Card,
   CardContent,
   Chip,
   IconButton,
@@ -138,7 +138,7 @@ export function EntityListPage() {
               ['Pessoa Física', 'persons', PersonOutlineIcon, 'warning'],
               ['Pessoa Jurídica', 'companies', BusinessOutlinedIcon, 'primary']
             ].map(([label, key, Icon, tone]) => (
-              <Card
+              <TotalCard
                 key={key}
                 sx={(theme) => ({
                   bgcolor: tone + '.soft',
@@ -171,7 +171,7 @@ export function EntityListPage() {
                     <Typography variant="h2">{summary.data?.[key] ?? '—'}</Typography>
                   </Box>
                 </CardContent>
-              </Card>
+              </TotalCard>
             ))}
           </Box>
           {summary.isError && (

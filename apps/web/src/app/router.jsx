@@ -1,3 +1,4 @@
+import { RepricingPage } from '../pages/RepricingPage.jsx';
 import { NotificationsPage } from '../pages/NotificationsPage.jsx';
 import { ReceivablesPage } from '../pages/ReceivablesPage.jsx';
 import { Navigate, createBrowserRouter } from 'react-router';
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
       { path: 'suppliers/:id/edit', element: <SupplierEditorPage mode="edit" /> },
       // Produto e Serviço compartilham catálogo e repository, sem contratos HTTP fictícios.
       { path: 'products', element: <ProductsPage /> },
+      { path: 'products/repricing', element: <RepricingPage /> },
       { path: 'products/new', element: <ProductEditorPage mode="create" /> },
       { path: 'products/:id', element: <ProductEditorPage mode="view" /> },
       { path: 'products/:id/edit', element: <ProductEditorPage mode="edit" /> },

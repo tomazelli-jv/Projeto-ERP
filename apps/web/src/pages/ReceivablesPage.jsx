@@ -1,3 +1,4 @@
+import { TotalCard } from '../components/common/TotalCard.jsx';
 import { useSearchParams } from 'react-router';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
@@ -18,7 +19,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
   CardContent,
   Dialog,
   DialogActions,
@@ -164,7 +164,7 @@ export function ReceivablesPage() {
                 ['received', 'Recebidos no período', 'success', CheckCircleOutlineIcon],
                 ['outstanding', 'Saldo total a receber', 'warning', PaymentsOutlinedIcon]
               ].map(([key, label, color, Icon], index) => (
-                <Card key={key} sx={summaryCardStyles(color, index)}>
+                <TotalCard key={key} sx={summaryCardStyles(color, index)}>
                   <CardContent
                     sx={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: 118, px: 2.5 }}
                   >
@@ -209,7 +209,7 @@ export function ReceivablesPage() {
                       )}
                     </Box>
                   </CardContent>
-                </Card>
+                </TotalCard>
               ))}
             </Box>
           )}

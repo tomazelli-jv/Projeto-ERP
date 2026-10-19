@@ -131,23 +131,23 @@ const dialogText = () =>
 await openGroups();
 check((await dialogText()).includes('Consulta de grupos'), 'abre grupos');
 check(await evaluate(`location.pathname==='/dashboard'`), 'preserva rota');
-await click('Novo');
-await click('Cadastrar grupo');
+await click('Novo grupo');
+await click('Salvar');
 check((await dialogText()).includes('Informe o nome do grupo'), 'nome obrigatório');
 await input('Nome', 'Grupo Teste');
-await click('Cadastrar grupo');
+await click('Salvar');
 check((await dialogText()).includes('Grupo Teste'), 'cria sem descrição');
 check((await dialogText()).includes('Ativo'), 'ativo por padrão');
-await click('Novo');
+await click('Novo grupo');
 await input('Nome', 'GRUPO TESTE');
-await click('Cadastrar grupo');
+await click('Salvar');
 check((await dialogText()).includes('Já existe um grupo'), 'duplicidade');
 await click('Voltar');
 check((await dialogText()).includes('Consulta de grupos'), 'volta sem fechar');
 await evaluate(`document.querySelector('button[aria-label="Editar Grupo Teste"]').click()`);
 await delay(150);
 await input('Descrição', 'Itens de demonstração');
-await click('Salvar alterações');
+await click('Salvar');
 check((await dialogText()).includes('Itens de demonstração'), 'edita descrição');
 await input('Dados a pesquisar', 'inexistente');
 await delay(200);
@@ -195,12 +195,12 @@ await delay(500);
 await input('Nome', 'Produto em edição');
 await evaluate(`document.querySelector('button[aria-label="Cadastrar grupo"]').click()`);
 await delay(300);
-await click('Novo');
+await click('Novo grupo');
 // Labels são consultadas dentro do modal, pois o Produto também tem Nome.
 await evaluate(
   `(()=>{const d=document.querySelector('[aria-labelledby="product-groups-title"]');const l=[...d.querySelectorAll('label')].find(e=>e.textContent.startsWith('Nome'));const i=document.getElementById(l.htmlFor);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'Grupo Rápido');i.dispatchEvent(new Event('input',{bubbles:true}));})()`
 );
-await click('Cadastrar grupo');
+await click('Salvar');
 await click('Cancelar');
 await select('Grupo', 'Grupo Rápido');
 check((await body()).includes('Grupo Rápido'), 'novo grupo imediatamente selecionável');

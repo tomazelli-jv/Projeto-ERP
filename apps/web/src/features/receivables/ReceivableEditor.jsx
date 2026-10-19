@@ -1,10 +1,10 @@
+import { CancelButton } from '../../components/common/CancelButton';
 import { formGrid, dialogStyles, secondarySurface } from './receivables-styles.js';
 import { useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
   Alert,
   Box,
-  Button,
   Dialog,
   DialogActions,
   DialogContent,
@@ -217,9 +217,9 @@ export function ReceivableEditor({ title, customers, onClose, onSaved }) {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button disabled={mutation.isPending} onClick={onClose}>
+          <CancelButton disabled={mutation.isPending} onClick={onClose}>
             Cancelar
-          </Button>
+          </CancelButton>
           <CreateButton type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? 'Salvando...' : editing ? 'Salvar alterações' : 'Cadastrar título'}
           </CreateButton>

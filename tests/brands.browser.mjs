@@ -130,23 +130,23 @@ const dialogText = () => evaluate(`document.querySelector('[aria-labelledby="bra
 await openBrands();
 check((await dialogText()).includes('Consulta de marcas'), 'abre consulta');
 check(await evaluate(`location.pathname==='/dashboard'`), 'mantém tela atual');
-await click('Novo');
-await click('Cadastrar marca');
+await click('Nova marca');
+await click('Salvar');
 check((await dialogText()).includes('Informe o nome'), 'nome obrigatório');
 await input('Nome', 'Marca Browser');
-await click('Cadastrar marca');
+await click('Salvar');
 check((await dialogText()).includes('Marca Browser'), 'cria com opcionais vazios');
 check((await dialogText()).includes('Ativa'), 'status inicial ativo');
-await click('Novo');
+await click('Nova marca');
 await input('Nome', 'MARCA BROWSER');
-await click('Cadastrar marca');
+await click('Salvar');
 check((await dialogText()).includes('Já existe uma marca'), 'duplicidade');
 await click('Voltar');
-await click('Novo');
+await click('Nova marca');
 await input('Nome', 'Marca Alfa');
 await input('CNPJ', '12.ABC.345/01DE-35');
 await input('Contato', 'Equipe comercial');
-await click('Cadastrar marca');
+await click('Salvar');
 check((await dialogText()).includes('12.ABC.345/01DE-35'), 'CNPJ alfanumérico');
 await input('Dados a pesquisar', 'Browser');
 await delay(250);
@@ -164,7 +164,7 @@ await delay(250);
 await evaluate(`document.querySelector('button[aria-label="Editar Marca Alfa"]').click()`);
 await delay(150);
 await input('Nome', 'Marca Alfa Editada');
-await click('Salvar alterações');
+await click('Salvar');
 check((await dialogText()).includes('Marca Alfa Editada'), 'edita');
 await evaluate(`document.querySelector('button[aria-label="Inativar Marca Alfa Editada"]').click()`);
 await delay(150);
@@ -188,6 +188,12 @@ for (const mode of ['light', 'dark']) {
   for (const width of [1920, 1440, 1366, 1024, 768, 390]) {
     await viewport(width, 900);
     await openBrands();
+    check(
+      await evaluate(
+        `getComputedStyle(document.querySelector('[aria-labelledby="brands-title"]')).backgroundColor === '${mode === 'dark' ? 'rgb(17, 28, 24)' : 'rgb(250, 248, 244)'}'`
+      ),
+      'modal acompanha tema ' + mode
+    );
     check(
       await evaluate(
         `(()=>{const r=document.querySelector('[aria-labelledby="brands-title"]').getBoundingClientRect();return r.left>=0 && r.right<=innerWidth+1})()`

@@ -1,3 +1,4 @@
+import { TotalCard } from '../components/common/TotalCard.jsx';
 import { QuickAccessCard } from '../components/common/QuickAccessCard.jsx';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
@@ -12,7 +13,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
   CardContent,
   Chip,
   Grid,
@@ -80,7 +80,7 @@ export function DashboardPage() {
       <Grid container spacing={2.5}>
         {indicators.map(([label, Icon]) => (
           <Grid key={label} size={{ xs: 12, sm: 6, lg: 3 }}>
-            <Card sx={{ height: '100%', borderRadius: 2 }}>
+            <TotalCard sx={{ height: '100%', borderRadius: 2 }}>
               <CardContent sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box
                   sx={{
@@ -108,7 +108,7 @@ export function DashboardPage() {
                   </Typography>
                 </Box>
               </CardContent>
-            </Card>
+            </TotalCard>
           </Grid>
         ))}
         <Grid size={{ xs: 12, lg: 7 }}>

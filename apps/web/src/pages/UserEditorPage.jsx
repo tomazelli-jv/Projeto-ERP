@@ -1,3 +1,4 @@
+import { CancelButton } from '../components/common/CancelButton';
 import { CreateButton } from '../components/common/CreateButton.jsx';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
@@ -534,15 +535,16 @@ function UserForm({ mode, initial, scope, context, canEdit }) {
             </Alert>
           )}
         </Stack>
-        <Stack
-          direction="row"
-          spacing={2}
-          justifyContent="flex-end"
-          sx={{ gridColumn: '1 / -1', '& .MuiButton-root': { minHeight: 48, px: 3 } }}
-        >
-          <Button component={Link} to="/admin/users" variant="outlined" disabled={disabled}>
+        <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ gridColumn: '1 / -1' }}>
+          <CancelButton
+            active={!readonly}
+            component={Link}
+            to="/admin/users"
+            variant="outlined"
+            disabled={disabled}
+          >
             {readonly ? 'Voltar' : 'Cancelar'}
-          </Button>
+          </CancelButton>
           {readonly ? (
             canEdit && (
               <Button component={Link} to={`/admin/users/${initial.id}/edit`} variant="contained">

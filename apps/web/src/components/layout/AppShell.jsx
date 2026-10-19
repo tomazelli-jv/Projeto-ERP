@@ -1,3 +1,5 @@
+import { ProductLabelsDialog } from '../../features/product-labels/ProductLabelsDialog.jsx';
+import { CancelButton } from '../common/CancelButton';
 import { NotificationsBell } from '../../features/notifications/NotificationsBell.jsx';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -63,6 +65,7 @@ export function AppShell() {
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [unitsOpen, setUnitsOpen] = useState(false);
   const [ncmOpen, setNcmOpen] = useState(false);
+  const [labelsOpen, setLabelsOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [storeSearch, setStoreSearch] = useState('');
   const [storeField, setStoreField] = useState('name');
@@ -234,9 +237,9 @@ export function AppShell() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button disabled={isSwitchingStore} onClick={() => setStoreDialogOpen(false)}>
+          <CancelButton disabled={isSwitchingStore} onClick={() => setStoreDialogOpen(false)}>
             Cancelar
-          </Button>
+          </CancelButton>
           <Button
             variant="contained"
             disabled={
@@ -301,6 +304,7 @@ export function AppShell() {
                   if (action === 'groups') setGroupsOpen(true);
                   if (action === 'units') setUnitsOpen(true);
                   if (action === 'ncm') setNcmOpen(true);
+                  if (action === 'labels') setLabelsOpen(true);
                 }}
               />
               <Stack direction="row" alignItems="center" spacing={0.5} sx={{ flexShrink: 0 }}>
@@ -431,6 +435,7 @@ export function AppShell() {
             <BrandsDialog open={brandsOpen} onClose={() => setBrandsOpen(false)} />
             <GroupsDialog open={groupsOpen} onClose={() => setGroupsOpen(false)} />
             <UnitsDialog open={unitsOpen} onClose={() => setUnitsOpen(false)} />
+            <ProductLabelsDialog open={labelsOpen} onClose={() => setLabelsOpen(false)} />
             <NcmDialog open={ncmOpen} onClose={() => setNcmOpen(false)} />
           </Box>
         </Box>

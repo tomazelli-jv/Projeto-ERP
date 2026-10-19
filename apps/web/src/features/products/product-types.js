@@ -9,7 +9,7 @@
  * @typedef {Product|Service} CreateCatalogItemInput
  * @typedef {CreateCatalogItemInput} UpdateCatalogItemInput
  * @typedef {CreateCatalogItemInput & {id:string,createdAt:string,updatedAt:string}} CatalogItem
- * @typedef {{search?:string,type?:CatalogItemType|'',status?:ProductStatus|'',category?:string,unit?:string,page:number,pageSize:number}} ProductListFilters
- * @typedef {{list:(filters:ProductListFilters)=>Promise<{items:CatalogItem[],total:number,page:number,pageSize:number}>,getById:(id:string)=>Promise<CatalogItem|null>,create:(data:CreateCatalogItemInput)=>Promise<CatalogItem>,update:(id:string,data:UpdateCatalogItemInput)=>Promise<CatalogItem>,setActive:(id:string,active:boolean)=>Promise<CatalogItem>,summary:()=>Promise<{total:number,products:number,services:number,active:number}>}} ProductsRepository
+ * @typedef {{search?:string,searchField?:string,groupId?:string,groupName?:string,brandId?:string,brandName?:string,type?:CatalogItemType|'',status?:ProductStatus|'',category?:string,unit?:string,page:number,pageSize:number}} ProductListFilters
+ * @typedef {{updatePrices:(changes:{productId:string,previousPriceCents:number,newPriceCents:number}[])=>Promise<CatalogItem[]>,list:(filters:ProductListFilters)=>Promise<{items:CatalogItem[],total:number,page:number,pageSize:number}>,getById:(id:string)=>Promise<CatalogItem|null>,create:(data:CreateCatalogItemInput)=>Promise<CatalogItem>,update:(id:string,data:UpdateCatalogItemInput)=>Promise<CatalogItem>,setActive:(id:string,active:boolean)=>Promise<CatalogItem>,summary:()=>Promise<{total:number,products:number,services:number,active:number}>}} ProductsRepository
  */
 export {};

@@ -111,10 +111,13 @@ check(await evaluate(`document.querySelectorAll('tbody tr').length===5`), 'lista
 await input('Buscar item', '00012345678905');
 await delay(700);
 check(await evaluate(`document.querySelectorAll('tbody tr').length===1`), 'busca GTIN com zeros');
+await click('Mais filtros');
 await click('Limpar filtros');
-await select('Tipo', 'Produtos');
+await evaluate(`document.querySelector('[aria-label="Tipo de item"] [role="button"]:nth-child(2)').click()`);
+await delay(1200);
 check(await evaluate(`document.querySelectorAll('tbody tr').length===3`), 'filtro produtos');
-await select('Tipo', 'Serviços');
+await evaluate(`document.querySelector('[aria-label="Tipo de item"] [role="button"]:nth-child(3)').click()`);
+await delay(1200);
 check(await evaluate(`document.querySelectorAll('tbody tr').length===2`), 'filtro serviços');
 await select('Status', 'Inativos');
 check(await evaluate(`document.querySelectorAll('tbody tr').length===1`), 'filtro status');
