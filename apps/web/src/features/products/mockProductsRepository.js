@@ -188,7 +188,25 @@ export function createMockProductsRepository({
         const rows = read();
         const index = rows.findIndex((row) => row.id === id);
         if (index < 0) throw Error('Item não encontrado.');
-        const item = { ...prepare(data, rows, id), id, createdAt: rows[index].createdAt, updatedAt: now() };
+        if (rows[index].type === 'PRODUCT' && data.type === 'SERVICE' && rows[index].initialStock)
+          throw Error(
+            'Um produto com saldo inicial registrado não pode ser convertido em serviço. Preserve o registro de estoque.'
+          );
+        // Quantidade de abertura e loja não podem ser reescritas como ajuste de saldo.
+        const item = {
+          ...prepare(
+            {
+              ...data,
+              initialStock: rows[index].initialStock,
+              stockStoreId: rows[index].stockStoreId || data.stockStoreId
+            },
+            rows,
+            id
+          ),
+          id,
+          createdAt: rows[index].createdAt,
+          updatedAt: now()
+        };
         rows[index] = item;
         write(rows);
         return structuredClone(item);

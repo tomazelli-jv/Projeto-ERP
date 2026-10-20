@@ -1,11 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LABEL_MODEL, buildLabels, labelQuantity, labelSheets, labelTotals, labelCss, labelPreviewCss } from '../apps/web/src/features/product-labels/label-model.js';
-import { createMockProductsRepository, productFixtures } from '../apps/web/src/features/products/mockProductsRepository.js';
+import {
+  LABEL_MODEL,
+  buildLabels,
+  labelQuantity,
+  labelSheets,
+  labelTotals,
+  labelCss,
+  labelPreviewCss
+} from '../apps/web/src/features/product-labels/label-model.js';
+import {
+  createMockProductsRepository,
+  productFixtures
+} from '../apps/web/src/features/products/mockProductsRepository.js';
 
 // Contratos de quantidades, prévia limitada e paginação de impressão, sem impressora real.
 test('quantidades inteiras positivas e limite explícito', () => {
-  for (const input of ['', '0', '-1', '1.5', '1,5', '1e2', 'a', '1001']) assert.equal(labelQuantity(input), null);
+  for (const input of ['', '0', '-1', '1.5', '1,5', '1e2', 'a', '1001'])
+    assert.equal(labelQuantity(input), null);
   assert.equal(labelQuantity('1'), 1);
   assert.equal(labelQuantity('1000'), 1000);
   assert.deepEqual(labelTotals({ a: '2', b: '3' }), { products: 2, total: 5, valid: true });
@@ -33,9 +45,18 @@ test('preço remarcado vem do mesmo repository; etiquetas não persistem', async
 });
 test('folhas completas, sem perder etiquetas nem ultrapassar A4', () => {
   const sheets = labelSheets(buildLabels(productFixtures(), { 'demo-product-1': '43' }));
-  assert.deepEqual(sheets.map((page) => page.length), [21, 21, 1]);
-  assert.ok(LABEL_MODEL.columns * LABEL_MODEL.width + (LABEL_MODEL.columns - 1) * LABEL_MODEL.gap <= 210 - 2 * LABEL_MODEL.margin);
-  assert.ok(LABEL_MODEL.rows * LABEL_MODEL.height + (LABEL_MODEL.rows - 1) * LABEL_MODEL.gap <= 297 - 2 * LABEL_MODEL.margin);
+  assert.deepEqual(
+    sheets.map((page) => page.length),
+    [21, 21, 1]
+  );
+  assert.ok(
+    LABEL_MODEL.columns * LABEL_MODEL.width + (LABEL_MODEL.columns - 1) * LABEL_MODEL.gap <=
+      210 - 2 * LABEL_MODEL.margin
+  );
+  assert.ok(
+    LABEL_MODEL.rows * LABEL_MODEL.height + (LABEL_MODEL.rows - 1) * LABEL_MODEL.gap <=
+      297 - 2 * LABEL_MODEL.margin
+  );
   assert.ok(labelCss.includes('break-inside:avoid'));
   assert.ok(labelCss.includes('@media print'));
   assert.ok(!labelPreviewCss.includes('@page'));

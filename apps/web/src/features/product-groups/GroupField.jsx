@@ -8,7 +8,7 @@ import { GroupsDialog } from './GroupsDialog.jsx';
 
 // O mesmo cadastro pode ser aberto aqui sem perder o formulário do produto.
 // category é a descrição histórica; groupId é o vínculo estável para novos cadastros.
-export function GroupField({ value, groupId, initialId, onChange }) {
+export function GroupField({ value, groupId, initialId, onChange, required, error, helperText }) {
   const [open, setOpen] = useState(false);
   const query = useLookupList(groupModule);
   const rows = query.data?.items ?? [];
@@ -21,12 +21,15 @@ export function GroupField({ value, groupId, initialId, onChange }) {
           select
           fullWidth
           label="Grupo"
+          required={required}
+          error={error}
           value={selected}
           disabled={query.isPending || query.isError}
           helperText={
-            query.isError
+            helperText ||
+            (query.isError
               ? 'Não foi possível carregar grupos.'
-              : 'Novos vínculos utilizam somente grupos ativos.'
+              : 'Novos vínculos utilizam somente grupos ativos.')
           }
           onChange={(e) => {
             const row = rows.find((item) => item.id === e.target.value);
@@ -62,6 +65,9 @@ export function GroupField({ value, groupId, initialId, onChange }) {
   );
 }
 GroupField.propTypes = {
+  required: PropTypes.bool,
+  error: PropTypes.bool,
+  helperText: PropTypes.string,
   value: PropTypes.string.isRequired,
   groupId: PropTypes.string,
   initialId: PropTypes.string,

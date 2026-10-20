@@ -3,8 +3,9 @@
  * @typedef {'ACTIVE'|'INACTIVE'} ProductStatus
  * @typedef {string} UnitOfMeasure
  * @typedef {string} ProductCategory
- * @typedef {{name:string,code:string,category:ProductCategory,groupId?:string,description:string,priceCents:number,status:ProductStatus,unit:UnitOfMeasure,unitId?:string}} CatalogBase
- * @typedef {CatalogBase & {type:'PRODUCT',gtin:string,ncm:string,ncmId?:string,brand:string,brandId?:string,manufacturerReference:string,costCents:number|null,trackStock:boolean,minimumStock:string}} Product
+ * @typedef {{cest?:string,origin?:string,cfop?:string,icmsCst?:string,icmsRate?:string,baseReduction?:string,mva?:string,fcp?:string,pisCst?:string,pisRate?:string,cofinsCst?:string,cofinsRate?:string,ipiCst?:string,ipiRate?:string,ibsCbsCst?:string,cClassTrib?:string,ibsStateRate?:string,ibsCityRate?:string,cbsRate?:string,isRate?:string,taxBenefit?:string,reformReduction?:string,reformNotes?:string}} LocalFiscalSettings
+ * @typedef {LocalFiscalSettings & {name:string,code:string,category:ProductCategory,groupId?:string,description:string,priceCents:number,status:ProductStatus,unit:UnitOfMeasure,unitId?:string,margin?:string,promotionPriceCents?:number|null,promotionStart?:string,promotionEnd?:string}} CatalogBase
+ * @typedef {CatalogBase & {type:'PRODUCT',gtin:string,ncm:string,ncmId?:string,brand:string,brandId?:string,manufacturerReference:string,costCents:number|null,trackStock:boolean,minimumStock:string,maximumStock?:string,initialStock?:string,stockStoreId?:string,stockLocation?:string,allowNegativeStock?:boolean}} Product
  * @typedef {CatalogBase & {type:'SERVICE',durationMinutes:string,serviceDescription:string}} Service
  * @typedef {Product|Service} CreateCatalogItemInput
  * @typedef {CreateCatalogItemInput} UpdateCatalogItemInput

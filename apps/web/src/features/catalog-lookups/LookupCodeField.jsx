@@ -16,6 +16,8 @@ export function LookupCodeField({
   initialValue,
   initialId,
   required,
+  error,
+  helperText,
   onChange
 }) {
   const [open, setOpen] = useState(false);
@@ -40,10 +42,12 @@ export function LookupCodeField({
           label={label}
           value={selection}
           disabled={query.isPending || query.isError}
+          error={error}
           helperText={
-            query.isError
+            helperText ||
+            (query.isError
               ? 'Não foi possível carregar as opções.'
-              : 'Novos vínculos utilizam somente registros ativos.'
+              : 'Novos vínculos utilizam somente registros ativos.')
           }
           onChange={(e) => {
             const row = rows.find((item) => item.id === e.target.value);
@@ -82,5 +86,7 @@ LookupCodeField.propTypes = {
   initialValue: PropTypes.string,
   initialId: PropTypes.string,
   required: PropTypes.bool,
+  error: PropTypes.bool,
+  helperText: PropTypes.string,
   onChange: PropTypes.func.isRequired
 };

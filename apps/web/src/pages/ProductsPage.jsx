@@ -57,7 +57,8 @@ export function ProductsPage() {
           bgcolor: 'background.default',
           color: 'text.primary',
           minHeight: 'calc(100vh - 130px)',
-          p: { xs: 1, sm: 2 }
+          px: { xs: 1, sm: 2 },
+          py: 0
         }}
       >
         <EntityModuleContext.Provider value={productModule}>
@@ -102,28 +103,40 @@ function ProductList() {
       sx={{
         maxWidth: 1120,
         mx: 'auto',
-        py: 2,
+        py: 1,
         '& h1': { fontSize: 26, fontWeight: 650 },
         '& .MuiTypography-body2': { fontSize: 14 }
       }}
     >
-      <PageHeader
-        title="Produtos e serviços"
-        description="Gerencie os itens comercializados pela empresa."
-        action={import.meta.env.DEV ? create : undefined}
-      />
+      {/* Densidade local: aproxima os textos e a ação sem alterar os cabeçalhos dos demais módulos. */}
+      <Box sx={{ '& > .MuiStack-root': { mb: 1, gap: 1 } }}>
+        <PageHeader
+          title="Produtos e serviços"
+          description="Gerencie os itens comercializados pela empresa."
+          action={import.meta.env.DEV ? create : undefined}
+        />
+      </Box>
       {!import.meta.env.DEV ? (
         <Alert severity="info">Catálogo aguarda integração com o backend.</Alert>
       ) : (
         <>
-          <EntityDemoNotice />
+          <Box
+            sx={{
+              '& > .MuiAlert-root': { m: 0, px: 0, py: 0, alignItems: 'center' },
+              '& .MuiAlert-message': { py: 0.5, fontSize: 12, lineHeight: 1.5 },
+              '& .MuiAlert-icon': { py: 0.5, mr: 1 }
+            }}
+          >
+            <EntityDemoNotice />
+          </Box>
           {/* Duas colunas em telas pequenas preservam a leitura; tokens acompanham Light/Dark. */}
           <Box
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
               gap: 2,
-              my: 4
+              mt: 2,
+              mb: 3
             }}
           >
             {[
