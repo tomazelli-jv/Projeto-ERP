@@ -13,7 +13,6 @@ import {
   IconButton,
   List,
   ListItemButton,
-  ListItemIcon,
   ListItemText,
   Paper,
   Popper,
@@ -21,14 +20,14 @@ import {
   Typography,
   useMediaQuery
 } from '@mui/material';
-import { topNavigationGroups } from '../../app/navigation.js';
+import { NavigationItems } from './NavigationItems.jsx';
+import { topNavigationGroups, isNavigationActive } from '../../app/navigation.js';
 
-const matches = (path, pathname) => pathname === path || pathname.startsWith(path + '/');
 const activeStyle = { bgcolor: 'primary.soft', color: 'primary.dark' };
 
 // Um único grupo aberto, com pequena tolerância para atravessar o espaço entre botão e painel.
 // Links continuam links nativos; Tab, Enter e Escape funcionam sem exigir navegação por mouse.
-export function TopNavigation({ compact, mobileOpen, onClose }) {
+export function TopNavigation({ compact, mobileOpen, onClose, onAction }) {
   const { pathname } = useLocation();
   const [opened, setOpened] = useState(null);
   const [mobileGroup, setMobileGroup] = useState(null);
@@ -40,6 +39,12 @@ export function TopNavigation({ compact, mobileOpen, onClose }) {
   const close = () => {
     cancelClose();
     setOpened(null);
+  };
+  // Ações de cadastro abrem o mesmo diálogo sem trocar a rota ou desmontar a página atual.
+  const select = (item) => {
+    close();
+    onClose();
+    if (item.action) onAction(item.action);
   };
   const scheduleClose = () => {
     cancelClose();
@@ -81,8 +86,8 @@ export function TopNavigation({ compact, mobileOpen, onClose }) {
         </Stack>
         <List component="nav" aria-label="Navegação principal" sx={{ px: 1 }}>
           {topNavigationGroups.map((group) => {
-            const active = group.items.some((item) => matches(item.path, pathname));
-            const expanded = mobileGroup === group.label || active;
+            const active = group.items.some((item) => isNavigationActive(item, pathname));
+            const expanded = mobileGroup === group.label;
             return (
               <Box key={group.label}>
                 <ListItemButton
@@ -98,20 +103,13 @@ export function TopNavigation({ compact, mobileOpen, onClose }) {
                 {!group.path && (
                   <Collapse in={expanded} timeout={reduced ? 0 : 180}>
                     <List disablePadding sx={{ pl: 1 }}>
-                      {group.items.map((item) => (
-                        <ListItemButton
-                          key={item.path}
-                          component={NavLink}
-                          to={item.path}
-                          onClick={onClose}
-                          sx={{ borderRadius: 1, ...(matches(item.path, pathname) ? activeStyle : {}) }}
-                        >
-                          <ListItemIcon sx={{ minWidth: 34 }}>
-                            <item.icon fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText primary={item.label} />
-                        </ListItemButton>
-                      ))}
+                      <NavigationItems
+                        items={group.items}
+                        pathname={pathname}
+                        mobile
+                        onSelect={select}
+                        reduced={reduced}
+                      />
                     </List>
                   </Collapse>
                 )}
@@ -140,7 +138,7 @@ export function TopNavigation({ compact, mobileOpen, onClose }) {
       >
         <Stack direction="row" spacing={0.25}>
           {topNavigationGroups.map((group) => {
-            const active = group.items.some((item) => matches(item.path, pathname));
+            const active = group.items.some((item) => isNavigationActive(item, pathname));
             return (
               <Box key={group.label}>
                 <Button
@@ -222,14 +220,19 @@ export function TopNavigation({ compact, mobileOpen, onClose }) {
                           onMouseEnter={cancelClose}
                           onMouseLeave={scheduleClose}
                           sx={{
-                            width: group.items.length > 2 ? 580 : 350,
+                            width: group.label === 'Produtos' ? 300 : group.items.length > 2 ? 580 : 350,
                             maxWidth: 'calc(100vw - 24px)',
                             p: 2.5,
                             borderRadius: 2,
                             border: 1,
                             borderColor: 'divider',
                             boxShadow: 1,
-                            bgcolor: 'background.paper'
+                            bgcolor: 'background.paper',
+                            animation: reduced ? 'none' : 'navigation-entry 160ms ease-out',
+                            '@keyframes navigation-entry': {
+                              from: { transform: 'translateY(-4px)' },
+                              to: { transform: 'translateY(0)' }
+                            }
                           }}
                         >
                           <Typography variant="subtitle2" fontWeight={700}>
@@ -242,66 +245,19 @@ export function TopNavigation({ compact, mobileOpen, onClose }) {
                             sx={{
                               mt: 1.5,
                               display: 'grid',
-                              gridTemplateColumns: group.items.length > 2 ? 'repeat(2,minmax(0,1fr))' : '1fr',
+                              gridTemplateColumns:
+                                group.label !== 'Produtos' && group.items.length > 2
+                                  ? 'repeat(2,minmax(0,1fr))'
+                                  : '1fr',
                               gap: 1
                             }}
                           >
-                            {group.items.map((item) => (
-                              <ListItemButton
-                                key={item.path}
-                                component={NavLink}
-                                to={item.path}
-                                onClick={close}
-                                sx={{
-                                  alignItems: 'flex-start',
-                                  p: 0.75,
-                                  mx: -0.75,
-                                  gap: 1.5,
-                                  borderRadius: 1.5,
-                                  ...(matches(item.path, pathname) ? activeStyle : {}),
-                                  '&:hover .mega-menu-icon, &:focus-visible .mega-menu-icon': {
-                                    bgcolor: 'text.primary',
-                                    color: 'background.paper',
-                                    borderColor: 'text.primary'
-                                  },
-                                  '&:focus-visible': {
-                                    outline: '2px solid',
-                                    outlineColor: 'primary.main'
-                                  }
-                                }}
-                              >
-                                <Box
-                                  className="mega-menu-icon"
-                                  sx={{
-                                    width: 36,
-                                    height: 36,
-                                    flexShrink: 0,
-                                    border: 1,
-                                    borderColor: 'divider',
-                                    borderRadius: 1,
-                                    display: 'grid',
-                                    placeItems: 'center',
-                                    color: 'primary.dark',
-                                    transition: reduced
-                                      ? 'none'
-                                      : 'background-color 180ms ease, color 180ms ease'
-                                  }}
-                                >
-                                  <item.icon fontSize="small" />
-                                </Box>
-                                <ListItemText
-                                  sx={{ m: 0 }}
-                                  primary={item.label}
-                                  secondary={item.description}
-                                  primaryTypographyProps={{
-                                    fontSize: 13,
-                                    fontWeight: 650,
-                                    lineHeight: 1.5
-                                  }}
-                                  secondaryTypographyProps={{ fontSize: 12, lineHeight: 1.5, mt: 0.25 }}
-                                />
-                              </ListItemButton>
-                            ))}
+                            <NavigationItems
+                              items={group.items}
+                              pathname={pathname}
+                              onSelect={select}
+                              reduced={reduced}
+                            />
                           </Box>
                         </Paper>
                       </Fade>
@@ -319,5 +275,6 @@ export function TopNavigation({ compact, mobileOpen, onClose }) {
 TopNavigation.propTypes = {
   compact: PropTypes.bool.isRequired,
   mobileOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired
+  onClose: PropTypes.func.isRequired,
+  onAction: PropTypes.func.isRequired
 };

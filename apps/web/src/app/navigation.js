@@ -11,6 +11,7 @@ import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
 export const appRoutes = [
+  { path: '/notifications', label: 'Notificações', title: 'Notificações', hidden: true },
   {
     path: '/dashboard',
     label: 'Dashboard',
@@ -41,7 +42,7 @@ export const appRoutes = [
     label: 'Produtos',
     title: 'Produtos',
     description: 'Consulte o catálogo de produtos e serviços.',
-    group: 'Cadastros',
+    group: 'Produtos',
     icon: Inventory2OutlinedIcon,
     module: false
   },
@@ -70,12 +71,21 @@ export const appRoutes = [
     module: true
   },
   {
+    path: '/financial/receivables',
+    label: 'Contas a Receber',
+    title: 'Contas a Receber',
+    description: 'Acompanhe os valores a receber dos clientes.',
+    group: 'Financeiro',
+    icon: ReceiptLongOutlinedIcon,
+    module: false
+  },
+  {
     // A URL histórica é preservada, mas toda nomenclatura apresentada ao usuário segue o modelo Empresa/Loja.
     path: '/admin/companies',
     label: 'Empresas e lojas',
     title: 'Empresas e lojas',
     description: 'Gerencie sua empresa e os estabelecimentos vinculados.',
-    group: 'Administração',
+    group: 'Configurações',
     icon: BusinessOutlinedIcon,
     module: false
   },
@@ -115,7 +125,7 @@ export const navigationGroups = [
   // Agrupamento visual preserva exclusivamente destinos já registrados.
   { label: 'Visão geral', items: [byPath['/dashboard']] },
   { label: 'Cadastros', items: [byPath['/customers'], byPath['/suppliers'], byPath['/products']] },
-  { items: [byPath['/inventory'], byPath['/sales'], byPath['/financial']] },
+  { items: [byPath['/inventory'], byPath['/sales'], byPath['/financial'], byPath['/financial/receivables']] },
   {
     label: 'Administração',
     items: [byPath['/admin/companies']]
@@ -125,6 +135,7 @@ export const navigationGroups = [
 export const modulePages = appRoutes.filter((route) => route.module);
 
 export function getRouteMetadata(pathname) {
+  if (pathname === '/products/repricing') return { group: 'Produtos', label: 'Remarcação' };
   if (pathname === '/products/new') return { group: 'Produtos', label: 'Novo item' };
   if (/^\/products\/[^/]+\/edit$/.test(pathname)) return { group: 'Produtos', label: 'Editar item' };
   if (/^\/products\/[^/]+$/.test(pathname)) return { group: 'Produtos', label: 'Detalhes do item' };
@@ -151,18 +162,66 @@ export const topNavigationGroups = [
   {
     label: 'Cadastros',
     description: 'Gerencie os dados principais do seu negócio.',
-    items: ['/customers', '/suppliers', '/products', '/inventory'].map((path) => byPath[path])
+    items: ['/customers', '/suppliers', '/inventory'].map((path) => byPath[path])
+  },
+  {
+    label: 'Produtos',
+    description: 'Consulte o catálogo e seus cadastros auxiliares.',
+    // Cadastros em modal usam ações; auxiliares ausentes não inventam rotas.
+    items: [
+      { ...byPath['/products'], label: 'Consulta' },
+      {
+        label: 'Cadastros',
+        icon: Inventory2OutlinedIcon,
+        children: ['Marcas', 'Grupos', 'Unidades de Medida', 'NCM'].map((label) => ({
+          label,
+          icon: Inventory2OutlinedIcon,
+          action:
+            label === 'Marcas'
+              ? 'brands'
+              : label === 'Grupos'
+                ? 'groups'
+                : label === 'Unidades de Medida'
+                  ? 'units'
+                  : 'ncm',
+          description:
+            label === 'Marcas'
+              ? 'Consulte e gerencie as marcas.'
+              : label === 'Grupos'
+                ? 'Organize os grupos de produtos.'
+                : label === 'Unidades de Medida'
+                  ? 'Consulte e gerencie unidades.'
+                  : 'Consulte e gerencie códigos NCM.'
+        }))
+      },
+      {
+        label: 'Remarcação',
+        path: '/products/repricing',
+        icon: Inventory2OutlinedIcon,
+        description: 'Revise e atualize os preços de venda.'
+      },
+      {
+        label: 'Etiquetas',
+        icon: Inventory2OutlinedIcon,
+        action: 'labels',
+        description: 'Selecione produtos e prepare etiquetas para impressão.'
+      }
+    ]
   },
   { label: 'Operações', description: 'Acompanhe as operações comerciais.', items: [byPath['/sales']] },
-  { label: 'Financeiro', path: '/financial', items: [byPath['/financial']] },
   {
-    label: 'Administração',
-    description: 'Gerencie sua empresa e suas unidades.',
-    items: [byPath['/admin/companies']]
+    label: 'Financeiro',
+    description: 'Gerencie os recebimentos dos clientes.',
+    items: [byPath['/financial/receivables']]
   },
   {
     label: 'Configurações',
     description: 'Preferências e administração de acessos.',
-    items: ['/settings', '/admin/users', '/admin/plan'].map((path) => byPath[path])
+    items: ['/admin/companies', '/settings', '/admin/users', '/admin/plan'].map((path) => byPath[path])
   }
 ];
+
+// Recursão mantém pais ativos sem pressupor URLs para módulos ainda indisponíveis.
+export const isNavigationActive = (item, pathname) =>
+  Boolean(item.path && (pathname === item.path || pathname.startsWith(item.path + '/'))) ||
+  Boolean(item.children?.some((child) => isNavigationActive(child, pathname)));

@@ -1,3 +1,4 @@
+import { TotalCard } from '../components/common/TotalCard.jsx';
 import { CreateButton } from '../components/common/CreateButton.jsx';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
@@ -11,7 +12,6 @@ import {
   Avatar,
   Box,
   Button,
-  Card,
   CardContent,
   Chip,
   IconButton,
@@ -102,7 +102,7 @@ export function UsersPage() {
               ['Pendentes', ScheduleOutlinedIcon, 'warning'],
               ['Usuários inativos', PersonOffOutlinedIcon, 'error']
             ].map(([label, Icon, tone], index) => (
-              <Card
+              <TotalCard
                 key={label}
                 sx={{ borderRadius: 2, bgcolor: tone + '.soft', borderColor: tone + '.main' }}
               >
@@ -132,7 +132,7 @@ export function UsersPage() {
                     </Typography>
                   </Box>
                 </CardContent>
-              </Card>
+              </TotalCard>
             ))}
           </Box>
           <Box>
@@ -163,7 +163,7 @@ export function UsersPage() {
                 <Box
                   sx={{
                     flexShrink: 0,
-                    '& .MuiButton-root': { minHeight: 40, width: { xs: '100%', sm: 'auto' } }
+                    '& .MuiButton-root': { width: { xs: '100%', sm: 'auto' } }
                   }}
                 >
                   {createButton}

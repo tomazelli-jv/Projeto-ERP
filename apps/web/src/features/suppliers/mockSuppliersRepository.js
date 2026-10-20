@@ -1,5 +1,5 @@
 ﻿import { createMockPartyRepository } from '../parties/mockPartyRepository.js';
-import { emptySupplier, normalizeSupplier, validateSupplier } from './supplier-model.js';
+import { emptySupplier, hydrateSupplier, normalizeSupplier, validateSupplier } from './supplier-model.js';
 
 // Registros exclusivamente demonstrativos, independentes de Clientes e sem identidades reais.
 export const supplierFixtures = () =>
@@ -56,6 +56,11 @@ export function createMockSuppliersRepository(options = {}) {
     seed: supplierFixtures,
     validate: validateSupplier,
     normalize: normalizeSupplier,
+    hydrate: hydrateSupplier,
+    validateStored: (r) =>
+      !['PERSON', 'COMPANY'].includes(r.type) ||
+      !['ACTIVE', 'INACTIVE'].includes(r.status) ||
+      typeof r.document !== 'string',
     singular: 'fornecedor',
     plural: 'fornecedores',
     ...options

@@ -2,6 +2,7 @@
 import { Box, Button } from '@mui/material';
 import PropTypes from 'prop-types';
 import { forwardRef } from 'react';
+import { actionButtonSize } from './action-button-styles.js';
 
 // Efeito compartilhado de criação na stack MUI: mantém Link, submit, disabled e foco nativos.
 export const CreateButton = forwardRef(function CreateButton({ children, sx, ...props }, ref) {
@@ -12,13 +13,12 @@ export const CreateButton = forwardRef(function CreateButton({ children, sx, ...
       {...props}
       sx={[
         {
+          ...actionButtonSize,
           position: 'relative',
           overflow: 'hidden',
           isolation: 'isolate',
           borderRadius: 99,
-          minWidth: 140,
           px: 3,
-          py: 1,
           bgcolor: 'background.paper',
           color: 'text.primary',
           borderColor: 'primary.border',
@@ -26,11 +26,11 @@ export const CreateButton = forwardRef(function CreateButton({ children, sx, ...
             content: '""',
             position: 'absolute',
             zIndex: -1,
-            width: 8,
-            height: 8,
+            width: 6,
+            height: 6,
             borderRadius: '50%',
-            left: 14,
-            top: 'calc(50% - 4px)',
+            left: 10,
+            top: 'calc(50% - 3px)',
             bgcolor: 'primary.main',
             transform: 'scale(1)',
             transition: 'transform 500ms ease'
@@ -38,7 +38,8 @@ export const CreateButton = forwardRef(function CreateButton({ children, sx, ...
           '& .create-label': { transition: 'transform 500ms ease', transform: 'translateX(3px)' },
           '& .create-icon': {
             position: 'absolute',
-            right: 12,
+            right: 8,
+            fontSize: 18,
             opacity: 0,
             transform: 'translateX(-8px)',
             transition: 'opacity 500ms ease, transform 500ms ease'

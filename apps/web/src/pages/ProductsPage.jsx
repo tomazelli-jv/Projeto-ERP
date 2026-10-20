@@ -1,11 +1,18 @@
-﻿import { useEffect, useState } from 'react';
+import { TotalCard } from '../components/common/TotalCard.jsx';
+import { ThemeProvider, useTheme } from '@mui/material/styles';
+import { useMemo } from 'react';
+import { createProductListTheme } from '../features/products/product-list-theme.js';
+import { unitModule } from '../features/units/unit-module.js';
+import { useLookupList } from '../features/catalog-lookups/lookup-queries.js';
+import { groupModule } from '../features/product-groups/group-module.js';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
+  Chip,
+  Collapse,
   IconButton,
   InputAdornment,
   MenuItem,
@@ -23,7 +30,6 @@ import {
 } from '@mui/material';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import HandymanOutlinedIcon from '@mui/icons-material/HandymanOutlined';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
@@ -38,22 +44,38 @@ import { useEntityList, useEntitySummary } from '../features/parties/entity-quer
 import { EntityDemoNotice, EntityStatus } from '../features/parties/EntityShared.jsx';
 import { EntityStatusAction } from '../features/parties/EntityStatusAction.jsx';
 import { productModule } from '../features/products/product-module.js';
-import { productCategories, units, itemTypeLabel } from '../features/products/product-options.js';
 import { formatMoney } from '../components/business/money.js';
 
 // Mesmo padrão de listagem dos cadastros, com dados específicos do catálogo único.
 export function ProductsPage() {
+  const base = useTheme();
+  const theme = useMemo(() => createProductListTheme(base), [base]);
   return (
-    <EntityModuleContext.Provider value={productModule}>
-      <ProductList />
-    </EntityModuleContext.Provider>
+    <ThemeProvider theme={theme}>
+      <Box
+        sx={{
+          bgcolor: 'background.default',
+          color: 'text.primary',
+          minHeight: 'calc(100vh - 130px)',
+          px: { xs: 1, sm: 2 },
+          py: 0
+        }}
+      >
+        <EntityModuleContext.Provider value={productModule}>
+          <ProductList />
+        </EntityModuleContext.Provider>
+      </Box>
+    </ThemeProvider>
   );
 }
 const defaults = { search: '', type: '', status: '', category: '', unit: '', page: 1, pageSize: 10 };
 function ProductList() {
+  const unitsQuery = useLookupList(unitModule);
+  const groups = useLookupList(groupModule);
   const [filters, setFilters] = useState(defaults);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
+  const [advanced, setAdvanced] = useState(false);
   const location = useLocation();
   const [feedback, setFeedback] = useState(location.state?.productFeedback ?? '');
   useEffect(() => {
@@ -77,40 +99,68 @@ function ProductList() {
   );
   const page = query.data?.page ?? 1;
   return (
-    <>
-      <PageHeader title="Produtos e Serviços" description="Gerencie os itens comercializados pela empresa." />
+    <Box
+      sx={{
+        maxWidth: 1120,
+        mx: 'auto',
+        py: 1,
+        '& h1': { fontSize: 26, fontWeight: 650 },
+        '& .MuiTypography-body2': { fontSize: 14 }
+      }}
+    >
+      {/* Densidade local: aproxima os textos e a ação sem alterar os cabeçalhos dos demais módulos. */}
+      <Box sx={{ '& > .MuiStack-root': { mb: 1, gap: 1 } }}>
+        <PageHeader
+          title="Produtos e serviços"
+          description="Gerencie os itens comercializados pela empresa."
+          action={import.meta.env.DEV ? create : undefined}
+        />
+      </Box>
       {!import.meta.env.DEV ? (
         <Alert severity="info">Catálogo aguarda integração com o backend.</Alert>
       ) : (
         <>
-          <EntityDemoNotice />
+          <Box
+            sx={{
+              '& > .MuiAlert-root': { m: 0, px: 0, py: 0, alignItems: 'center' },
+              '& .MuiAlert-message': { py: 0.5, fontSize: 12, lineHeight: 1.5 },
+              '& .MuiAlert-icon': { py: 0.5, mr: 1 }
+            }}
+          >
+            <EntityDemoNotice />
+          </Box>
+          {/* Duas colunas em telas pequenas preservam a leitura; tokens acompanham Light/Dark. */}
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2,1fr)', lg: 'repeat(4,1fr)' },
+              gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
               gap: 2,
+              mt: 2,
               mb: 3
             }}
           >
             {[
-              ['Total de itens', 'total', Inventory2OutlinedIcon, 'info'],
-              ['Produtos', 'products', Inventory2OutlinedIcon, 'primary'],
-              ['Serviços', 'services', HandymanOutlinedIcon, 'warning'],
-              ['Itens ativos', 'active', CheckCircleOutlineIcon, 'success']
-            ].map(([label, key, Icon, tone]) => (
-              <Card key={key} sx={{ bgcolor: tone + '.soft', borderColor: tone + '.main', borderRadius: 2 }}>
-                <CardContent
-                  sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, '&:last-child': { pb: 2 } }}
-                >
-                  <Icon sx={{ color: tone + '.main', fontSize: 28 }} />
-                  <Box>
-                    <Typography variant="body2" fontWeight={600}>
-                      {label}
-                    </Typography>
-                    <Typography variant="h2">{summary.data?.[key] ?? '—'}</Typography>
-                  </Box>
-                </CardContent>
-              </Card>
+              ['Itens no total', 'total'],
+              ['Produtos', 'products'],
+              ['Serviços', 'services'],
+              ['Ativos', 'active']
+            ].map(([label, key]) => (
+              <TotalCard
+                key={key}
+                sx={{
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: '14px',
+                  p: '18px 22px',
+                  boxShadow: 'none'
+                }}
+              >
+                <Typography color="text.secondary" sx={{ fontSize: 13, mb: 0.5 }}>
+                  {label}
+                </Typography>
+                <Typography sx={{ fontSize: 26, fontWeight: 650 }}>{summary.data?.[key] ?? '—'}</Typography>
+              </TotalCard>
             ))}
           </Box>
           {summary.isError && (
@@ -140,56 +190,89 @@ function ProductList() {
                   }
                 }}
               />
-              {create}
-            </Stack>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: {
-                  xs: '1fr',
-                  sm: 'repeat(2,minmax(0,1fr))',
-                  lg: 'repeat(4,minmax(0,1fr)) auto'
-                },
-                gap: 2
-              }}
-            >
-              <TextField select label="Tipo" value={filters.type} onChange={change('type')}>
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="PRODUCT">Produtos</MenuItem>
-                <MenuItem value="SERVICE">Serviços</MenuItem>
-              </TextField>
-              <TextField select label="Status" value={filters.status} onChange={change('status')}>
+              <Stack direction="row" gap={1} alignItems="center" aria-label="Tipo de item">
+                {[
+                  ['', 'Todos'],
+                  ['PRODUCT', 'Produtos'],
+                  ['SERVICE', 'Serviços']
+                ].map(([value, label]) => (
+                  <Chip
+                    key={value}
+                    label={label}
+                    clickable
+                    aria-pressed={filters.type === value}
+                    onClick={() => setFilters((old) => ({ ...old, type: value, page: 1 }))}
+                    sx={{
+                      bgcolor: filters.type === value ? 'primary.soft' : 'transparent',
+                      color: filters.type === value ? 'primary.dark' : 'text.secondary',
+                      border: '1px solid',
+                      borderColor: filters.type === value ? 'primary.soft' : 'divider'
+                    }}
+                  />
+                ))}
+              </Stack>
+              <TextField
+                select
+                label="Status"
+                value={filters.status}
+                onChange={change('status')}
+                sx={{ minWidth: 130 }}
+              >
                 <MenuItem value="">Todos</MenuItem>
                 <MenuItem value="ACTIVE">Ativos</MenuItem>
                 <MenuItem value="INACTIVE">Inativos</MenuItem>
               </TextField>
-              <TextField select label="Categoria" value={filters.category} onChange={change('category')}>
-                <MenuItem value="">Todas</MenuItem>
-                {productCategories.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                label="Unidade"
-                value={filters.unit}
-                onChange={(event) =>
-                  setFilters((old) => ({ ...old, unit: event.target.value.toUpperCase(), page: 1 }))
-                }
-                slotProps={{ htmlInput: { list: 'product-filter-units', maxLength: 10 } }}
-              />
-              <datalist id="product-filter-units">
-                {units.map(([code, label]) => (
-                  <option key={code} value={code}>
-                    {label}
-                  </option>
-                ))}
-              </datalist>
-              <Button variant="outlined" onClick={clear}>
-                Limpar filtros
-              </Button>
-            </Box>
+            </Stack>
+            <Button
+              onClick={() => setAdvanced((value) => !value)}
+              aria-expanded={advanced}
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              Mais filtros
+            </Button>
+            <Collapse in={advanced}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2,minmax(0,1fr))',
+                    lg: 'repeat(2,minmax(0,1fr)) auto'
+                  },
+                  gap: 2
+                }}
+              >
+                <TextField
+                  label="Grupo"
+                  value={filters.category}
+                  onChange={change('category')}
+                  slotProps={{ htmlInput: { list: 'product-group-filter' } }}
+                />
+                <datalist id="product-group-filter">
+                  {(groups.data?.items ?? []).map((group) => (
+                    <option key={group.id} value={group.name} />
+                  ))}
+                </datalist>
+                <TextField
+                  label="Unidade"
+                  value={filters.unit}
+                  onChange={(event) =>
+                    setFilters((old) => ({ ...old, unit: event.target.value.toUpperCase(), page: 1 }))
+                  }
+                  slotProps={{ htmlInput: { list: 'product-filter-units', maxLength: 10 } }}
+                />
+                <datalist id="product-filter-units">
+                  {(unitsQuery.data?.items ?? []).map(({ id, abbreviation: code, description: label }) => (
+                    <option key={id} value={code}>
+                      {label}
+                    </option>
+                  ))}
+                </datalist>
+                <Button variant="outlined" onClick={clear}>
+                  Limpar filtros
+                </Button>
+              </Box>
+            </Collapse>
           </Stack>
           {query.isPending ? (
             <LoadingState message="Carregando itens..." />
@@ -212,34 +295,38 @@ function ProductList() {
           ) : (
             <>
               <TableContainer
-                sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflowX: 'auto' }}
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: '14px',
+                  bgcolor: 'background.paper',
+                  overflowX: 'auto'
+                }}
               >
                 <Table
                   aria-label="Produtos e Serviços"
                   sx={{
-                    minWidth: 950,
+                    minWidth: 720,
                     '& th': {
-                      bgcolor: 'primary.main',
-                      color: 'primary.contrastText',
-                      textTransform: 'uppercase',
-                      fontWeight: 750,
+                      bgcolor: 'transparent',
+                      color: 'text.secondary',
+                      textTransform: 'none',
+                      fontWeight: 500,
                       fontSize: 12,
                       py: 2
                     },
                     '& td': { fontSize: 13, py: 1.75 },
-                    '& tbody tr:nth-of-type(even)': { bgcolor: 'surface.secondary' },
+                    '& .MuiIconButton-root': { bgcolor: 'transparent', border: 0, boxShadow: 'none' },
                     '& tr:last-child td': { borderBottom: 0 }
                   }}
                 >
                   <TableHead>
                     <TableRow>
-                      {['Item', 'Código', 'Categoria', 'Tipo', 'Preço', 'Unidade', 'Status', 'Ações'].map(
-                        (label) => (
-                          <TableCell key={label} align={label === 'Ações' ? 'right' : 'left'}>
-                            {label}
-                          </TableCell>
-                        )
-                      )}
+                      {['Item', 'Grupo', 'Preço', 'Status', 'Ações'].map((label) => (
+                        <TableCell key={label} align={label === 'Ações' ? 'right' : 'left'}>
+                          {label}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -256,35 +343,15 @@ function ProductList() {
                               <Typography variant="body2" fontWeight={600}>
                                 {item.name}
                               </Typography>
-                              {item.description && (
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  sx={{
-                                    display: 'block',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                  }}
-                                >
-                                  {item.description}
-                                </Typography>
-                              )}
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {item.code}
+                                {item.gtin ? ' / ' + item.gtin : ''}
+                              </Typography>
                             </Box>
                           </Stack>
                         </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{item.code}</Typography>
-                          {item.type === 'PRODUCT' && item.gtin && (
-                            <Typography variant="caption" color="text.secondary">
-                              {item.gtin}
-                            </Typography>
-                          )}
-                        </TableCell>
                         <TableCell>{item.category || '—'}</TableCell>
-                        <TableCell>{itemTypeLabel(item.type)}</TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatMoney(item.priceCents)}</TableCell>
-                        <TableCell>{item.unit || '—'}</TableCell>
                         <TableCell>
                           <EntityStatus status={item.status} />
                         </TableCell>
@@ -372,6 +439,6 @@ function ProductList() {
           </Snackbar>
         </>
       )}
-    </>
+    </Box>
   );
 }

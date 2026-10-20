@@ -99,7 +99,79 @@ test('campos específicos de produto e serviço não se misturam', async () => {
     minimumStock: '99'
   });
   assert.ok(!('durationMinutes' in item));
-  assert.equal(item.minimumStock, '');
+  assert.equal(item.minimumStock, '99');
+});
+test('novos campos fazem round-trip no mesmo registro e abertura de estoque é imutável', async () => {
+  const repo = createMockProductsRepository({ seed: () => [] });
+  const record = await repo.create({
+    ...product(),
+    trackStock: true,
+    initialStock: '2,500',
+    stockStoreId: '9',
+    maximumStock: '10',
+    minimumStock: '1',
+    stockLocation: 'Prateleira teste',
+    allowNegativeStock: true,
+    cest: '0000001',
+    cfop: '0001',
+    ibsCbsCst: '001',
+    cClassTrib: '000001',
+    ibsStateRate: '0,125',
+    reformNotes: 'Configuração de teste',
+    promotionPriceCents: 999,
+    promotionStart: '2026-10-01',
+    promotionEnd: '2026-10-31',
+    margin: '20'
+  });
+  const loaded = await repo.getById(record.id);
+  assert.equal(loaded.cest, '0000001');
+  assert.equal(loaded.cClassTrib, '000001');
+  assert.equal(loaded.ibsStateRate, '0,125');
+  assert.equal(loaded.promotionPriceCents, 999);
+  const edited = await repo.update(record.id, {
+    ...loaded,
+    initialStock: '999',
+    stockStoreId: '55',
+    trackStock: false
+  });
+  assert.equal(edited.initialStock, '2,500');
+  assert.equal(edited.stockStoreId, '9');
+  assert.equal(edited.minimumStock, '1');
+  assert.equal(edited.maximumStock, '10');
+  await assert.rejects(repo.update(record.id, { ...edited, type: 'SERVICE' }), /saldo inicial/);
+  await repo.updatePrices([{ productId: record.id, previousPriceCents: 12345, newPriceCents: 13000 }]);
+  const repriced = await repo.getById(record.id);
+  assert.equal(repriced.priceCents, 13000);
+  assert.equal(repriced.cClassTrib, '000001');
+});
+test('validação de configurações locais rejeita quantidades, percentuais e datas inválidas', () => {
+  for (const changes of [
+    { trackStock: true, initialStock: '1' },
+    { trackStock: true, minimumStock: '3', maximumStock: '2' },
+    { trackStock: true, maximumStock: '1,0001' },
+    { trackStock: true, initialStock: '-1', stockStoreId: '1' },
+    { cest: '123' },
+    { cfop: 'A001' },
+    { cbsRate: '-1' },
+    { ibsCityRate: 'abc' },
+    { promotionPriceCents: 0 },
+    { promotionPriceCents: 0.1 },
+    { promotionStart: '2026-02-30' },
+    { promotionEnd: '2026-99-99' },
+    { promotionStart: '2026-10-02', promotionEnd: '2026-10-01' }
+  ])
+    assert.ok(validateProduct({ ...product(), ...changes }), JSON.stringify(changes));
+  assert.equal(
+    validateProduct({
+      ...product(),
+      trackStock: true,
+      initialStock: '0',
+      stockStoreId: '1',
+      minimumStock: '2,500',
+      maximumStock: '2.500'
+    }),
+    ''
+  );
 });
 test('validações obrigatórias e numéricas', () => {
   for (const values of [

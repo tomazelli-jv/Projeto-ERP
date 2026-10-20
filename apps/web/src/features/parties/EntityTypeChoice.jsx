@@ -1,3 +1,5 @@
+import { CancelButton } from '../../components/common/CancelButton';
+import { useEntityModule } from './entity-module.js';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack } from '@mui/material';
@@ -6,12 +8,13 @@ import BusinessOutlined from '@mui/icons-material/BusinessOutlined';
 import { CreateButton } from '../../components/common/CreateButton.jsx';
 
 // A escolha antecede a navegação; ambos os tipos seguem o mesmo editor e repository.
-export function CustomerTypeChoice() {
+export function EntityTypeChoice() {
+  const module = useEntityModule();
   const [open, setOpen] = useState(false);
   return (
     <>
       <CreateButton onClick={() => setOpen(true)} sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
-        Novo cliente
+        {`Novo ${module.singular}`}
       </CreateButton>
       <Dialog
         open={open}
@@ -20,12 +23,12 @@ export function CustomerTypeChoice() {
         maxWidth="xs"
         aria-labelledby="customer-type-title"
       >
-        <DialogTitle id="customer-type-title">Tipo de cliente</DialogTitle>
+        <DialogTitle id="customer-type-title">{`Tipo de ${module.singular}`}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <Button
               component={Link}
-              to="/customers/new?type=PERSON"
+              to={`${module.path}/new?type=PERSON`}
               variant="outlined"
               startIcon={<PersonOutline />}
             >
@@ -33,7 +36,7 @@ export function CustomerTypeChoice() {
             </Button>
             <Button
               component={Link}
-              to="/customers/new?type=COMPANY"
+              to={`${module.path}/new?type=COMPANY`}
               variant="outlined"
               startIcon={<BusinessOutlined />}
             >
@@ -42,7 +45,7 @@ export function CustomerTypeChoice() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancelar</Button>
+          <CancelButton onClick={() => setOpen(false)}>Cancelar</CancelButton>
         </DialogActions>
       </Dialog>
     </>

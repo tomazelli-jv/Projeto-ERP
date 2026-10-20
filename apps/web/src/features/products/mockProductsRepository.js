@@ -1,4 +1,6 @@
-﻿import { emptyProduct, normalizeProduct, validateProduct } from './product-model.js';
+import { validMoney } from '../../components/business/money.js';
+import { validNewPrice } from './repricing.js';
+import { emptyProduct, normalizeProduct, validateProduct } from './product-model.js';
 // Fixtures de catálogo explicitamente DEV; preços não representam operação real.
 export const productFixtures = () =>
   [
@@ -96,6 +98,11 @@ export function createMockProductsRepository({
       throw Error('Já existe um item com este código interno.');
     return item;
   }
+  // Todas as escritas compartilham o lock por escopo entre abas; o lote valida antes de gravar.
+  const mutate = (operation) =>
+    globalThis.window?.navigator?.locks
+      ? window.navigator.locks.request(key, operation)
+      : Promise.resolve().then(operation);
   return {
     async list(filters = {}) {
       const rows = read().filter(
@@ -104,10 +111,17 @@ export function createMockProductsRepository({
           (!filters.status || item.status === filters.status) &&
           (!filters.category || item.category === filters.category) &&
           (!filters.unit || item.unit === filters.unit) &&
+          (!filters.groupId ||
+            item.groupId === filters.groupId ||
+            (!item.groupId && item.category === filters.groupName)) &&
+          (!filters.brandId ||
+            item.brandId === filters.brandId ||
+            (!item.brandId && item.brand === filters.brandName)) &&
           (!filters.search ||
-            [item.name, item.code, item.gtin, item.category].some((value) =>
-              fold(value).includes(fold(filters.search).trim())
-            ))
+            (['name', 'code', 'gtin'].includes(filters.searchField)
+              ? [item[filters.searchField]]
+              : [item.name, item.code, item.gtin, item.category]
+            ).some((value) => fold(value).includes(fold(filters.search).trim())))
       );
       const total = rows.length;
       const pageSize = Math.max(1, Math.min(100, Number(filters.pageSize) || 10));
@@ -118,6 +132,36 @@ export function createMockProductsRepository({
         page,
         pageSize
       };
+    },
+    // O lote inteiro falha em conflito/validação: nenhuma gravação parcial.
+    async updatePrices(changes) {
+      return mutate(() => {
+        if (!Array.isArray(changes) || !changes.length)
+          throw Error('Selecione pelo menos um produto com alteração.');
+        const rows = read();
+        const ids = new Set();
+        const changed = [];
+        for (const change of changes) {
+          if (ids.has(change.productId)) throw Error('Produto repetido na remarcação.');
+          ids.add(change.productId);
+          const item = rows.find((row) => row.id === change.productId);
+          if (!item || item.type !== 'PRODUCT' || item.status !== 'ACTIVE')
+            throw Error('Produto indisponível ou inativo. Atualize a remarcação.');
+          if (!validMoney(change.previousPriceCents) || item.priceCents !== change.previousPriceCents)
+            throw Error(
+              'O preço deste produto foi alterado depois da geração da prévia. Atualize a remarcação antes de continuar.'
+            );
+          if (!validNewPrice(change.newPriceCents))
+            throw Error('O novo preço deve ser maior que zero e respeitar o limite monetário.');
+          if (item.priceCents !== change.newPriceCents) {
+            item.priceCents = change.newPriceCents;
+            item.updatedAt = now();
+            changed.push(item);
+          }
+        }
+        if (changed.length) write(rows);
+        return structuredClone(changed);
+      });
     },
     async summary() {
       const rows = read();
@@ -132,28 +176,52 @@ export function createMockProductsRepository({
       return structuredClone(read().find((row) => row.id === id) ?? null);
     },
     async create(data) {
-      const rows = read();
-      const item = { ...prepare(data, rows), id: id(), createdAt: now(), updatedAt: now() };
-      write([...rows, item]);
-      return structuredClone(item);
+      return mutate(() => {
+        const rows = read();
+        const item = { ...prepare(data, rows), id: id(), createdAt: now(), updatedAt: now() };
+        write([...rows, item]);
+        return structuredClone(item);
+      });
     },
     async update(id, data) {
-      const rows = read();
-      const index = rows.findIndex((row) => row.id === id);
-      if (index < 0) throw Error('Item não encontrado.');
-      const item = { ...prepare(data, rows, id), id, createdAt: rows[index].createdAt, updatedAt: now() };
-      rows[index] = item;
-      write(rows);
-      return structuredClone(item);
+      return mutate(() => {
+        const rows = read();
+        const index = rows.findIndex((row) => row.id === id);
+        if (index < 0) throw Error('Item não encontrado.');
+        if (rows[index].type === 'PRODUCT' && data.type === 'SERVICE' && rows[index].initialStock)
+          throw Error(
+            'Um produto com saldo inicial registrado não pode ser convertido em serviço. Preserve o registro de estoque.'
+          );
+        // Quantidade de abertura e loja não podem ser reescritas como ajuste de saldo.
+        const item = {
+          ...prepare(
+            {
+              ...data,
+              initialStock: rows[index].initialStock,
+              stockStoreId: rows[index].stockStoreId || data.stockStoreId
+            },
+            rows,
+            id
+          ),
+          id,
+          createdAt: rows[index].createdAt,
+          updatedAt: now()
+        };
+        rows[index] = item;
+        write(rows);
+        return structuredClone(item);
+      });
     },
     async setActive(id, active) {
-      const rows = read();
-      const item = rows.find((row) => row.id === id);
-      if (!item) throw Error('Item não encontrado.');
-      item.status = active ? 'ACTIVE' : 'INACTIVE';
-      item.updatedAt = now();
-      write(rows);
-      return structuredClone(item);
+      return mutate(() => {
+        const rows = read();
+        const item = rows.find((row) => row.id === id);
+        if (!item) throw Error('Item não encontrado.');
+        item.status = active ? 'ACTIVE' : 'INACTIVE';
+        item.updatedAt = now();
+        write(rows);
+        return structuredClone(item);
+      });
     }
   };
 }
